@@ -1,0 +1,375 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import {
+  clearAdminState,
+  createCategoryAdmin,
+  createProductAdmin,
+  deleteCategoryAdmin,
+  deleteProductAdmin,
+  fetchAdminCatalog,
+  updateCategoryAdmin,
+  updateProductAdmin,
+} from '../features/admin/adminSlice'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
+import { formatCurrency } from '../utils/format'
+import { uploadProductImage } from '../api/uploads'
+
+const defaultCategory = { name: '', icon: '', color: '#f29a43' }
+const defaultProduct = {
+  name: '',
+  description: '',
+  richDescription: '',
+  image: '',
+  brand: '',
+  price: '',
+  category: '',
+  countInStock: '',
+  isFeatured: false,
+}
+
+function AdminDashboardPage() {
+  const dispatch = useDispatch()
+  const { categories, products, loading, saving, error, message } = useSelector(
+    (state) => state.admin,
+  )
+
+  const [categoryForm, setCategoryForm] = useState(defaultCategory)
+  const [categoryEditId, setCategoryEditId] = useState('')
+  const [productForm, setProductForm] = useState(defaultProduct)
+  const [productEditId, setProductEditId] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadMessage, setUploadMessage] = useState('')
+
+  useEffect(() => {
+    dispatch(fetchAdminCatalog())
+  }, [dispatch])
+
+  useEffect(() => {
+    if (!productForm.category && categories[0]) {
+      setProductForm((current) => ({
+        ...current,
+        category: categories[0].id || categories[0]._id,
+      }))
+    }
+  }, [categories, productForm.category])
+
+  const selectedCategoryName = useMemo(() => {
+    const category = categories.find(
+      (item) => (item.id || item._id) === productForm.category,
+    )
+    return category?.name || 'No category'
+  }, [categories, productForm.category])
+
+  function populateCategoryForm(category) {
+    setCategoryEditId(category.id || category._id)
+    setCategoryForm({
+      name: category.name || '',
+      icon: category.icon || '',
+      color: category.color || '#f29a43',
+    })
+  }
+
+  function populateProductForm(product) {
+    setProductEditId(product.id || product._id)
+    setProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      richDescription: product.richDescription || '',
+      image: product.image || '',
+      brand: product.brand || '',
+      price: String(product.price || ''),
+      category: product.category?.id || product.category?._id || product.category || '',
+      countInStock: String(product.countInStock || ''),
+      isFeatured: Boolean(product.isFeatured),
+    })
+  }
+
+  async function submitCategory(event) {
+    event.preventDefault()
+    dispatch(clearAdminState())
+
+    if (categoryEditId) {
+      await dispatch(
+        updateCategoryAdmin({ id: categoryEditId, payload: categoryForm }),
+      )
+    } else {
+      await dispatch(createCategoryAdmin(categoryForm))
+    }
+
+    setCategoryEditId('')
+    setCategoryForm(defaultCategory)
+  }
+
+  async function submitProduct(event) {
+    event.preventDefault()
+    dispatch(clearAdminState())
+
+    const payload = {
+      ...productForm,
+      price: Number(productForm.price || 0),
+      countInStock: Number(productForm.countInStock || 0),
+      isFeatured: Boolean(productForm.isFeatured),
+    }
+
+    if (productEditId) {
+      await dispatch(updateProductAdmin({ id: productEditId, payload }))
+    } else {
+      await dispatch(createProductAdmin(payload))
+    }
+
+    setProductEditId('')
+    setProductForm((current) => ({
+      ...defaultProduct,
+      category: categories[0]?.id || categories[0]?._id || '',
+    }))
+    setImageFile(null)
+    setUploadMessage('')
+  }
+
+  async function handleImageUpload() {
+    if (!imageFile) {
+      setUploadMessage('Choose an image before uploading.')
+      return
+    }
+
+    setUploadingImage(true)
+    setUploadMessage('')
+    try {
+      const imageUrl = await uploadProductImage(imageFile)
+      setProductForm((current) => ({
+        ...current,
+        image: imageUrl,
+      }))
+      setUploadMessage('Image uploaded. Product image URL updated.')
+    } catch (uploadError) {
+      setUploadMessage(uploadError.message)
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  if (loading) {
+    return <LoadingState label="Loading admin dashboard..." />
+  }
+
+  if (error && !categories.length && !products.length) {
+    return <ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog())} />
+  }
+
+  return (
+    <section className="page-stack">
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Admin Dashboard</h2>
+          <span>{products.length} products</span>
+        </div>
+        {message ? <p className="form-success">{message}</p> : null}
+        {error ? <p className="form-error">{error}</p> : null}
+      </section>
+
+      <section className="panel admin-grid">
+        <form className="admin-form" onSubmit={submitCategory}>
+          <h3>{categoryEditId ? 'Update Category' : 'Create Category'}</h3>
+          <input
+            value={categoryForm.name}
+            onChange={(event) =>
+              setCategoryForm((current) => ({ ...current, name: event.target.value }))
+            }
+            placeholder="Category Name"
+            required
+          />
+          <input
+            value={categoryForm.icon}
+            onChange={(event) =>
+              setCategoryForm((current) => ({ ...current, icon: event.target.value }))
+            }
+            placeholder="Icon"
+          />
+          <input
+            type="color"
+            value={categoryForm.color}
+            onChange={(event) =>
+              setCategoryForm((current) => ({ ...current, color: event.target.value }))
+            }
+          />
+          <button type="submit" className="solid-button" disabled={saving}>
+            {categoryEditId ? 'Save Category' : 'Add Category'}
+          </button>
+        </form>
+
+        <div className="admin-list">
+          <h3>Categories</h3>
+          {categories.map((category) => (
+            <article key={category.id || category._id} className="admin-item">
+              <div>
+                <strong>{category.name}</strong>
+                <small>{category.color}</small>
+              </div>
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => populateCategoryForm(category)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => dispatch(deleteCategoryAdmin(category.id || category._id))}
+                >
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel admin-grid">
+        <form className="admin-form" onSubmit={submitProduct}>
+          <h3>{productEditId ? 'Update Product' : 'Create Product'}</h3>
+          <input
+            value={productForm.name}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, name: event.target.value }))
+            }
+            placeholder="Product Name"
+            required
+          />
+          <input
+            value={productForm.brand}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, brand: event.target.value }))
+            }
+            placeholder="Brand"
+          />
+          <input
+            value={productForm.image}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, image: event.target.value }))
+            }
+            placeholder="Image URL"
+            required
+          />
+          <div className="file-upload-row">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => setImageFile(event.target.files?.[0] || null)}
+            />
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleImageUpload}
+              disabled={uploadingImage}
+            >
+              {uploadingImage ? 'Uploading...' : 'Upload Image'}
+            </button>
+          </div>
+          {uploadMessage ? <small>{uploadMessage}</small> : null}
+          <textarea
+            value={productForm.description}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, description: event.target.value }))
+            }
+            placeholder="Description"
+            rows={2}
+            required
+          />
+          <textarea
+            value={productForm.richDescription}
+            onChange={(event) =>
+              setProductForm((current) => ({
+                ...current,
+                richDescription: event.target.value,
+              }))
+            }
+            placeholder="Rich Description"
+            rows={2}
+          />
+          <select
+            value={productForm.category}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, category: event.target.value }))
+            }
+            required
+          >
+            {categories.map((category) => (
+              <option key={category.id || category._id} value={category.id || category._id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            value={productForm.price}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, price: event.target.value }))
+            }
+            placeholder="Price"
+            required
+          />
+          <input
+            type="number"
+            value={productForm.countInStock}
+            onChange={(event) =>
+              setProductForm((current) => ({ ...current, countInStock: event.target.value }))
+            }
+            placeholder="Stock"
+            required
+          />
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={productForm.isFeatured}
+              onChange={(event) =>
+                setProductForm((current) => ({
+                  ...current,
+                  isFeatured: event.target.checked,
+                }))
+              }
+            />
+            Featured Product
+          </label>
+          <small>Category: {selectedCategoryName}</small>
+          <button type="submit" className="solid-button" disabled={saving}>
+            {productEditId ? 'Save Product' : 'Add Product'}
+          </button>
+        </form>
+
+        <div className="admin-list">
+          <h3>Products</h3>
+          {products.map((product) => (
+            <article key={product.id || product._id} className="admin-item">
+              <div>
+                <strong>{product.name}</strong>
+                <small>{formatCurrency(product.price)}</small>
+              </div>
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => populateProductForm(product)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => dispatch(deleteProductAdmin(product.id || product._id))}
+                >
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  )
+}
+
+export default AdminDashboardPage
