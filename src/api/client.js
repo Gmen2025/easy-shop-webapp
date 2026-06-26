@@ -1,6 +1,8 @@
-const API_BASE_URL = import.meta.env.DEV
-  ? '/api/v1'
-  : 'https://easy-shop-server-wldr.onrender.com/api/v1'
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? '/api/v1'
+    : 'https://easy-shop-server-wldr.onrender.com/api/v1')
 const DB_KEY = 'selectedDatabaseName'
 const REQUEST_TIMEOUT_MS = 45000
 
