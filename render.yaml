@@ -2,8 +2,9 @@ services:
   - type: static_site
     name: addugenete-shop
     env: static
+    rootDir: .
     buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
+    staticPublishPath: dist
     pullRequestPreviewsEnabled: true
     routes:
       - type: rewrite
