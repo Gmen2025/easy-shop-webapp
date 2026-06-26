@@ -80,16 +80,55 @@ function OrdersPage() {
                 <span>{order.status}</span>
               </div>
               <p>
+                User: <strong>{order.user?.name || 'Customer'}</strong>
+              </p>
+              <p>Email: {order.user?.email || order.customerEmail || 'N/A'}</p>
+              <p>Phone: {order.phone || order.user?.phone || 'N/A'}</p>
+              <p>Address 1: {order.shippingAddress1 || 'N/A'}</p>
+              <p>Address 2: {order.shippingAddress2 || 'N/A'}</p>
+              <p>
+                {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
+              </p>
+              <p>
                 Total: <strong>{formatCurrency(order.totalPrice)}</strong>
               </p>
               <p>
                 Date:{' '}
-                {new Date(order.dateOrdered).toLocaleDateString('en-US', {
+                {new Date(order.dateOrdered).toLocaleString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  second: '2-digit',
                 })}
               </p>
+              <div className="order-items-block">
+                {(order.orderItems || []).map((item) => {
+                  const product = item.product || {}
+                  const quantity = Number(item.quantity || 0)
+                  const price = Number(product.price || 0)
+                  const subtotal = quantity * price
+
+                  return (
+                    <div className="order-item-row" key={getEntityId(item)}>
+                      <img
+                        src={product.image || 'https://placehold.co/64x64?text=Item'}
+                        alt={product.name || 'Order item'}
+                        width="54"
+                        height="54"
+                      />
+                      <div>
+                        <small>{product.name || 'Unnamed item'}</small>
+                        <small>
+                          Qty: {quantity} | Price: {formatCurrency(price)} | Subtotal:{' '}
+                          {formatCurrency(subtotal)}
+                        </small>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
               <StatusTracker status={order.status} />
             </article>
           ))}

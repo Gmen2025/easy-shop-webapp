@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useSelector } from 'react-redux'
+import { Toaster } from 'react-hot-toast'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import ProductDetailsPage from './pages/ProductDetailsPage'
@@ -17,10 +18,14 @@ import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   const user = useSelector((state) => state.auth.user)
+  const token = useSelector((state) => state.auth.token)
+  const isAuthenticated = Boolean(user && token)
   const isAdmin = Boolean(user?.isAdmin)
 
   return (
-    <Routes>
+    <>
+      <Toaster position="top-right" />
+      <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="products/:id" element={<ProductDetailsPage />} />
@@ -34,15 +39,16 @@ function App() {
         <Route path="payment/cancel" element={<PaymentCancelPage />} />
         <Route
           path="orders"
-          element={user ? <OrdersPage /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" replace />}
         />
         <Route
           path="admin"
-          element={isAdmin ? <AdminDashboardPage /> : <Navigate to="/" replace />}
+          element={isAuthenticated && isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" replace />}
         />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </>
   )
 }
 

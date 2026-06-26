@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { fetchProductById } from '../features/products/productsSlice'
 import { addToCart } from '../features/cart/cartSlice'
 import { formatCurrency } from '../utils/format'
@@ -61,7 +62,10 @@ function ProductDetailsPage() {
             type="button"
             className="solid-button"
             disabled={stock < 1}
-            onClick={() => dispatch(addToCart({ product: selectedProduct, quantity }))}
+            onClick={() => {
+              dispatch(addToCart({ product: selectedProduct, quantity }))
+              toast.success(`${selectedProduct.name} added to cart!`)
+            }}
           >
             Add To Cart
           </button>

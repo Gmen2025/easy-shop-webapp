@@ -1,8 +1,11 @@
-const API_BASE_URL = 'https://easy-shop-server-wldr.onrender.com/api/v1'
+const API_BASE_URL = import.meta.env.DEV
+  ? '/api/v1'
+  : 'https://easy-shop-server-wldr.onrender.com/api/v1'
 const DB_KEY = 'selectedDatabaseName'
+const REQUEST_TIMEOUT_MS = 45000
 
 export function getSelectedDatabaseName() {
-  return localStorage.getItem(DB_KEY) || ''
+  return localStorage.getItem(DB_KEY) || 'E_Shopping'
 }
 
 export function setSelectedDatabaseName(name) {
@@ -15,8 +18,11 @@ export function setSelectedDatabaseName(name) {
 
 export async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('authToken')
-  const databaseName = getSelectedDatabaseName()
+  const explicitDatabaseName = options.headers?.['x-database-name']
+  const databaseName = explicitDatabaseName || getSelectedDatabaseName()
   const isFormData = options?.body instanceof FormData
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   const headers = {
     ...(options.headers || {}),
@@ -34,10 +40,21 @@ export async function apiRequest(path, options = {}) {
     headers['x-database-name'] = databaseName
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again or switch database.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const contentType = response.headers.get('content-type') || ''
   const payload = contentType.includes('application/json')
@@ -49,6 +66,16 @@ export async function apiRequest(path, options = {}) {
       typeof payload === 'string'
         ? payload
         : payload?.message || 'Request failed unexpectedly.'
+
+    if (response.status === 401) {
+      localStorage.removeItem('authUser')
+      localStorage.removeItem('authToken')
+
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.assign('/login')
+      }
+    }
+
     throw new Error(message)
   }
 

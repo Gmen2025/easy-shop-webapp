@@ -46,7 +46,8 @@ function RegisterPage() {
           id="email"
           type="email"
           value={formData.email}
-          onChange={(event) => updateField('email', event.target.value)}
+          onChange={(event) => updateField('email', event.target.value.trimStart())}
+          onBlur={(event) => updateField('email', event.target.value.trim().toLowerCase())}
           required
         />
 

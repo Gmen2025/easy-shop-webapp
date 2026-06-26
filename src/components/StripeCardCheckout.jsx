@@ -21,8 +21,7 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
 
-  async function handleSubmit(event) {
-    event.preventDefault()
+  async function handleSubmit() {
     if (!stripe || !elements || !clientSecret) {
       return
     }
@@ -52,15 +51,20 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
   }
 
   return (
-    <form className="stripe-card-form" onSubmit={handleSubmit}>
+    <div className="stripe-card-form">
       <label>Card Details</label>
       <div className="stripe-card-input">
         <CardElement options={cardStyles} />
       </div>
-      <button type="submit" className="solid-button" disabled={!stripe || processing}>
+      <button
+        type="button"
+        className="solid-button"
+        onClick={handleSubmit}
+        disabled={!stripe || processing}
+      >
         {processing ? 'Confirming Card...' : 'Confirm Card Payment'}
       </button>
-    </form>
+    </div>
   )
 }
 

@@ -14,6 +14,8 @@ import {
   createPaymentIntent,
 } from '../features/payment/paymentSlice'
 import StripeCardCheckout from '../components/StripeCardCheckout'
+import TelebirrCheckout from '../components/TelebirrCheckout'
+import { getSelectedDatabaseName } from '../api/client'
 import { formatCurrency } from '../utils/format'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -27,13 +29,18 @@ function CartPage() {
   const [zip, setZip] = useState('1000')
   const [country, setCountry] = useState('Ethiopia')
   const [phone, setPhone] = useState('+251900000000')
-  const [paymentMethod, setPaymentMethod] = useState('cod')
   const [cardError, setCardError] = useState('')
 
   const user = useSelector((state) => state.auth.user)
   const { items } = useSelector((state) => state.cart)
   const { creating, error, successMessage } = useSelector((state) => state.orders)
   const payment = useSelector((state) => state.payment)
+  const selectedDb = getSelectedDatabaseName()
+  const isEthio = selectedDb === 'E_Shopping'
+
+  // Set payment method based on database
+  const defaultPaymentMethod = isEthio ? 'telebirr' : 'card'
+  const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod)
 
   const totals = useMemo(() => {
     const subtotal = items.reduce(
@@ -58,17 +65,34 @@ function CartPage() {
       country,
       phone,
       user: user._id,
+      customerEmail: user.email,
       status: paymentMethod === 'card' ? 'Processing' : 'Pending',
     }
   }
 
   async function placeOrderAfterPayment() {
+    if (!user?._id) {
+      setCardError('Please log in before completing Telebirr checkout.')
+      navigate('/login')
+      return
+    }
+
+    setCardError('')
+    dispatch(clearOrderState())
+
     const action = await dispatch(createOrder(getOrderPayload()))
     if (createOrder.fulfilled.match(action)) {
       dispatch(clearCart())
       dispatch(clearPaymentState())
       navigate('/payment/success')
+      return
     }
+
+    const message =
+      action?.error?.message ||
+      action?.payload?.message ||
+      'Order creation failed after payment initialization. Please try again.'
+    setCardError(message)
   }
 
   async function initializeCardIntent() {
@@ -181,8 +205,12 @@ function CartPage() {
             value={paymentMethod}
             onChange={(event) => setPaymentMethod(event.target.value)}
           >
-            <option value="cod">Cash On Delivery</option>
-            <option value="card">Stripe Card</option>
+            {isEthio ? <option value="cod">Cash On Delivery</option> : null}
+            {isEthio ? (
+              <option value="telebirr">Telebirr</option>
+            ) : (
+              <option value="card">Stripe Card</option>
+            )}
           </select>
 
           <input
@@ -227,18 +255,36 @@ function CartPage() {
             </Elements>
           ) : null}
 
+          {paymentMethod === 'telebirr' ? (
+            <TelebirrCheckout
+              amount={totals.subtotal}
+              onConfirmed={placeOrderAfterPayment}
+              onError={(message) => {
+                setCardError(message)
+              }}
+            />
+          ) : null}
+
           <button
             type="submit"
             className="solid-button"
-            disabled={creating || payment.creatingIntent || items.length === 0}
+            disabled={
+              creating ||
+              payment.creatingIntent ||
+              items.length === 0 ||
+              (paymentMethod === 'telebirr' && isEthio) ||
+              (paymentMethod === 'card' && !!payment.clientSecret)
+            }
           >
             {creating || payment.creatingIntent
               ? 'Processing...'
               : paymentMethod === 'card'
                 ? payment.clientSecret
-                  ? 'Card Ready'
+                  ? 'Use Card Form Above'
                   : 'Start Card Payment'
-                : 'Place Order'}
+                : paymentMethod === 'telebirr'
+                  ? 'Use Telebirr Form Above'
+                  : 'Place Order'}
           </button>
         </form>
       </section>

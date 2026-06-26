@@ -16,7 +16,6 @@ function ProductCard({ product }) {
       <div className="product-info">
         <p className="product-brand">{product.brand || 'Generic Brand'}</p>
         <h3>{product.name}</h3>
-        <p className="product-description">{product.description}</p>
         <div className="product-meta">
           <strong>{formatCurrency(product.price)}</strong>
           <span>{product.countInStock} left</span>

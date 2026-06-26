@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
+import { switchDatabase } from '../features/cart/cartSlice'
 import {
   getSelectedDatabaseName,
   setSelectedDatabaseName,
@@ -19,9 +20,9 @@ function Header() {
     <header className="topbar">
       <div className="brand-wrap">
         <Link to="/" className="brand">
-          Addis Market
+          Addu Genet Easy Shop
         </Link>
-        <p className="tagline">React + Redux storefront for Easy Shop API</p>
+        {/* <p className="tagline">React + Redux storefront for Easy Shop API</p> */}
       </div>
 
       <nav className="nav-links" aria-label="Main">
@@ -37,12 +38,15 @@ function Header() {
         <select
           className="db-select"
           value={selectedDb}
-          onChange={(event) => setSelectedDatabaseName(event.target.value)}
+          onChange={(event) => {
+            setSelectedDatabaseName(event.target.value)
+            dispatch(switchDatabase())
+          }}
           aria-label="Select database"
         >
           <option value="">Default DB</option>
-          <option value="E_Shopping">E_Shopping</option>
-          <option value="E_Shopping_2">E_Shopping_2</option>
+          <option value="E_Shopping">Ethio</option>
+          <option value="E_ShopUSA">USA</option>
         </select>
 
         {user ? (

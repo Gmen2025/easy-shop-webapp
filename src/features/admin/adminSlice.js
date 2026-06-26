@@ -13,11 +13,22 @@ const normalizeProductInput = (payload) => ({
 export const fetchAdminCatalog = createAsyncThunk(
   'admin/fetchAdminCatalog',
   async () => {
-    const [categories, products] = await Promise.all([
+    const [categories, products, orders] = await Promise.all([
       apiRequest('/categories'),
       apiRequest('/products'),
+      apiRequest('/orders'),
     ])
-    return { categories, products }
+    return { categories, products, orders }
+  },
+)
+
+export const updateOrderStatusAdmin = createAsyncThunk(
+  'admin/updateOrderStatusAdmin',
+  async ({ id, status }) => {
+    return apiRequest(`/orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    })
   },
 )
 
@@ -86,6 +97,7 @@ const adminSlice = createSlice({
   initialState: {
     categories: [],
     products: [],
+    orders: [],
     loading: false,
     saving: false,
     error: null,
@@ -107,6 +119,7 @@ const adminSlice = createSlice({
         state.loading = false
         state.categories = action.payload.categories
         state.products = action.payload.products
+        state.orders = action.payload.orders
       })
       .addCase(fetchAdminCatalog.rejected, (state, action) => {
         state.loading = false
@@ -149,6 +162,13 @@ const adminSlice = createSlice({
           (product) => toId(product) !== action.payload,
         )
         state.message = 'Product deleted.'
+      })
+      .addCase(updateOrderStatusAdmin.fulfilled, (state, action) => {
+        state.saving = false
+        state.orders = state.orders.map((order) =>
+          toId(order) === toId(action.payload) ? action.payload : order,
+        )
+        state.message = 'Order shipping status updated.'
       })
       .addMatcher(
         (action) =>

@@ -1,9 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit'
+import { getSelectedDatabaseName } from '../../api/client'
 
-const CART_KEY = 'shopCartItems'
+function getCartKey() {
+  const db = getSelectedDatabaseName()
+  return `shopCartItems_${db}`
+}
 
 function getInitialItems() {
-  const raw = localStorage.getItem(CART_KEY)
+  const raw = localStorage.getItem(getCartKey())
   if (!raw) {
     return []
   }
@@ -17,7 +21,7 @@ function getInitialItems() {
 }
 
 function saveItems(items) {
-  localStorage.setItem(CART_KEY, JSON.stringify(items))
+  localStorage.setItem(getCartKey(), JSON.stringify(items))
 }
 
 const cartSlice = createSlice({
@@ -66,9 +70,13 @@ const cartSlice = createSlice({
       state.items = []
       saveItems(state.items)
     },
+    switchDatabase(state) {
+      // Reload cart items for the newly selected database
+      state.items = getInitialItems()
+    },
   },
 })
 
-export const { addToCart, removeFromCart, updateCartQuantity, clearCart } =
+export const { addToCart, removeFromCart, updateCartQuantity, clearCart, switchDatabase } =
   cartSlice.actions
 export default cartSlice.reducer

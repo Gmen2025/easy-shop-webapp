@@ -1,7 +1,10 @@
 export function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
+  const db = localStorage.getItem('selectedDatabaseName') || 'E_Shopping'
+  const isEthio = db === 'E_Shopping'
+  return new Intl.NumberFormat(isEthio ? 'en-ET' : 'en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: isEthio ? 'ETB' : 'USD',
+    currencyDisplay: 'symbol',
     maximumFractionDigits: 2,
   }).format(Number(value || 0))
 }

@@ -7,6 +7,7 @@ import {
   deleteCategoryAdmin,
   deleteProductAdmin,
   fetchAdminCatalog,
+  updateOrderStatusAdmin,
   updateCategoryAdmin,
   updateProductAdmin,
 } from '../features/admin/adminSlice'
@@ -27,10 +28,11 @@ const defaultProduct = {
   countInStock: '',
   isFeatured: false,
 }
+const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 
 function AdminDashboardPage() {
   const dispatch = useDispatch()
-  const { categories, products, loading, saving, error, message } = useSelector(
+  const { categories, products, orders, loading, saving, error, message } = useSelector(
     (state) => state.admin,
   )
 
@@ -156,6 +158,11 @@ function AdminDashboardPage() {
 
   if (error && !categories.length && !products.length) {
     return <ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog())} />
+  }
+
+  function handleOrderStatusChange(orderId, status) {
+    dispatch(clearAdminState())
+    dispatch(updateOrderStatusAdmin({ id: orderId, status }))
   }
 
   return (
@@ -366,6 +373,98 @@ function AdminDashboardPage() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h3>Orders</h3>
+          <span>{orders.length} total</span>
+        </div>
+        <div className="admin-list">
+          {orders.map((order) => {
+            const orderId = order.id || order._id
+            const orderUser = order.user
+            const customerName =
+              typeof orderUser === 'object' ? orderUser?.name || 'Customer' : 'Customer'
+            const customerEmail =
+              typeof orderUser === 'object'
+                ? orderUser?.email || order.customerEmail || 'N/A'
+                : order.customerEmail || 'N/A'
+            const customerPhone = order.phone || (typeof orderUser === 'object' ? orderUser?.phone : '') || 'N/A'
+            const orderItems = Array.isArray(order.orderItems) ? order.orderItems : []
+
+            return (
+              <article key={orderId} className="admin-item">
+                <div>
+                  <strong>Order #{orderId}</strong>
+                  <small>
+                    User: {customerName}
+                  </small>
+                  <small>Email: {customerEmail}</small>
+                  <small>Phone: {customerPhone}</small>
+                  <small>Address 1: {order.shippingAddress1 || 'N/A'}</small>
+                  <small>Address 2: {order.shippingAddress2 || 'N/A'}</small>
+                  <small>
+                    {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
+                  </small>
+                  <small>
+                    Date: {new Date(order.dateOrdered).toLocaleString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
+                  </small>
+                  <small>Subtotal: {formatCurrency(order.totalPrice || 0)}</small>
+                  <div className="order-items-block">
+                    {orderItems.map((item) => {
+                      const itemId = item.id || item._id
+                      const product = item.product || {}
+                      const quantity = Number(item.quantity || 0)
+                      const price = Number(product.price || 0)
+                      const lineSubtotal = quantity * price
+
+                      return (
+                        <div key={itemId} className="order-item-row">
+                          <img
+                            src={product.image || 'https://placehold.co/64x64?text=Item'}
+                            alt={product.name || 'Order item'}
+                            width="54"
+                            height="54"
+                          />
+                          <div>
+                            <small>{product.name || 'Unnamed item'}</small>
+                            <small>
+                              Qty: {quantity} | Price: {formatCurrency(price)} | Subtotal:{' '}
+                              {formatCurrency(lineSubtotal)}
+                            </small>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="inline-actions">
+                  <select
+                    value={order.status || 'Pending'}
+                    onChange={(event) =>
+                      handleOrderStatusChange(orderId, event.target.value)
+                    }
+                    disabled={saving}
+                  >
+                    {orderStatusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </article>
+            )
+          })}
         </div>
       </section>
     </section>
