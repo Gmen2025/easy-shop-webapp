@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { apiRequest } from '../../api/client'
+import { deleteOrderAdmin } from '../admin/adminSlice'
 
 export const createOrder = createAsyncThunk(
   'orders/createOrder',
@@ -60,6 +61,12 @@ const ordersSlice = createSlice({
       .addCase(createOrder.rejected, (state, action) => {
         state.creating = false
         state.error = action.error.message
+      })
+      .addCase(deleteOrderAdmin.fulfilled, (state, action) => {
+        state.items = state.items.filter((order) => {
+          const orderId = order?.id || order?._id
+          return orderId !== action.payload
+        })
       })
   },
 })

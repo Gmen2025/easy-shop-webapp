@@ -16,7 +16,7 @@ import {
 import StripeCardCheckout from '../components/StripeCardCheckout'
 import TelebirrCheckout from '../components/TelebirrCheckout'
 import { getSelectedDatabaseName } from '../api/client'
-import { formatCurrency } from '../utils/format'
+import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
@@ -161,7 +161,7 @@ function CartPage() {
             {items.map((item) => (
               <article key={item.product.id} className="cart-item">
                 <img
-                  src={item.product.image || 'https://placehold.co/120x120?text=Item'}
+                  src={getPrimaryProductImage(item.product, 'https://placehold.co/120x120?text=Item')}
                   alt={item.product.name}
                 />
                 <div>

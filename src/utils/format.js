@@ -12,3 +12,22 @@ export function formatCurrency(value) {
 export function getEntityId(entity) {
   return entity?.id || entity?._id || ''
 }
+
+export function getPrimaryProductImage(product, fallback = 'https://placehold.co/600x400?text=No+Image') {
+  if (!product) {
+    return fallback
+  }
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    const firstValidImage = product.images.find((image) => typeof image === 'string' && image.trim())
+    if (firstValidImage) {
+      return firstValidImage
+    }
+  }
+
+  if (typeof product.image === 'string' && product.image.trim()) {
+    return product.image
+  }
+
+  return fallback
+}

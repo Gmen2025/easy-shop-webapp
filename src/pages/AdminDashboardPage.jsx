@@ -5,6 +5,7 @@ import {
   createCategoryAdmin,
   createProductAdmin,
   deleteCategoryAdmin,
+  deleteOrderAdmin,
   deleteProductAdmin,
   fetchAdminCatalog,
   updateOrderStatusAdmin,
@@ -13,8 +14,8 @@ import {
 } from '../features/admin/adminSlice'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
-import { formatCurrency } from '../utils/format'
-import { uploadProductImage } from '../api/uploads'
+import { formatCurrency, getPrimaryProductImage } from '../utils/format'
+import { uploadProductImages } from '../api/uploads'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
 const defaultProduct = {
@@ -22,6 +23,7 @@ const defaultProduct = {
   description: '',
   richDescription: '',
   image: '',
+  images: [],
   brand: '',
   price: '',
   category: '',
@@ -40,7 +42,7 @@ function AdminDashboardPage() {
   const [categoryEditId, setCategoryEditId] = useState('')
   const [productForm, setProductForm] = useState(defaultProduct)
   const [productEditId, setProductEditId] = useState('')
-  const [imageFile, setImageFile] = useState(null)
+  const [imageFiles, setImageFiles] = useState([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
 
@@ -74,18 +76,26 @@ function AdminDashboardPage() {
   }
 
   function populateProductForm(product) {
+    const images = [
+      ...(Array.isArray(product.images) ? product.images : []),
+      product.image,
+    ].filter((image, index, array) => typeof image === 'string' && image.trim() && array.indexOf(image) === index)
+
     setProductEditId(product.id || product._id)
     setProductForm({
       name: product.name || '',
       description: product.description || '',
       richDescription: product.richDescription || '',
-      image: product.image || '',
+      image: images[0] || '',
+      images,
       brand: product.brand || '',
       price: String(product.price || ''),
       category: product.category?.id || product.category?._id || product.category || '',
       countInStock: String(product.countInStock || ''),
       isFeatured: Boolean(product.isFeatured),
     })
+    setImageFiles([])
+    setUploadMessage('')
   }
 
   async function submitCategory(event) {
@@ -108,8 +118,19 @@ function AdminDashboardPage() {
     event.preventDefault()
     dispatch(clearAdminState())
 
+    const normalizedImages = productForm.images
+      .map((image) => String(image || '').trim())
+      .filter((image) => image)
+
+    if (normalizedImages.length === 0) {
+      setUploadMessage('Add at least one product image URL or upload images before saving.')
+      return
+    }
+
     const payload = {
       ...productForm,
+      image: normalizedImages[0],
+      images: normalizedImages,
       price: Number(productForm.price || 0),
       countInStock: Number(productForm.countInStock || 0),
       isFeatured: Boolean(productForm.isFeatured),
@@ -126,30 +147,52 @@ function AdminDashboardPage() {
       ...defaultProduct,
       category: categories[0]?.id || categories[0]?._id || '',
     }))
-    setImageFile(null)
+    setImageFiles([])
     setUploadMessage('')
   }
 
   async function handleImageUpload() {
-    if (!imageFile) {
-      setUploadMessage('Choose an image before uploading.')
+    if (!imageFiles.length) {
+      setUploadMessage('Choose one or more images before uploading.')
       return
     }
 
     setUploadingImage(true)
     setUploadMessage('')
     try {
-      const imageUrl = await uploadProductImage(imageFile)
+      const imageUrls = await uploadProductImages(imageFiles)
       setProductForm((current) => ({
         ...current,
-        image: imageUrl,
+        images: [...current.images, ...imageUrls].filter(
+          (image, index, array) => array.indexOf(image) === index,
+        ),
       }))
-      setUploadMessage('Image uploaded. Product image URL updated.')
+      setImageFiles([])
+      setUploadMessage(`${imageUrls.length} image(s) uploaded and added to this product.`)
     } catch (uploadError) {
       setUploadMessage(uploadError.message)
     } finally {
       setUploadingImage(false)
     }
+  }
+
+  function handleSingleImageUrlChange(imageUrl) {
+    setProductForm((current) => ({
+      ...current,
+      image: imageUrl,
+      images: imageUrl ? [imageUrl] : [],
+    }))
+  }
+
+  function removeProductImage(imageUrl) {
+    setProductForm((current) => {
+      const images = current.images.filter((image) => image !== imageUrl)
+      return {
+        ...current,
+        images,
+        image: images[0] || '',
+      }
+    })
   }
 
   if (loading) {
@@ -163,6 +206,11 @@ function AdminDashboardPage() {
   function handleOrderStatusChange(orderId, status) {
     dispatch(clearAdminState())
     dispatch(updateOrderStatusAdmin({ id: orderId, status }))
+  }
+
+  function handleDeleteOrder(orderId, customerEmail, customerName) {
+    dispatch(clearAdminState())
+    dispatch(deleteOrderAdmin({ id: orderId, customerEmail, customerName }))
   }
 
   return (
@@ -255,17 +303,17 @@ function AdminDashboardPage() {
           />
           <input
             value={productForm.image}
-            onChange={(event) =>
-              setProductForm((current) => ({ ...current, image: event.target.value }))
-            }
-            placeholder="Image URL"
-            required
+            onChange={(event) => handleSingleImageUrlChange(event.target.value.trim())}
+            placeholder="Single Image URL"
           />
           <div className="file-upload-row">
             <input
               type="file"
+              multiple
               accept="image/*"
-              onChange={(event) => setImageFile(event.target.files?.[0] || null)}
+              onChange={(event) =>
+                setImageFiles(Array.from(event.target.files || []))
+              }
             />
             <button
               type="button"
@@ -273,9 +321,27 @@ function AdminDashboardPage() {
               onClick={handleImageUpload}
               disabled={uploadingImage}
             >
-              {uploadingImage ? 'Uploading...' : 'Upload Image'}
+              {uploadingImage ? 'Uploading...' : 'Upload Selected Images'}
             </button>
           </div>
+          {productForm.images.length ? (
+            <div className="admin-image-preview-grid">
+              {productForm.images.map((imageUrl) => (
+                <div key={imageUrl} className="admin-image-preview-item">
+                  <img src={imageUrl} alt="Product" />
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => removeProductImage(imageUrl)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <small>No images selected yet.</small>
+          )}
           {uploadMessage ? <small>{uploadMessage}</small> : null}
           <textarea
             value={productForm.description}
@@ -430,7 +496,7 @@ function AdminDashboardPage() {
                       return (
                         <div key={itemId} className="order-item-row">
                           <img
-                            src={product.image || 'https://placehold.co/64x64?text=Item'}
+                            src={getPrimaryProductImage(product, 'https://placehold.co/64x64?text=Item')}
                             alt={product.name || 'Order item'}
                             width="54"
                             height="54"
@@ -461,6 +527,14 @@ function AdminDashboardPage() {
                       </option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => handleDeleteOrder(orderId, customerEmail, customerName)}
+                    disabled={saving}
+                  >
+                    Delete
+                  </button>
                 </div>
               </article>
             )

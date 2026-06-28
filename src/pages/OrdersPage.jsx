@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchUserOrders } from '../features/orders/ordersSlice'
-import { formatCurrency, getEntityId } from '../utils/format'
+import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 
@@ -113,7 +113,7 @@ function OrdersPage() {
                   return (
                     <div className="order-item-row" key={getEntityId(item)}>
                       <img
-                        src={product.image || 'https://placehold.co/64x64?text=Item'}
+                        src={getPrimaryProductImage(product, 'https://placehold.co/64x64?text=Item')}
                         alt={product.name || 'Order item'}
                         width="54"
                         height="54"

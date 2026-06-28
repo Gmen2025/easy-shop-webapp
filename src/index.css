@@ -229,11 +229,42 @@ button {
   gap: 1.25rem;
 }
 
+.details-image-column {
+  display: grid;
+  gap: 0.6rem;
+}
+
 .details-image {
   width: 100%;
   border-radius: 14px;
   object-fit: cover;
   min-height: 320px;
+}
+
+.details-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 0.45rem;
+}
+
+.thumb-button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+.thumb-button.active {
+  border-color: var(--accent);
+}
+
+.thumb-button img {
+  display: block;
+  width: 100%;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .details-content h2 {
@@ -283,6 +314,7 @@ button {
   background: #fff;
   display: grid;
   gap: 0.4rem;
+  min-width: 0;
 }
 
 .cart-item img {
@@ -441,6 +473,7 @@ textarea {
   border-radius: 10px;
   padding: 0.45rem;
   background: var(--bg-soft);
+  min-width: 0;
 }
 
 .order-item-row img {
@@ -478,6 +511,12 @@ textarea {
   justify-content: space-between;
   align-items: center;
   grid-column: 1 / -1;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.order-item-row small {
+  overflow-wrap: anywhere;
 }
 
 .status-tracker {
@@ -522,6 +561,28 @@ textarea {
   align-items: center;
 }
 
+.admin-image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-image-preview-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.4rem;
+  background: var(--bg-soft);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.admin-image-preview-item img {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -541,9 +602,12 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .cart-item,
-  .order-card {
+  .cart-item {
     grid-template-columns: 74px 1fr;
+  }
+
+  .order-card {
+    grid-template-columns: 1fr;
   }
 
   .cart-item input,
@@ -557,5 +621,14 @@ textarea {
 
   .status-tracker {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .order-item-row {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .order-item-row img {
+    width: 48px;
+    height: 48px;
   }
 }

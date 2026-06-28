@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { formatCurrency, getEntityId } from '../utils/format'
+import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
 
 function ProductCard({ product }) {
   const productId = getEntityId(product)
@@ -8,7 +8,7 @@ function ProductCard({ product }) {
     <article className="product-card">
       <Link to={`/products/${productId}`} className="product-image-wrap">
         <img
-          src={product.image || 'https://placehold.co/600x400?text=No+Image'}
+          src={getPrimaryProductImage(product, 'https://placehold.co/600x400?text=No+Image')}
           alt={product.name}
           className="product-image"
         />

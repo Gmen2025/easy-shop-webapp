@@ -39,8 +39,14 @@ function Header() {
           className="db-select"
           value={selectedDb}
           onChange={(event) => {
-            setSelectedDatabaseName(event.target.value)
+            const nextDatabase = event.target.value
+            if (nextDatabase === selectedDb) {
+              return
+            }
+
+            setSelectedDatabaseName(nextDatabase)
             dispatch(switchDatabase())
+            window.location.reload()
           }}
           aria-label="Select database"
         >

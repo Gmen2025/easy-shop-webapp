@@ -86,9 +86,14 @@ function LoginPage() {
             value={selectedDatabase}
             onChange={(event) => {
               const nextDatabase = event.target.value
+              if (nextDatabase === selectedDatabase) {
+                return
+              }
+
               setSelectedDatabase(nextDatabase)
               setSelectedDatabaseName(nextDatabase)
               dispatch(switchDatabase())
+              window.location.reload()
             }}
           >
             <option value="E_Shopping">Ethio</option>

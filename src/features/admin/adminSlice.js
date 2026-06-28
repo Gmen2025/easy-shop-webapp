@@ -3,12 +3,23 @@ import { apiRequest } from '../../api/client'
 
 const toId = (entity) => entity?.id || entity?._id
 
-const normalizeProductInput = (payload) => ({
-  ...payload,
-  price: Number(payload.price || 0),
-  countInStock: Number(payload.countInStock || 0),
-  isFeatured: Boolean(payload.isFeatured),
-})
+const normalizeProductInput = (payload) => {
+  const normalizedImages = [
+    ...(Array.isArray(payload.images) ? payload.images : []),
+    payload.image,
+  ]
+    .map((image) => String(image || '').trim())
+    .filter((image, index, array) => image && array.indexOf(image) === index)
+
+  return {
+    ...payload,
+    image: normalizedImages[0] || '',
+    images: normalizedImages,
+    price: Number(payload.price || 0),
+    countInStock: Number(payload.countInStock || 0),
+    isFeatured: Boolean(payload.isFeatured),
+  }
+}
 
 export const fetchAdminCatalog = createAsyncThunk(
   'admin/fetchAdminCatalog',
@@ -29,6 +40,21 @@ export const updateOrderStatusAdmin = createAsyncThunk(
       method: 'PUT',
       body: JSON.stringify({ status }),
     })
+  },
+)
+
+export const deleteOrderAdmin = createAsyncThunk(
+  'admin/deleteOrderAdmin',
+  async ({ id, customerEmail, customerName }) => {
+    await apiRequest(`/orders/${id}?notifyCustomer=true`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        notifyCustomer: true,
+        customerEmail,
+        customerName,
+      }),
+    })
+    return id
   },
 )
 
@@ -169,6 +195,11 @@ const adminSlice = createSlice({
           toId(order) === toId(action.payload) ? action.payload : order,
         )
         state.message = 'Order shipping status updated.'
+      })
+      .addCase(deleteOrderAdmin.fulfilled, (state, action) => {
+        state.saving = false
+        state.orders = state.orders.filter((order) => toId(order) !== action.payload)
+        state.message = 'Order deleted.'
       })
       .addMatcher(
         (action) =>

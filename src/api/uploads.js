@@ -35,3 +35,14 @@ export async function uploadProductImage(file) {
 
   return uploadJson.secure_url
 }
+
+export async function uploadProductImages(files = []) {
+  const validFiles = files.filter(Boolean)
+
+  if (validFiles.length === 0) {
+    throw new Error('Please choose at least one image file first.')
+  }
+
+  const uploadedImages = await Promise.all(validFiles.map((file) => uploadProductImage(file)))
+  return uploadedImages
+}
