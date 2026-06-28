@@ -1,16 +1,144 @@
-# React + Vite
+# AdduGenetE Shop Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- Redux Toolkit + React Redux
+- React Router
+- Vite
+- Stripe Elements
+- react-hot-toast
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Product catalog and product details pages
+- Cart with quantity management and checkout
+- Payment flows:
+	- Stripe card checkout
+	- Telebirr flow
+	- Cash on delivery option for Ethio database mode
+- Auth flows:
+	- Login/Register
+	- Forgot/reset password
+	- Email verification
+- Admin dashboard:
+	- Manage categories
+	- Manage products (including image upload)
+	- Manage order status and deletion
+	- Low-stock alert panel with configurable threshold
+- Inventory safeguards:
+	- Checkout is blocked if requested quantity exceeds available inventory
+	- Customer gets a clear message to lower quantity
+	- Stock is synced during order creation and reflected in product pages
+	- Low-stock alerts shown after checkout
+	- Best-effort admin low-stock email notification request
 
-## Expanding the ESLint configuration
+## Requirements
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Node.js >= 22.13.0
+- npm
+
+## Getting Started
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Configure environment variables in a `.env` file (see below).
+
+3. Start the dev server:
+
+```bash
+npm run dev
+```
+
+## Environment Variables
+
+Create `.env` in the project root:
+
+```env
+VITE_API_BASE_URL=http://localhost:3000/api/v1
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+```
+
+Notes:
+
+- If `VITE_API_BASE_URL` is not set:
+	- Dev defaults to `/api/v1`
+	- Production defaults to `https://easy-shop-server-wldr.onrender.com/api/v1`
+- If `VITE_STRIPE_PUBLISHABLE_KEY` is missing, Stripe checkout cannot initialize.
+
+## Available Scripts
+
+- `npm run dev` - Start local development server
+- `npm run start` - Start Vite via npx
+- `npm run build` - Build production bundle
+- `npm run preview` - Preview production build locally
+- `npm run lint` - Run ESLint
+
+## Inventory and Low-Stock Behavior
+
+### Purchase Validation
+
+Before payment/order proceeds, checkout validates cart quantities against live inventory.
+
+- If quantity > stock:
+	- Transaction is stopped
+	- Customer is prompted to lower quantity
+	- Payment state is cleared
+
+### Stock Synchronization
+
+On successful order creation, the app:
+
+1. Calculates remaining stock per purchased product
+2. Saves stock overrides locally for immediate UI consistency
+3. Sends best-effort product stock update requests
+
+### Low-Stock Threshold
+
+- Default threshold: `5`
+- Configurable from the admin dashboard low-stock panel
+- Persisted in browser localStorage
+
+### Admin Notification (Email)
+
+When low-stock is detected after checkout, the frontend sends a best-effort notification request to one of these backend endpoints:
+
+- `POST /orders/notify-admin-low-stock`
+- `POST /notifications/low-stock`
+- `POST /users/notify-admin-low-stock`
+
+If none exists on the backend, checkout still succeeds and the app reports that admin email notification could not be confirmed.
+
+## Routing Overview
+
+- `/` - Home/Catalog
+- `/products/:id` - Product details
+- `/cart` - Cart + checkout
+- `/orders` - User order history (auth required)
+- `/admin` - Admin dashboard (admin auth required)
+- `/login`, `/register`
+- `/forgot-password`, `/reset-password`
+- `/verify-email`
+- `/payment/success`, `/payment/cancel`
+
+## API Expectations
+
+The frontend expects a backend with categories, products, orders, auth/account, and payment endpoints.
+
+Core examples used by this app:
+
+- `GET /products`, `GET /products/:id`, `PUT /products/:id`
+- `POST /orders`, `GET /orders`, `GET /orders/get/userorders/:userId`, `PUT /orders/:id`, `DELETE /orders/:id`
+- `POST /stripe/create-payment-intent`
+- Auth/account endpoints for login/register/password reset/email verification
+
+## Notes
+
+- API requests are made through `src/api/client.js` to ensure consistent timeout, auth token, and `x-database-name` handling.
+- Database selection is stored in localStorage and sent in headers to support multi-database behavior.
