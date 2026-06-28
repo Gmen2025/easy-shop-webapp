@@ -12,6 +12,7 @@ import {
 import {
   clearOrderState,
   createOrderWithInventorySync,
+  validateOrderInventory,
 } from '../features/orders/ordersSlice'
 import {
   clearPaymentState,
@@ -146,7 +147,19 @@ function CartPage() {
       return
     }
 
+    setCardError('')
     dispatch(clearOrderState())
+
+    const validationAction = await dispatch(validateOrderInventory(getOrderPayload()))
+    if (validateOrderInventory.rejected.match(validationAction)) {
+      const message =
+        validationAction?.error?.message ||
+        'Some cart quantities exceed available stock. Please lower your quantity and try again.'
+      setCardError(message)
+      toast.error(message)
+      dispatch(clearPaymentState())
+      return
+    }
 
     if (paymentMethod === 'card') {
       if (!stripePromise) {

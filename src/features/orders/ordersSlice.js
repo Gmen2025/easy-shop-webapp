@@ -11,6 +11,60 @@ const toProductName = (product) =>
 const toOrderSuccessMessage = (payload) =>
   payload?.message || 'Order created successfully.'
 
+async function collectInventoryValidation(payload) {
+  const minimumStockThreshold = getLowStockThreshold()
+  const products = await apiRequest('/products')
+  const productsById = new Map(products.map((product) => [toId(product), product]))
+  const orderItems = Array.isArray(payload?.orderItems) ? payload.orderItems : []
+  const inventoryUpdates = []
+  const lowStockProducts = []
+
+  for (const item of orderItems) {
+    const productId = String(item?.product || '')
+    const requestedQuantity = Number(item?.quantity || 0)
+
+    if (!productId || requestedQuantity < 1) {
+      continue
+    }
+
+    const product = productsById.get(productId)
+    if (!product) {
+      throw new Error('One of the products in your cart is no longer available.')
+    }
+
+    const availableStock = Number(product?.countInStock || 0)
+    const productName = toProductName(product)
+
+    if (requestedQuantity > availableStock) {
+      throw new Error(
+        `Only ${availableStock} item(s) left in stock for ${productName}. Please lower your quantity to continue.`,
+      )
+    }
+
+    const remainingStock = Math.max(availableStock - requestedQuantity, 0)
+    inventoryUpdates.push({
+      productId,
+      productName,
+      remainingStock,
+    })
+
+    if (remainingStock <= minimumStockThreshold) {
+      lowStockProducts.push({
+        productId,
+        productName,
+        remainingStock,
+      })
+    }
+  }
+
+  return {
+    minimumStockThreshold,
+    productsById,
+    inventoryUpdates,
+    lowStockProducts,
+  }
+}
+
 async function notifyAdminLowStockByEmail({
   lowStockProducts,
   minimumStockThreshold,
@@ -84,50 +138,12 @@ export const createOrder = createAsyncThunk(
 export const createOrderWithInventorySync = createAsyncThunk(
   'orders/createOrderWithInventorySync',
   async (payload) => {
-    const minimumStockThreshold = getLowStockThreshold()
-    const products = await apiRequest('/products')
-    const productsById = new Map(products.map((product) => [toId(product), product]))
-    const orderItems = Array.isArray(payload?.orderItems) ? payload.orderItems : []
-    const inventoryUpdates = []
-    const lowStockProducts = []
-
-    for (const item of orderItems) {
-      const productId = String(item?.product || '')
-      const requestedQuantity = Number(item?.quantity || 0)
-
-      if (!productId || requestedQuantity < 1) {
-        continue
-      }
-
-      const product = productsById.get(productId)
-      if (!product) {
-        throw new Error('One of the products in your cart is no longer available.')
-      }
-
-      const availableStock = Number(product?.countInStock || 0)
-      const productName = toProductName(product)
-
-      if (requestedQuantity > availableStock) {
-        throw new Error(
-          `Only ${availableStock} item(s) left in stock for ${productName}. Please update your cart.`,
-        )
-      }
-
-      const remainingStock = Math.max(availableStock - requestedQuantity, 0)
-      inventoryUpdates.push({
-        productId,
-        productName,
-        remainingStock,
-      })
-
-      if (remainingStock <= minimumStockThreshold) {
-        lowStockProducts.push({
-          productId,
-          productName,
-          remainingStock,
-        })
-      }
-    }
+    const {
+      minimumStockThreshold,
+      productsById,
+      inventoryUpdates,
+      lowStockProducts,
+    } = await collectInventoryValidation(payload)
 
     const orderResponse = await apiRequest('/orders', {
       method: 'POST',
@@ -166,6 +182,15 @@ export const createOrderWithInventorySync = createAsyncThunk(
       minimumStockThreshold,
       adminLowStockEmailSent,
     }
+  },
+)
+
+export const validateOrderInventory = createAsyncThunk(
+  'orders/validateOrderInventory',
+  async (payload) => {
+    const { minimumStockThreshold, inventoryUpdates, lowStockProducts } =
+      await collectInventoryValidation(payload)
+    return { minimumStockThreshold, inventoryUpdates, lowStockProducts }
   },
 )
 
