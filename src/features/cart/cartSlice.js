@@ -24,6 +24,21 @@ function saveItems(items) {
   localStorage.setItem(getCartKey(), JSON.stringify(items))
 }
 
+function clampQuantity(quantity, countInStock) {
+  const normalizedQuantity = Number(quantity || 1)
+  const stock = Number(countInStock || 0)
+
+  if (!Number.isFinite(normalizedQuantity) || normalizedQuantity < 1) {
+    return 1
+  }
+
+  if (stock > 0) {
+    return Math.min(Math.trunc(normalizedQuantity), stock)
+  }
+
+  return Math.trunc(normalizedQuantity)
+}
+
 const cartSlice = createSlice({
   name: 'cart',
   initialState: {
@@ -34,9 +49,13 @@ const cartSlice = createSlice({
       const { product, quantity } = action.payload
       const productId = product.id || product._id
       const existing = state.items.find((item) => item.product.id === productId)
+      const nextQuantity = clampQuantity(quantity, product.countInStock)
 
       if (existing) {
-        existing.quantity += quantity
+        existing.quantity = clampQuantity(
+          existing.quantity + nextQuantity,
+          existing.product.countInStock,
+        )
       } else {
         state.items.push({
           product: {
@@ -46,7 +65,7 @@ const cartSlice = createSlice({
             image: product.image,
             countInStock: product.countInStock,
           },
-          quantity,
+          quantity: nextQuantity,
         })
       }
 
@@ -62,7 +81,7 @@ const cartSlice = createSlice({
       const { productId, quantity } = action.payload
       const target = state.items.find((item) => item.product.id === productId)
       if (target) {
-        target.quantity = quantity
+        target.quantity = clampQuantity(quantity, target.product.countInStock)
       }
       saveItems(state.items)
     },

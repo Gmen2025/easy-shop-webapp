@@ -458,6 +458,21 @@ textarea {
   color: var(--muted);
 }
 
+.stock-warning {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.threshold-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.threshold-control input {
+  width: 110px;
+}
+
 .order-items-block {
   display: grid;
   gap: 0.45rem;

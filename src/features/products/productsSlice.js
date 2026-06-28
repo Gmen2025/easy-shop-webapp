@@ -1,10 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { apiRequest } from '../../api/client'
+import { createOrderWithInventorySync } from '../orders/ordersSlice'
+import { applyInventoryOverride, applyInventoryOverrides } from '../../utils/inventory'
+
+const toId = (entity) => String(entity?.id || entity?._id || '')
 
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async ({ categoryId } = {}) => {
-    const allProducts = await apiRequest('/products')
+    const allProducts = applyInventoryOverrides(await apiRequest('/products'))
     if (!categoryId) {
       return allProducts
     }
@@ -18,7 +22,7 @@ export const fetchProducts = createAsyncThunk(
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
   async (productId) => {
-    return apiRequest(`/products/${productId}`)
+    return applyInventoryOverride(await apiRequest(`/products/${productId}`))
   },
 )
 
@@ -56,6 +60,41 @@ const productsSlice = createSlice({
       .addCase(fetchProductById.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message
+      })
+      .addCase(createOrderWithInventorySync.fulfilled, (state, action) => {
+        const inventoryUpdates = Array.isArray(action.payload?.inventoryUpdates)
+          ? action.payload.inventoryUpdates
+          : []
+
+        if (!inventoryUpdates.length) {
+          return
+        }
+
+        const updatesByProductId = new Map(
+          inventoryUpdates.map((update) => [String(update.productId), update]),
+        )
+
+        state.items = state.items.map((product) => {
+          const productId = toId(product)
+          if (!updatesByProductId.has(productId)) {
+            return product
+          }
+
+          const update = updatesByProductId.get(productId)
+          return {
+            ...product,
+            countInStock: Number(update.remainingStock || 0),
+          }
+        })
+
+        const selectedId = toId(state.selectedProduct)
+        if (selectedId && updatesByProductId.has(selectedId)) {
+          const selectedUpdate = updatesByProductId.get(selectedId)
+          state.selectedProduct = {
+            ...state.selectedProduct,
+            countInStock: Number(selectedUpdate.remainingStock || 0),
+          }
+        }
       })
   },
 })

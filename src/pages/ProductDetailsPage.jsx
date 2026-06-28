@@ -19,10 +19,6 @@ function ProductDetailsPage() {
     dispatch(fetchProductById(id))
   }, [dispatch, id])
 
-  useEffect(() => {
-    setSelectedImage('')
-  }, [selectedProduct?.id, selectedProduct?._id])
-
   if (loading) {
     return <LoadingState label="Loading product details..." />
   }
@@ -40,8 +36,9 @@ function ProductDetailsPage() {
     ...(Array.isArray(selectedProduct.images) ? selectedProduct.images : []),
     selectedProduct.image,
   ].filter((image, index, array) => typeof image === 'string' && image.trim() && array.indexOf(image) === index)
+  const hasSelectedImage = selectedImage && productImages.includes(selectedImage)
   const primaryImage =
-    selectedImage ||
+    (hasSelectedImage ? selectedImage : '') ||
     productImages[0] ||
     getPrimaryProductImage(selectedProduct, 'https://placehold.co/800x500?text=No+Image')
 

@@ -16,6 +16,7 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
+import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
 const defaultProduct = {
@@ -45,26 +46,34 @@ function AdminDashboardPage() {
   const [imageFiles, setImageFiles] = useState([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
+  const [minimumStockThreshold, setMinimumStockThreshold] = useState(() => getLowStockThreshold())
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
   }, [dispatch])
 
-  useEffect(() => {
-    if (!productForm.category && categories[0]) {
-      setProductForm((current) => ({
-        ...current,
-        category: categories[0].id || categories[0]._id,
-      }))
-    }
-  }, [categories, productForm.category])
+  const effectiveProductCategory =
+    productForm.category || categories[0]?.id || categories[0]?._id || ''
 
   const selectedCategoryName = useMemo(() => {
     const category = categories.find(
-      (item) => (item.id || item._id) === productForm.category,
+      (item) => (item.id || item._id) === effectiveProductCategory,
     )
     return category?.name || 'No category'
-  }, [categories, productForm.category])
+  }, [categories, effectiveProductCategory])
+
+  const lowStockProducts = useMemo(
+    () =>
+      products
+        .filter((product) => Number(product.countInStock || 0) <= minimumStockThreshold)
+        .sort((a, b) => Number(a.countInStock || 0) - Number(b.countInStock || 0)),
+    [products, minimumStockThreshold],
+  )
+
+  function handleMinimumStockThresholdChange(event) {
+    const normalizedThreshold = setLowStockThreshold(event.target.value)
+    setMinimumStockThreshold(normalizedThreshold)
+  }
 
   function populateCategoryForm(category) {
     setCategoryEditId(category.id || category._id)
@@ -132,6 +141,7 @@ function AdminDashboardPage() {
       image: normalizedImages[0],
       images: normalizedImages,
       price: Number(productForm.price || 0),
+      category: effectiveProductCategory,
       countInStock: Number(productForm.countInStock || 0),
       isFeatured: Boolean(productForm.isFeatured),
     }
@@ -143,10 +153,10 @@ function AdminDashboardPage() {
     }
 
     setProductEditId('')
-    setProductForm((current) => ({
+    setProductForm({
       ...defaultProduct,
       category: categories[0]?.id || categories[0]?._id || '',
-    }))
+    })
     setImageFiles([])
     setUploadMessage('')
   }
@@ -222,6 +232,49 @@ function AdminDashboardPage() {
         </div>
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h3>Low Stock Alerts</h3>
+          <span>{lowStockProducts.length} product(s)</span>
+        </div>
+        <div className="threshold-control">
+          <label htmlFor="minimum-stock-threshold">Minimum threshold</label>
+          <input
+            id="minimum-stock-threshold"
+            type="number"
+            min="1"
+            step="1"
+            value={minimumStockThreshold}
+            onChange={handleMinimumStockThresholdChange}
+          />
+        </div>
+        {lowStockProducts.length ? (
+          <div className="admin-list">
+            {lowStockProducts.map((product) => (
+              <article key={product.id || product._id} className="admin-item">
+                <div>
+                  <strong>{product.name}</strong>
+                  <small className="stock-warning">
+                    {Number(product.countInStock || 0)} left (minimum {minimumStockThreshold})
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => populateProductForm(product)}
+                >
+                  Restock
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="form-success">
+            All products are above the minimum stock threshold ({minimumStockThreshold}).
+          </p>
+        )}
       </section>
 
       <section className="panel admin-grid">
@@ -364,7 +417,7 @@ function AdminDashboardPage() {
             rows={2}
           />
           <select
-            value={productForm.category}
+            value={effectiveProductCategory}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, category: event.target.value }))
             }
@@ -420,6 +473,10 @@ function AdminDashboardPage() {
               <div>
                 <strong>{product.name}</strong>
                 <small>{formatCurrency(product.price)}</small>
+                <small>Stock: {Number(product.countInStock || 0)}</small>
+                {Number(product.countInStock || 0) <= minimumStockThreshold ? (
+                  <small className="stock-warning">Low stock</small>
+                ) : null}
               </div>
               <div className="inline-actions">
                 <button

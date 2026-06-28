@@ -51,7 +51,9 @@ export async function apiRequest(path, options = {}) {
     })
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again or switch database.')
+      throw new Error('Request timed out. Please try again or switch database.', {
+        cause: error,
+      })
     }
     throw error
   } finally {

@@ -3,12 +3,16 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
+import toast from 'react-hot-toast'
 import {
   clearCart,
   removeFromCart,
   updateCartQuantity,
 } from '../features/cart/cartSlice'
-import { clearOrderState, createOrder } from '../features/orders/ordersSlice'
+import {
+  clearOrderState,
+  createOrderWithInventorySync,
+} from '../features/orders/ordersSlice'
 import {
   clearPaymentState,
   createPaymentIntent,
@@ -53,6 +57,29 @@ function CartPage() {
     }
   }, [items])
 
+  function notifyLowStockAfterCheckout(orderPayload) {
+    const lowStockProducts = Array.isArray(orderPayload?.lowStockProducts)
+      ? orderPayload.lowStockProducts
+      : []
+
+    if (!lowStockProducts.length) {
+      return
+    }
+
+    const minimumThreshold = Number(orderPayload?.minimumStockThreshold || 1)
+    const summary = lowStockProducts
+      .slice(0, 3)
+      .map((item) => `${item.productName}: ${item.remainingStock} left`)
+      .join(' | ')
+    const extraCount = lowStockProducts.length - 3
+    const suffix = extraCount > 0 ? ` | +${extraCount} more` : ''
+
+    toast.error(
+      `Low stock alert (min ${minimumThreshold}): ${summary}${suffix}`,
+      { duration: 6500 },
+    )
+  }
+
   function getOrderPayload() {
     return {
       orderItems: items.map((item) => ({
@@ -80,8 +107,9 @@ function CartPage() {
     setCardError('')
     dispatch(clearOrderState())
 
-    const action = await dispatch(createOrder(getOrderPayload()))
-    if (createOrder.fulfilled.match(action)) {
+    const action = await dispatch(createOrderWithInventorySync(getOrderPayload()))
+    if (createOrderWithInventorySync.fulfilled.match(action)) {
+      notifyLowStockAfterCheckout(action.payload)
       dispatch(clearCart())
       dispatch(clearPaymentState())
       navigate('/payment/success')
@@ -133,8 +161,9 @@ function CartPage() {
       return
     }
 
-    const action = await dispatch(createOrder(getOrderPayload()))
-    if (createOrder.fulfilled.match(action)) {
+    const action = await dispatch(createOrderWithInventorySync(getOrderPayload()))
+    if (createOrderWithInventorySync.fulfilled.match(action)) {
+      notifyLowStockAfterCheckout(action.payload)
       dispatch(clearCart())
       dispatch(clearPaymentState())
       navigate('/orders')
