@@ -110,8 +110,8 @@ function ProfilePage() {
             </div>
             <div className="support-item">
               <span>Telegram</span>
-              <a href="https://t.me/Ethiopiaonmymind" target="_blank" rel="noopener noreferrer">
-                @Ethiopiaonmymind
+              <a href="https://t.me/BettyT58" target="_blank" rel="noopener noreferrer">
+                @BettyT58
               </a>
             </div>
             <div className="support-item">
