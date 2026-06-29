@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
@@ -18,30 +18,164 @@ import {
   clearPaymentState,
   createPaymentIntent,
 } from '../features/payment/paymentSlice'
+import { fetchCurrentUserProfile, saveUserProfile } from '../features/auth/authSlice'
 import StripeCardCheckout from '../components/StripeCardCheckout'
 import TelebirrCheckout from '../components/TelebirrCheckout'
-import { getSelectedDatabaseName } from '../api/client'
+import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
+import countries from '../../data/countries.json'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
+const countryOptions = countries
+  .map((countryItem) => String(countryItem?.name || '').trim())
+  .filter(Boolean)
+
+function isObjectIdLike(value) {
+  return /^[a-f\d]{24}$/i.test(String(value || ''))
+}
 
 function CartPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const [shippingAddress1, setShippingAddress1] = useState('Bole Road')
-  const [city, setCity] = useState('Addis Ababa')
-  const [zip, setZip] = useState('1000')
-  const [country, setCountry] = useState('Ethiopia')
-  const [phone, setPhone] = useState('+251900000000')
   const [cardError, setCardError] = useState('')
 
   const user = useSelector((state) => state.auth.user)
+  const userId = user?._id || user?.id || null
   const { items } = useSelector((state) => state.cart)
   const { creating, error, successMessage } = useSelector((state) => state.orders)
   const payment = useSelector((state) => state.payment)
   const selectedDb = getSelectedDatabaseName()
   const isEthio = selectedDb === 'E_Shopping'
+  const [latestOrderPrefill, setLatestOrderPrefill] = useState(null)
+
+  const [shippingAddress1, setShippingAddress1] = useState('')
+  const [shippingAddress2, setShippingAddress2] = useState('')
+  const [city, setCity] = useState('')
+  const [zip, setZip] = useState('')
+  const [country, setCountry] = useState('')
+  const [phone, setPhone] = useState('')
+
+  function getCheckoutDraftKey() {
+    const dbName = getSelectedDatabaseName() || 'default'
+    const id = userId || 'guest'
+    return `checkoutDraft_${dbName}_${id}`
+  }
+
+  function persistCheckoutDraft(payload) {
+    localStorage.setItem(getCheckoutDraftKey(), JSON.stringify(payload))
+  }
+
+  function readCheckoutDraft() {
+    const raw = localStorage.getItem(getCheckoutDraftKey())
+    if (!raw) {
+      return null
+    }
+
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed && typeof parsed === 'object' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  function readNonEmpty(source, keys) {
+    for (const key of keys) {
+      const value = source?.[key]
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return String(value)
+      }
+    }
+
+    return ''
+  }
+
+  function hydrated(profile, orderPrefill, keys) {
+    return readNonEmpty(profile, keys) || readNonEmpty(orderPrefill, keys)
+  }
+
+  useEffect(() => {
+    const draft = readCheckoutDraft()
+    if (!draft) {
+      return
+    }
+
+    setShippingAddress1((current) => current || String(draft.shippingAddress1 || ''))
+    setShippingAddress2((current) => current || String(draft.shippingAddress2 || ''))
+    setCity((current) => current || String(draft.city || ''))
+    setZip((current) => current || String(draft.zip || ''))
+    setCountry((current) => current || String(draft.country || ''))
+    setPhone((current) => current || String(draft.phone || ''))
+  }, [userId])
+
+  useEffect(() => {
+    if (!isObjectIdLike(userId)) {
+      return
+    }
+
+    dispatch(fetchCurrentUserProfile())
+  }, [dispatch, userId])
+
+  useEffect(() => {
+    setShippingAddress1((current) =>
+      current || hydrated(user, latestOrderPrefill, ['shippingAddress1', 'addressLine1', 'address1']),
+    )
+    setShippingAddress2((current) =>
+      current || hydrated(user, latestOrderPrefill, ['shippingAddress2', 'addressLine2', 'address2']),
+    )
+    setCity((current) => current || hydrated(user, latestOrderPrefill, ['city']))
+    setZip((current) => current || hydrated(user, latestOrderPrefill, ['zip', 'postalCode']))
+    setCountry((current) => current || hydrated(user, latestOrderPrefill, ['country']))
+    setPhone((current) => current || hydrated(user, latestOrderPrefill, ['phone']))
+  }, [user, latestOrderPrefill])
+
+  useEffect(() => {
+    if (!isObjectIdLike(userId)) {
+      return
+    }
+
+    let cancelled = false
+
+    async function fillFromLatestOrder() {
+      try {
+        const userOrdersPayload = await apiRequest(`/orders/get/userorders/${userId}`)
+        const userOrders = Array.isArray(userOrdersPayload)
+          ? userOrdersPayload
+          : Array.isArray(userOrdersPayload?.orders)
+            ? userOrdersPayload.orders
+            : Array.isArray(userOrdersPayload?.data)
+              ? userOrdersPayload.data
+              : Array.isArray(userOrdersPayload?.data?.orders)
+                ? userOrdersPayload.data.orders
+                : []
+
+        if (!userOrders.length || cancelled) {
+          return
+        }
+
+        const latestOrder = [...userOrders].sort((a, b) => {
+          const aTime = new Date(a?.dateOrdered || a?.createdAt || 0).getTime()
+          const bTime = new Date(b?.dateOrdered || b?.createdAt || 0).getTime()
+          return bTime - aTime
+        })[0]
+
+        if (!latestOrder || cancelled) {
+          return
+        }
+
+        setLatestOrderPrefill(latestOrder)
+      } catch {
+        // Keep current form values if order history cannot be loaded.
+      }
+    }
+
+    fillFromLatestOrder()
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   // Set payment method based on database
   const defaultPaymentMethod = isEthio ? 'telebirr' : 'card'
@@ -88,18 +222,33 @@ function CartPage() {
         quantity: item.quantity,
       })),
       shippingAddress1,
+      shippingAddress2,
       city,
       zip,
       country,
       phone,
-      user: user._id,
+      user: userId,
       customerEmail: user.email,
       status: paymentMethod === 'card' ? 'Processing' : 'Pending',
     }
   }
 
+  function getCheckoutProfilePayload() {
+    return {
+      phone: phone.trim(),
+      addressLine1: shippingAddress1.trim(),
+      shippingAddress1: shippingAddress1.trim(),
+      addressLine2: shippingAddress2.trim(),
+      shippingAddress2: shippingAddress2.trim(),
+      city: city.trim(),
+      postalCode: zip.trim(),
+      zip: zip.trim(),
+      country: country.trim(),
+    }
+  }
+
   async function placeOrderAfterPayment() {
-    if (!user?._id) {
+    if (!userId) {
       setCardError('Please log in before completing Telebirr checkout.')
       navigate('/login')
       return
@@ -147,14 +296,31 @@ function CartPage() {
       return
     }
 
+    const checkoutProfilePayload = getCheckoutProfilePayload()
+    persistCheckoutDraft(checkoutProfilePayload)
+
+    const saveProfileAction = await dispatch(saveUserProfile(checkoutProfilePayload))
+    if (saveUserProfile.rejected.match(saveProfileAction)) {
+      const saveError =
+        saveProfileAction.payload ||
+        saveProfileAction.error?.message ||
+        'Please save your checkout details before continuing.'
+      setCardError(String(saveError))
+      toast.error(String(saveError))
+      return
+    }
+
     setCardError('')
     dispatch(clearOrderState())
 
     const validationAction = await dispatch(validateOrderInventory(getOrderPayload()))
     if (validateOrderInventory.rejected.match(validationAction)) {
+      const rawMessage =
+        validationAction?.payload?.message || validationAction?.error?.message || ''
       const message =
-        validationAction?.error?.message ||
-        'Some cart quantities exceed available stock. Please lower your quantity and try again.'
+        rawMessage && rawMessage !== 'Rejected'
+          ? rawMessage
+          : 'Unable to validate inventory right now. Please try again.'
       setCardError(message)
       toast.error(message)
       dispatch(clearPaymentState())
@@ -261,16 +427,42 @@ function CartPage() {
             placeholder="Shipping Address"
             required
           />
-          <input value={city} onChange={(event) => setCity(event.target.value)} required />
-          <input value={zip} onChange={(event) => setZip(event.target.value)} required />
           <input
-            value={country}
-            onChange={(event) => setCountry(event.target.value)}
+            value={shippingAddress2}
+            onChange={(event) => setShippingAddress2(event.target.value)}
+            placeholder="Address Line 2"
+          />
+          <input
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            placeholder="City"
             required
           />
           <input
+            value={zip}
+            onChange={(event) => setZip(event.target.value)}
+            placeholder="Postal Code"
+            required
+          />
+          <select
+            value={country}
+            onChange={(event) => setCountry(event.target.value)}
+            required
+          >
+            <option value="">Select country</option>
+            {country && !countryOptions.includes(country) ? (
+              <option value={country}>{country}</option>
+            ) : null}
+            {countryOptions.map((countryName) => (
+              <option key={countryName} value={countryName}>
+                {countryName}
+              </option>
+            ))}
+          </select>
+          <input
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            placeholder="Phone"
             required
           />
 

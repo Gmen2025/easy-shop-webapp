@@ -197,7 +197,20 @@ export const validateOrderInventory = createAsyncThunk(
 export const fetchUserOrders = createAsyncThunk(
   'orders/fetchUserOrders',
   async (userId) => {
-    return apiRequest(`/orders/get/userorders/${userId}`)
+    const payload = await apiRequest(`/orders/get/userorders/${userId}`)
+    if (Array.isArray(payload)) {
+      return payload
+    }
+    if (Array.isArray(payload?.orders)) {
+      return payload.orders
+    }
+    if (Array.isArray(payload?.data)) {
+      return payload.data
+    }
+    if (Array.isArray(payload?.data?.orders)) {
+      return payload.data.orders
+    }
+    return []
   },
 )
 

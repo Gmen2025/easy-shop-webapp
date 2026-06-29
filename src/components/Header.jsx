@@ -29,6 +29,7 @@ function Header() {
         <NavLink to="/" end>
           Shop
         </NavLink>
+        {user ? <NavLink to="/profile">Profile</NavLink> : null}
         <NavLink to="/orders">My Orders</NavLink>
         <NavLink to="/cart">Cart ({cartCount})</NavLink>
         {user?.isAdmin ? <NavLink to="/admin">Admin</NavLink> : null}

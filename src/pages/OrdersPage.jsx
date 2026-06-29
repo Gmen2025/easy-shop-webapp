@@ -7,6 +7,10 @@ import ErrorState from '../components/ErrorState'
 
 const statusSteps = ['Pending', 'Processing', 'Shipped', 'Delivered']
 
+function isObjectIdLike(value) {
+  return /^[a-f\d]{24}$/i.test(String(value || ''))
+}
+
 function getStatusIndex(status) {
   const index = statusSteps.indexOf(status)
   if (index >= 0) {
@@ -44,20 +48,30 @@ function StatusTracker({ status }) {
 function OrdersPage() {
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
+  const userId = user?._id || user?.id || null
   const { items, loading, error } = useSelector((state) => state.orders)
 
   useEffect(() => {
-    if (user?._id) {
-      dispatch(fetchUserOrders(user._id))
+    if (isObjectIdLike(userId)) {
+      dispatch(fetchUserOrders(userId))
     }
-  }, [dispatch, user])
+  }, [dispatch, userId])
 
-  if (loading) {
+  if (loading && items.length === 0) {
     return <LoadingState label="Loading your orders..." />
   }
 
   if (error) {
-    return <ErrorState message={error} onRetry={() => dispatch(fetchUserOrders(user._id))} />
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          if (isObjectIdLike(userId)) {
+            dispatch(fetchUserOrders(userId))
+          }
+        }}
+      />
+    )
   }
 
   return (
@@ -66,6 +80,7 @@ function OrdersPage() {
         <h2>Order History</h2>
         <span>{items.length} orders</span>
       </div>
+      {loading ? <p className="section-note">Refreshing your orders...</p> : null}
 
       {items.length === 0 ? (
         <div className="empty-state">

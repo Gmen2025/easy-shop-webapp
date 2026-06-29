@@ -56,7 +56,8 @@ function HomePage() {
           </select>
         </div>
 
-        {loading ? <LoadingState label="Loading products..." /> : null}
+        {loading && products.length === 0 ? <LoadingState label="Loading products..." /> : null}
+        {loading && products.length > 0 ? <p className="section-note">Refreshing products...</p> : null}
         {error ? (
           <ErrorState
             message={error}
@@ -64,7 +65,7 @@ function HomePage() {
           />
         ) : null}
 
-        {!loading && !error ? (
+        {!error ? (
           <div className="products-grid">
             {products.map((product) => (
               <ProductCard key={getEntityId(product)} product={product} />

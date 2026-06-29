@@ -8,7 +8,17 @@ const toId = (entity) => String(entity?.id || entity?._id || '')
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async ({ categoryId } = {}) => {
-    const allProducts = applyInventoryOverrides(await apiRequest('/products'))
+    const payload = await apiRequest('/products')
+    const rawProducts = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.products)
+        ? payload.products
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.products)
+            ? payload.data.products
+            : []
+    const allProducts = applyInventoryOverrides(rawProducts)
     if (!categoryId) {
       return allProducts
     }
@@ -22,7 +32,9 @@ export const fetchProducts = createAsyncThunk(
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
   async (productId) => {
-    return applyInventoryOverride(await apiRequest(`/products/${productId}`))
+    const payload = await apiRequest(`/products/${productId}`)
+    const product = payload?.product || payload?.data?.product || payload?.data || payload
+    return applyInventoryOverride(product)
   },
 )
 

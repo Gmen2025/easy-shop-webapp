@@ -12,6 +12,9 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+import ProfilePage from './pages/ProfilePage'
+import EditProfilePage from './pages/EditProfilePage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -37,6 +40,15 @@ function App() {
         <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="payment/success" element={<PaymentSuccessPage />} />
         <Route path="payment/cancel" element={<PaymentCancelPage />} />
+        <Route
+          path="profile"
+          element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="edit-profile"
+          element={isAuthenticated ? <EditProfilePage /> : <Navigate to="/login" replace />}
+        />
+        <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
         <Route
           path="orders"
           element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" replace />}

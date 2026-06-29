@@ -182,3 +182,124 @@
     border-right-color: var(--border);
   }
 }
+
+.profile-page {
+  gap: 1rem;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.profile-form-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-card,
+.profile-form,
+.privacy-card,
+.support-card,
+.danger-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-details {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-details div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.profile-details dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.profile-details dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.profile-form {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.form-section {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.form-section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.profile-form label,
+.profile-form input,
+.profile-form select,
+.profile-form .action-row {
+  width: 100%;
+}
+
+.profile-form input,
+.profile-form select {
+  min-height: 48px;
+}
+
+.profile-form .action-row {
+  margin-top: 0.25rem;
+  justify-content: flex-start;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.support-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.support-item {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.support-item span {
+  color: var(--muted);
+}
+
+.danger-card {
+  border-color: #efb2a0;
+  background: linear-gradient(180deg, #fff8f5 0%, #fff 100%);
+}
+
+.danger-button {
+  border: 1px solid #c84d3f;
+  background: #fff1ee;
+  color: #8c2319;
+}
+
+.danger-button:hover {
+  background: #ffdeda;
+}
+
+.section-note {
+  color: var(--muted);
+  margin: 0;
+}

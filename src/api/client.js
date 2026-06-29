@@ -70,6 +70,10 @@ export async function apiRequest(path, options = {}) {
       typeof payload === 'string'
         ? payload
         : payload?.message || 'Request failed unexpectedly.'
+    const error = new Error(message)
+    error.status = response.status
+    error.payload = payload
+    error.contentType = contentType
 
     if (response.status === 401) {
       localStorage.removeItem('authUser')
@@ -80,7 +84,7 @@ export async function apiRequest(path, options = {}) {
       }
     }
 
-    throw new Error(message)
+    throw error
   }
 
   return payload
