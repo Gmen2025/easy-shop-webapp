@@ -100,11 +100,23 @@ function ProfilePage() {
           <div className="support-list">
             <div className="support-item">
               <span>Phone</span>
-              <a href="tel:+251912345678">+251 912 345 678</a>
+              <a href="tel:+251954141473">+251 954 141 473</a>
+            </div>
+            <div className="support-item">
+              <span>WhatsApp</span>
+              <a href="https://wa.me/251954141473" target="_blank" rel="noopener noreferrer">
+                +251 954 141 473
+              </a>
+            </div>
+            <div className="support-item">
+              <span>Telegram</span>
+              <a href="https://t.me/Ethiopiaonmymind" target="_blank" rel="noopener noreferrer">
+                @Ethiopiaonmymind
+              </a>
             </div>
             <div className="support-item">
               <span>Email</span>
-              <a href="mailto:support@addugenetshop.com">support@addugenetshop.com</a>
+              <a href="mailto:girmahalie2026@gmail.com">girmahalie2026@gmail.com</a>
             </div>
           </div>
         </article>
