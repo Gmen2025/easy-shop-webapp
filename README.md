@@ -63,6 +63,7 @@ Create `.env` in the project root:
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api/v1
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+VITE_ENABLE_TELEBIRR=false
 ```
 
 Notes:
@@ -71,6 +72,8 @@ Notes:
 	- Dev defaults to `/api/v1`
 	- Production defaults to `https://easy-shop-server-wldr.onrender.com/api/v1`
 - If `VITE_STRIPE_PUBLISHABLE_KEY` is missing, Stripe checkout cannot initialize.
+- Set `VITE_ENABLE_TELEBIRR=true` only when the backend Telebirr env vars are configured.
+- If Telebirr backend env vars are missing, keep `VITE_ENABLE_TELEBIRR=false` so checkout falls back to supported methods.
 
 ## Available Scripts
 

@@ -27,6 +27,7 @@ import countries from '../../data/countries.json'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
+const isTelebirrEnabled = String(import.meta.env.VITE_ENABLE_TELEBIRR || '').toLowerCase() === 'true'
 const countryOptions = countries
   .map((countryItem) => String(countryItem?.name || '').trim())
   .filter(Boolean)
@@ -178,8 +179,16 @@ function CartPage() {
   }, [userId])
 
   // Set payment method based on database
-  const defaultPaymentMethod = isEthio ? 'telebirr' : 'card'
+  const defaultPaymentMethod = isEthio
+    ? (isTelebirrEnabled ? 'telebirr' : 'cod')
+    : 'card'
   const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod)
+
+  useEffect(() => {
+    if (isEthio && !isTelebirrEnabled && paymentMethod === 'telebirr') {
+      setPaymentMethod('cod')
+    }
+  }, [isEthio, isTelebirrEnabled, paymentMethod])
 
   const totals = useMemo(() => {
     const subtotal = items.reduce(
@@ -414,12 +423,18 @@ function CartPage() {
             onChange={(event) => setPaymentMethod(event.target.value)}
           >
             {isEthio ? <option value="cod">Cash On Delivery</option> : null}
-            {isEthio ? (
+            {isEthio && isTelebirrEnabled ? (
               <option value="telebirr">Telebirr</option>
             ) : (
               <option value="card">Stripe Card</option>
             )}
           </select>
+
+          {isEthio && !isTelebirrEnabled ? (
+            <p className="section-note">
+              Telebirr is currently unavailable because it is not configured on the server.
+            </p>
+          ) : null}
 
           <input
             value={shippingAddress1}
