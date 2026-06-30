@@ -3,11 +3,15 @@ import { apiRequest } from '../../api/client'
 
 export const createPaymentIntent = createAsyncThunk(
   'payment/createPaymentIntent',
-  async ({ amount, currency = 'usd', orderId }) => {
-    return apiRequest('/stripe/create-payment-intent', {
-      method: 'POST',
-      body: JSON.stringify({ amount, currency, orderId }),
-    })
+  async ({ amount, currency = 'usd', orderId }, { rejectWithValue }) => {
+    try {
+      return await apiRequest('/stripe/create-payment-intent', {
+        method: 'POST',
+        body: JSON.stringify({ amount, currency, orderId }),
+      })
+    } catch (error) {
+      return rejectWithValue(error?.message || 'Unable to initialize card payment.')
+    }
   },
 )
 
@@ -34,11 +38,19 @@ const paymentSlice = createSlice({
       })
       .addCase(createPaymentIntent.fulfilled, (state, action) => {
         state.creatingIntent = false
-        state.clientSecret = action.payload?.client_secret || null
+        state.clientSecret =
+          action.payload?.client_secret ||
+          action.payload?.clientSecret ||
+          action.payload?.data?.client_secret ||
+          action.payload?.data?.clientSecret ||
+          null
+        if (!state.clientSecret) {
+          state.error = 'Stripe did not return a payment client secret.'
+        }
       })
       .addCase(createPaymentIntent.rejected, (state, action) => {
         state.creatingIntent = false
-        state.error = action.error.message
+        state.error = action.payload || action.error.message
       })
   },
 })

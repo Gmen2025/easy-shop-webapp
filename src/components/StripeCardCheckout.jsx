@@ -21,6 +21,14 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
 
+  function getReadableStripeError(error) {
+    const message = String(error?.message || '').trim()
+    if (/load failed|failed to fetch|network/i.test(message)) {
+      return 'Unable to reach Stripe right now. Check your connection and try again.'
+    }
+    return message || 'Card confirmation failed.'
+  }
+
   async function handleSubmit() {
     if (!stripe || !elements || !clientSecret) {
       return
@@ -29,25 +37,36 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
     setProcessing(true)
     const cardElement = elements.getElement(CardElement)
 
-    const result = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardElement,
-      },
-    })
+    try {
+      const result = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+          },
+          return_url: `${window.location.origin}/payment/success`,
+        },
+        {
+          handleActions: true,
+        },
+      )
 
-    setProcessing(false)
+      if (result.error) {
+        onError?.(getReadableStripeError(result.error))
+        return
+      }
 
-    if (result.error) {
-      onError?.(result.error.message || 'Card confirmation failed.')
-      return
+      if (result.paymentIntent?.status === 'succeeded') {
+        onConfirmed?.(result.paymentIntent)
+        return
+      }
+
+      onError?.(`Payment status: ${result.paymentIntent?.status || 'unknown'}`)
+    } catch (error) {
+      onError?.(getReadableStripeError(error))
+    } finally {
+      setProcessing(false)
     }
-
-    if (result.paymentIntent?.status === 'succeeded') {
-      onConfirmed?.(result.paymentIntent)
-      return
-    }
-
-    onError?.(`Payment status: ${result.paymentIntent?.status || 'unknown'}`)
   }
 
   return (
