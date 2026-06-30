@@ -1,8 +1,39 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV
-    ? '/api/v1'
-    : 'https://easy-shop-server-wldr.onrender.com/api/v1')
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://easy-shop-server-wldr.onrender.com/api/v1'
+
+function normalizeApiBaseUrl(value) {
+  const raw = String(value || '').trim()
+  if (!raw) {
+    return null
+  }
+
+  const withoutTrailingSlash = raw.replace(/\/+$/, '')
+
+  if (withoutTrailingSlash.startsWith('/')) {
+    return withoutTrailingSlash
+  }
+
+  if (/^https?:\/\//i.test(withoutTrailingSlash)) {
+    return withoutTrailingSlash
+  }
+
+  // Support common Render/dashboard input where protocol is omitted.
+  return `https://${withoutTrailingSlash}`
+}
+
+function resolveApiBaseUrl() {
+  const configured = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
+  if (configured) {
+    return configured
+  }
+
+  if (import.meta.env.DEV) {
+    return '/api/v1'
+  }
+
+  return DEFAULT_PRODUCTION_API_BASE_URL
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
 const DB_KEY = 'selectedDatabaseName'
 const REQUEST_TIMEOUT_MS = 45000
 
