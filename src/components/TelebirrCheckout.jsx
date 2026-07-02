@@ -1,37 +1,188 @@
 import { useState } from 'react'
 import { apiRequest } from '../api/client'
 
+function tryParseObject(value) {
+  if (!value || typeof value !== 'string') {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function getTelebirrPayloadVariants(responseData) {
+  const variants = [responseData]
+
+  const nested = [
+    responseData?.data,
+    responseData?.paymentData,
+    responseData?.result,
+    responseData?.bizContent,
+    responseData?.biz_content,
+    responseData?.raw,
+  ]
+
+  for (const entry of nested) {
+    const parsedEntry = typeof entry === 'string' ? tryParseObject(entry) : entry
+    if (parsedEntry && typeof parsedEntry === 'object') {
+      variants.push(parsedEntry)
+    }
+  }
+
+  return variants
+}
+
+function normalizeUrlCandidate(candidate) {
+  if (typeof candidate !== 'string') {
+    return ''
+  }
+
+  const value = candidate.trim()
+  if (!value) {
+    return ''
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  const embeddedHttpMatch = value.match(/https?:\/\/[^\s"']+/i)
+  return embeddedHttpMatch?.[0] || ''
+}
+
 function getTelebirrRedirectUrl(responseData) {
-  const directCandidates = [
-    responseData?.redirectUrl,
-    responseData?.paymentUrl,
-    responseData?.checkoutUrl,
-    responseData?.url,
-    responseData?.toPayUrl,
-    responseData?.webUrl,
+  const urlKeys = [
+    'redirectUrl',
+    'paymentUrl',
+    'checkoutUrl',
+    'url',
+    'toPayUrl',
+    'webUrl',
+    'h5Url',
+    'h5_url',
+    'payUrl',
+    'pay_url',
+    'cashierUrl',
+    'deeplink',
+    'deepLink',
   ]
 
-  const nestedCandidates = [
-    responseData?.paymentData?.redirectUrl,
-    responseData?.paymentData?.url,
-    responseData?.data?.redirectUrl,
-    responseData?.data?.url,
-  ]
+  for (const payload of getTelebirrPayloadVariants(responseData)) {
+    for (const key of urlKeys) {
+      const normalized = normalizeUrlCandidate(payload?.[key])
+      if (normalized) {
+        return normalized
+      }
+    }
+  }
 
-  return [...directCandidates, ...nestedCandidates].find(
-    (candidate) => typeof candidate === 'string' && candidate.trim(),
-  )
+  return ''
 }
 
 function isTelebirrPaid(responseData) {
-  const status = String(
-    responseData?.paymentStatus ||
-      responseData?.status ||
-      responseData?.transactionStatus ||
-      '',
-  ).toLowerCase()
+  const statusKeys = [
+    'paymentStatus',
+    'status',
+    'transactionStatus',
+    'tradeStatus',
+    'result',
+    'resultCode',
+    'code',
+    'retCode',
+  ]
 
-  return ['paid', 'success', 'succeeded', 'completed'].includes(status)
+  const paidValues = new Set([
+    'paid',
+    'success',
+    'succeeded',
+    'completed',
+    'finish',
+    'finished',
+    '0000',
+    '0',
+  ])
+
+  for (const payload of getTelebirrPayloadVariants(responseData)) {
+    for (const key of statusKeys) {
+      const rawStatus = String(payload?.[key] || '').trim().toLowerCase()
+      if (rawStatus && paidValues.has(rawStatus)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+function getTelebirrTransactionId(responseData) {
+  const idKeys = [
+    'transactionId',
+    'txId',
+    'merchantTransId',
+    'tradeNo',
+    'outTradeNo',
+    'orderId',
+    'paymentReference',
+    'reference',
+    'prepayId',
+    'prepay_id',
+    'merchantOrderNo',
+    'merchant_order_no',
+  ]
+
+  for (const payload of getTelebirrPayloadVariants(responseData)) {
+    for (const key of idKeys) {
+      const value = payload?.[key]
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim()
+      }
+    }
+  }
+
+  return ''
+}
+
+async function verifyTelebirrPayment(responseData) {
+  const transactionId = getTelebirrTransactionId(responseData)
+  if (!transactionId) {
+    return null
+  }
+
+  const candidateEndpoints = [
+    '/telebirr/verify-payment',
+    '/telebirr/verify',
+    '/telebirr/check-status',
+    '/telebirr/payment-status',
+  ]
+
+  for (const endpoint of candidateEndpoints) {
+    try {
+      const result = await apiRequest(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          transactionId,
+          payload: responseData,
+        }),
+      })
+
+      const responsePayload = result?.data || result
+      if (responsePayload && isTelebirrPaid(responsePayload)) {
+        return {
+          ...responseData,
+          ...responsePayload,
+          transactionId,
+        }
+      }
+    } catch {
+      // Continue trying known verification routes.
+    }
+  }
+
+  return null
 }
 
 function TelebirrCheckout({ amount, onConfirmed, onError }) {
@@ -79,12 +230,21 @@ function TelebirrCheckout({ amount, onConfirmed, onError }) {
       }
 
       if (isTelebirrPaid(responseData)) {
-        onConfirmed?.(responseData)
+        onConfirmed?.({
+          ...responseData,
+          transactionId: getTelebirrTransactionId(responseData),
+        })
+        return
+      }
+
+      const verifiedPayment = await verifyTelebirrPayment(responseData)
+      if (verifiedPayment) {
+        onConfirmed?.(verifiedPayment)
         return
       }
 
       onError?.(
-        'Telebirr did not return a checkout URL or confirmed paid status. Order was not placed.',
+        'Telebirr response did not include a checkout URL and payment could not be verified yet. Complete payment in Telebirr, then try again.',
       )
     } catch (error) {
       onError?.(error.message || 'Telebirr payment initialization failed.')
