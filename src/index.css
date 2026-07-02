@@ -381,6 +381,29 @@ button {
   color: #126f59;
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.status-on {
+  color: #0f5e1f;
+  background: #d8f4de;
+  border: 1px solid #9ed3a9;
+}
+
+.status-off {
+  color: #5f6670;
+  background: #eef1f5;
+  border: 1px solid #d2dae3;
+}
+
 .login-hint {
   color: var(--muted);
   font-size: 0.92rem;
@@ -415,6 +438,57 @@ button {
   min-height: 60vh;
   display: grid;
   place-items: center;
+}
+
+.maintenance-wrap {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.maintenance-card {
+  width: min(720px, 100%);
+  display: grid;
+  gap: 0.9rem;
+  background:
+    radial-gradient(120% 140% at 90% 10%, #ffe0be 0%, transparent 65%),
+    #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.maintenance-card h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+
+.maintenance-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.maintenance-pill {
+  margin: 0;
+  width: fit-content;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #ffe7cb;
+  color: #6d2c06;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.maintenance-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .auth-form {

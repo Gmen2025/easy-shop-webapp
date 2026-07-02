@@ -28,6 +28,7 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 	- Manage products (including image upload)
 	- Manage order status and deletion
 	- Low-stock alert panel with configurable threshold
+	- Runtime maintenance mode ON/OFF toggle (DB-backed, no redeploy)
 - Inventory safeguards:
 	- Checkout is blocked if requested quantity exceeds available inventory
 	- Customer gets a clear message to lower quantity
@@ -64,6 +65,8 @@ Create `.env` in the project root:
 VITE_API_BASE_URL=http://localhost:3000/api/v1
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 VITE_ENABLE_TELEBIRR=false
+VITE_MAINTENANCE_MODE_PATH=/settings/maintenance
+VITE_MAINTENANCE_MODE_METHOD=PUT
 ```
 
 Notes:
@@ -74,6 +77,8 @@ Notes:
 - If `VITE_STRIPE_PUBLISHABLE_KEY` is missing, Stripe checkout cannot initialize.
 - Set `VITE_ENABLE_TELEBIRR=true` only when the backend Telebirr env vars are configured.
 - If Telebirr backend env vars are missing, keep `VITE_ENABLE_TELEBIRR=false` so checkout falls back to supported methods.
+- `VITE_MAINTENANCE_MODE_PATH` defaults to `/settings/maintenance` and should match backend route.
+- `VITE_MAINTENANCE_MODE_METHOD` defaults to `PUT` for admin updates.
 
 ## Available Scripts
 
@@ -145,3 +150,11 @@ Core examples used by this app:
 
 - API requests are made through `src/api/client.js` to ensure consistent timeout, auth token, and `x-database-name` handling.
 - Database selection is stored in localStorage and sent in headers to support multi-database behavior.
+
+## Runtime Maintenance Mode
+
+The app now supports a maintenance switch controlled from the admin dashboard.
+
+- Status endpoint (public): `GET /api/v1/settings/maintenance`
+- Toggle endpoint (admin-only): `PUT /api/v1/settings/maintenance` with body `{ "enabled": true|false }`
+- Setting is persisted per selected database through `x-database-name`, so each DB can have its own maintenance state.

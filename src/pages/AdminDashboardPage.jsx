@@ -12,6 +12,10 @@ import {
   updateCategoryAdmin,
   updateProductAdmin,
 } from '../features/admin/adminSlice'
+import {
+  fetchMaintenanceMode,
+  updateMaintenanceModeAdmin,
+} from '../features/maintenance/maintenanceSlice'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
@@ -38,6 +42,12 @@ function AdminDashboardPage() {
   const { categories, products, orders, loading, saving, error, message } = useSelector(
     (state) => state.admin,
   )
+  const {
+    enabled: maintenanceEnabled,
+    updating: updatingMaintenance,
+    error: maintenanceError,
+    lastSyncedAt,
+  } = useSelector((state) => state.maintenance)
 
   const [categoryForm, setCategoryForm] = useState(defaultCategory)
   const [categoryEditId, setCategoryEditId] = useState('')
@@ -50,6 +60,10 @@ function AdminDashboardPage() {
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
+  }, [dispatch])
+
+  useEffect(() => {
+    dispatch(fetchMaintenanceMode())
   }, [dispatch])
 
   const effectiveProductCategory =
@@ -223,6 +237,10 @@ function AdminDashboardPage() {
     dispatch(deleteOrderAdmin({ id: orderId, customerEmail, customerName }))
   }
 
+  async function handleMaintenanceToggle() {
+    await dispatch(updateMaintenanceModeAdmin(!maintenanceEnabled))
+  }
+
   return (
     <section className="page-stack">
       <section className="panel">
@@ -232,6 +250,47 @@ function AdminDashboardPage() {
         </div>
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h3>Site Maintenance Mode</h3>
+          <span className={maintenanceEnabled ? 'status-pill status-on' : 'status-pill status-off'}>
+            {maintenanceEnabled ? 'ON' : 'OFF'}
+          </span>
+        </div>
+        <p className="section-note">
+          Toggle this to instantly show a maintenance page for shoppers without redeploying.
+          This updates all configured databases (for example Ethio and USA) with one click.
+        </p>
+        {maintenanceError ? <p className="form-error">{maintenanceError}</p> : null}
+        {lastSyncedAt ? (
+          <small className="section-note">
+            Last updated: {new Date(lastSyncedAt).toLocaleString()}
+          </small>
+        ) : null}
+        <div className="inline-actions">
+          <button
+            type="button"
+            className="solid-button"
+            onClick={handleMaintenanceToggle}
+            disabled={updatingMaintenance}
+          >
+            {updatingMaintenance
+              ? 'Saving...'
+              : maintenanceEnabled
+                ? 'Turn Maintenance OFF'
+                : 'Turn Maintenance ON'}
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => dispatch(fetchMaintenanceMode())}
+            disabled={updatingMaintenance}
+          >
+            Refresh Status
+          </button>
+        </div>
       </section>
 
       <section className="panel">

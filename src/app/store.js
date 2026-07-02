@@ -7,6 +7,7 @@ import ordersReducer from '../features/orders/ordersSlice'
 import adminReducer from '../features/admin/adminSlice'
 import accountReducer from '../features/account/accountSlice'
 import paymentReducer from '../features/payment/paymentSlice'
+import maintenanceReducer from '../features/maintenance/maintenanceSlice'
 
 export const store = configureStore({
   reducer: {
@@ -18,5 +19,6 @@ export const store = configureStore({
     admin: adminReducer,
     account: accountReducer,
     payment: paymentReducer,
+    maintenance: maintenanceReducer,
   },
 })
