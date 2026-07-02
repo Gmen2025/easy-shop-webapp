@@ -259,7 +259,49 @@ function CartPage() {
       }
     }
 
+    if (paymentMethod === 'telebirr' && paymentMeta) {
+      payload.paymentMeta = {
+        ...paymentMeta,
+        submittedAt: new Date().toISOString(),
+      }
+    }
+
     return payload
+  }
+
+  function extractTelebirrTransactionId(paymentMeta) {
+    const candidates = [
+      paymentMeta?.transactionId,
+      paymentMeta?.txId,
+      paymentMeta?.merchantTransId,
+      paymentMeta?.tradeNo,
+      paymentMeta?.outTradeNo,
+      paymentMeta?.orderId,
+      paymentMeta?.paymentReference,
+      paymentMeta?.reference,
+      paymentMeta?.data?.transactionId,
+      paymentMeta?.data?.tradeNo,
+      paymentMeta?.data?.outTradeNo,
+    ]
+
+    const validId = candidates.find(
+      (value) => typeof value === 'string' && value.trim(),
+    )
+
+    return validId ? validId.trim() : ''
+  }
+
+  function toTelebirrOrderMeta(paymentMeta) {
+    const transactionId = extractTelebirrTransactionId(paymentMeta)
+    const rawStatus = String(
+      paymentMeta?.paymentStatus || paymentMeta?.status || paymentMeta?.transactionStatus || '',
+    ).trim()
+
+    return {
+      provider: 'Telebirr',
+      transactionId,
+      paymentStatus: rawStatus || 'success',
+    }
   }
 
   function getCheckoutProfilePayload() {
@@ -277,7 +319,7 @@ function CartPage() {
   }
 
   async function placeOrderAfterPayment(paymentMeta = null) {
-    if (paymentMeta) {
+    if (paymentMethod === 'bank_transfer' && paymentMeta) {
       setBankTransferMeta(paymentMeta)
     }
 
@@ -290,7 +332,22 @@ function CartPage() {
     setCardError('')
     dispatch(clearOrderState())
 
-    const action = await dispatch(createOrderWithInventorySync(getOrderPayload(paymentMeta || bankTransferMeta)))
+    let orderPaymentMeta = paymentMeta || bankTransferMeta
+
+    if (paymentMethod === 'telebirr') {
+      const transactionId = extractTelebirrTransactionId(paymentMeta)
+      if (!transactionId) {
+        const message =
+          'Telebirr payment could not be verified (missing transaction ID). Order was not placed.'
+        setCardError(message)
+        toast.error(message)
+        return
+      }
+
+      orderPaymentMeta = toTelebirrOrderMeta(paymentMeta)
+    }
+
+    const action = await dispatch(createOrderWithInventorySync(getOrderPayload(orderPaymentMeta)))
     if (createOrderWithInventorySync.fulfilled.match(action)) {
       notifyLowStockAfterCheckout(action.payload)
       dispatch(clearCart())

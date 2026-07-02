@@ -78,6 +78,7 @@ Notes:
 - If `VITE_STRIPE_PUBLISHABLE_KEY` is missing, Stripe checkout cannot initialize.
 - Set `VITE_ENABLE_TELEBIRR=true` only when the backend Telebirr env vars are configured.
 - If Telebirr backend env vars are missing, keep `VITE_ENABLE_TELEBIRR=false` so checkout falls back to supported methods.
+- Telebirr checkout is live-only: mock Telebirr responses are rejected and orders will not be placed.
 - `VITE_MAINTENANCE_MODE_PATH` defaults to `/settings/maintenance` and should match backend route.
 - `VITE_MAINTENANCE_MODE_METHOD` defaults to `PUT` for admin updates.
 

@@ -1,6 +1,39 @@
 import { useState } from 'react'
 import { apiRequest } from '../api/client'
 
+function getTelebirrRedirectUrl(responseData) {
+  const directCandidates = [
+    responseData?.redirectUrl,
+    responseData?.paymentUrl,
+    responseData?.checkoutUrl,
+    responseData?.url,
+    responseData?.toPayUrl,
+    responseData?.webUrl,
+  ]
+
+  const nestedCandidates = [
+    responseData?.paymentData?.redirectUrl,
+    responseData?.paymentData?.url,
+    responseData?.data?.redirectUrl,
+    responseData?.data?.url,
+  ]
+
+  return [...directCandidates, ...nestedCandidates].find(
+    (candidate) => typeof candidate === 'string' && candidate.trim(),
+  )
+}
+
+function isTelebirrPaid(responseData) {
+  const status = String(
+    responseData?.paymentStatus ||
+      responseData?.status ||
+      responseData?.transactionStatus ||
+      '',
+  ).toLowerCase()
+
+  return ['paid', 'success', 'succeeded', 'completed'].includes(status)
+}
+
 function TelebirrCheckout({ amount, onConfirmed, onError }) {
   const [phone, setPhone] = useState('+251')
   const [customerName, setCustomerName] = useState('')
@@ -32,24 +65,27 @@ function TelebirrCheckout({ amount, onConfirmed, onError }) {
         return
       }
 
-      // In backend mock mode, complete payment in-app to emulate a successful transaction.
       if (responseData?.isMock) {
-        onConfirmed?.(responseData)
+        onError?.(
+          'Telebirr backend is currently in mock mode. Live Telebirr payment is required, so order was not placed.',
+        )
         return
       }
 
-      // Some Telebirr integrations return a checkout URL to continue payment.
-      const redirectUrl =
-        responseData?.redirectUrl ||
-        responseData?.paymentUrl ||
-        responseData?.checkoutUrl ||
-        responseData?.url
+      const redirectUrl = getTelebirrRedirectUrl(responseData)
       if (typeof redirectUrl === 'string' && redirectUrl.trim()) {
         window.location.assign(redirectUrl)
         return
       }
 
-      onConfirmed?.(responseData)
+      if (isTelebirrPaid(responseData)) {
+        onConfirmed?.(responseData)
+        return
+      }
+
+      onError?.(
+        'Telebirr did not return a checkout URL or confirmed paid status. Order was not placed.',
+      )
     } catch (error) {
       onError?.(error.message || 'Telebirr payment initialization failed.')
     } finally {
