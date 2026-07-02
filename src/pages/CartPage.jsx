@@ -21,6 +21,7 @@ import {
 import { fetchCurrentUserProfile, saveUserProfile } from '../features/auth/authSlice'
 import StripeCardCheckout from '../components/StripeCardCheckout'
 import TelebirrCheckout from '../components/TelebirrCheckout'
+import BankTransferCheckout from '../components/BankTransferCheckout'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import countries from '../../data/countries.json'
@@ -183,6 +184,7 @@ function CartPage() {
     ? (isTelebirrEnabled ? 'telebirr' : 'cod')
     : 'card'
   const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod)
+  const [bankTransferMeta, setBankTransferMeta] = useState(null)
 
   useEffect(() => {
     if (isEthio && !isTelebirrEnabled && paymentMethod === 'telebirr') {
@@ -224,8 +226,16 @@ function CartPage() {
     )
   }
 
-  function getOrderPayload() {
-    return {
+  function getOrderPayload(paymentMeta = null) {
+    const resolvedPaymentMethod = paymentMethod === 'bank_transfer'
+      ? 'Bank Transfer'
+      : paymentMethod === 'telebirr'
+        ? 'Telebirr'
+        : paymentMethod === 'card'
+          ? 'Card'
+          : 'Cash On Delivery'
+
+    const payload = {
       orderItems: items.map((item) => ({
         product: item.product.id,
         quantity: item.quantity,
@@ -239,7 +249,17 @@ function CartPage() {
       user: userId,
       customerEmail: user.email,
       status: paymentMethod === 'card' ? 'Processing' : 'Pending',
+      paymentMethod: resolvedPaymentMethod,
     }
+
+    if (paymentMethod === 'bank_transfer' && paymentMeta) {
+      payload.paymentMeta = {
+        ...paymentMeta,
+        submittedAt: new Date().toISOString(),
+      }
+    }
+
+    return payload
   }
 
   function getCheckoutProfilePayload() {
@@ -256,9 +276,13 @@ function CartPage() {
     }
   }
 
-  async function placeOrderAfterPayment() {
+  async function placeOrderAfterPayment(paymentMeta = null) {
+    if (paymentMeta) {
+      setBankTransferMeta(paymentMeta)
+    }
+
     if (!userId) {
-      setCardError('Please log in before completing Telebirr checkout.')
+      setCardError('Please log in before completing checkout.')
       navigate('/login')
       return
     }
@@ -266,12 +290,13 @@ function CartPage() {
     setCardError('')
     dispatch(clearOrderState())
 
-    const action = await dispatch(createOrderWithInventorySync(getOrderPayload()))
+    const action = await dispatch(createOrderWithInventorySync(getOrderPayload(paymentMeta || bankTransferMeta)))
     if (createOrderWithInventorySync.fulfilled.match(action)) {
       notifyLowStockAfterCheckout(action.payload)
       dispatch(clearCart())
       dispatch(clearPaymentState())
-      navigate('/payment/success')
+      setBankTransferMeta(null)
+      navigate(paymentMethod === 'bank_transfer' ? '/orders' : '/payment/success')
       return
     }
 
@@ -349,6 +374,11 @@ function CartPage() {
       return
     }
 
+    if (paymentMethod === 'bank_transfer') {
+      setCardError('Use the bank transfer form below to submit your transfer details.')
+      return
+    }
+
     const action = await dispatch(createOrderWithInventorySync(getOrderPayload()))
     if (createOrderWithInventorySync.fulfilled.match(action)) {
       notifyLowStockAfterCheckout(action.payload)
@@ -420,9 +450,14 @@ function CartPage() {
           <select
             id="payment-method"
             value={paymentMethod}
-            onChange={(event) => setPaymentMethod(event.target.value)}
+            onChange={(event) => {
+              setPaymentMethod(event.target.value)
+              setBankTransferMeta(null)
+              setCardError('')
+            }}
           >
             {isEthio ? <option value="cod">Cash On Delivery</option> : null}
+            {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
             {isEthio && isTelebirrEnabled ? (
               <option value="telebirr">Telebirr</option>
             ) : (
@@ -514,6 +549,18 @@ function CartPage() {
             />
           ) : null}
 
+          {paymentMethod === 'bank_transfer' ? (
+            <BankTransferCheckout
+              amount={totals.subtotal}
+              onConfirmed={(paymentMeta) => {
+                placeOrderAfterPayment(paymentMeta)
+              }}
+              onError={(message) => {
+                setCardError(message)
+              }}
+            />
+          ) : null}
+
           <button
             type="submit"
             className="solid-button"
@@ -522,6 +569,7 @@ function CartPage() {
               payment.creatingIntent ||
               items.length === 0 ||
               (paymentMethod === 'telebirr' && isEthio) ||
+              (paymentMethod === 'bank_transfer' && isEthio) ||
               (paymentMethod === 'card' && !!payment.clientSecret)
             }
           >
@@ -533,6 +581,8 @@ function CartPage() {
                   : 'Start Card Payment'
                 : paymentMethod === 'telebirr'
                   ? 'Use Telebirr Form Above'
+                  : paymentMethod === 'bank_transfer'
+                    ? 'Use Bank Transfer Form Above'
                   : 'Place Order'}
           </button>
         </form>

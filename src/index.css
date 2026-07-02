@@ -338,6 +338,15 @@ button {
   background: #fff;
 }
 
+.bank-transfer-form {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fff;
+}
+
 .stripe-card-input {
   border: 1px solid var(--line);
   border-radius: 10px;

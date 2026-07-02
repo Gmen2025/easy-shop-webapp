@@ -107,6 +107,10 @@ function OrdersPage() {
               <p>
                 Total: <strong>{formatCurrency(order.totalPrice)}</strong>
               </p>
+              <p>Payment Method: {order.paymentMethod || 'N/A'}</p>
+              {order?.paymentMeta?.transferReference ? (
+                <p>Transfer Ref: {order.paymentMeta.transferReference}</p>
+              ) : null}
               <p>
                 Date:{' '}
                 {new Date(order.dateOrdered).toLocaleString('en-US', {

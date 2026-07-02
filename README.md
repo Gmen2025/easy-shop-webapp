@@ -18,6 +18,7 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 - Payment flows:
 	- Stripe card checkout
 	- Telebirr flow
+	- Bank transfer option for Ethio database mode
 	- Cash on delivery option for Ethio database mode
 - Auth flows:
 	- Login/Register
