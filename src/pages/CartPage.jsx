@@ -192,6 +192,12 @@ function CartPage() {
     }
   }, [isEthio, isTelebirrEnabled, paymentMethod])
 
+  useEffect(() => {
+    if (isEthio && paymentMethod === 'card') {
+      setPaymentMethod(isTelebirrEnabled ? 'telebirr' : 'cod')
+    }
+  }, [isEthio, isTelebirrEnabled, paymentMethod])
+
   const totals = useMemo(() => {
     const subtotal = items.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
@@ -419,6 +425,11 @@ function CartPage() {
     }
 
     if (paymentMethod === 'card') {
+      if (isEthio) {
+        setCardError('Stripe card payment is unavailable for Ethio checkout.')
+        return
+      }
+
       if (!stripePromise) {
         setCardError(
           'Missing VITE_STRIPE_PUBLISHABLE_KEY. Add it to your frontend environment.',
