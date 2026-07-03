@@ -319,21 +319,66 @@
 }
 
 .bank-account-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
 }
 
 .bank-account-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.9rem;
-  border: 1px solid #d9d9d9;
-  border-radius: 10px;
-  background: #fffdf9;
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #e6d9cb;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fffdf8 0%, #fffaf3 100%);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.bank-account-card:hover {
+  border-color: #d8b796;
+  box-shadow: 0 6px 18px rgb(191 142 95 / 13%);
+}
+
+.bank-account-card:focus-visible {
+  outline: 2px solid #cc8a4d;
+  outline-offset: 2px;
+}
+
+.bank-account-card.selected {
+  border-color: #cc8a4d;
+  box-shadow: 0 0 0 2px rgb(204 138 77 / 16%);
+  transform: translateY(-1px);
+}
+
+.bank-account-card strong {
+  font-size: 0.98rem;
 }
 
 .bank-account-card small {
   color: var(--muted);
+  line-height: 1.35;
+}
+
+.bank-account-card small span {
+  font-weight: 700;
+  color: #554637;
+}
+
+@media (max-width: 640px) {
+  .bank-account-list {
+    gap: 0.6rem;
+  }
+
+  .bank-account-card {
+    padding: 0.75rem 0.8rem;
+    border-radius: 10px;
+  }
+
+  .bank-account-card strong {
+    font-size: 0.94rem;
+  }
 }

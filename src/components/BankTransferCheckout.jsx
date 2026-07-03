@@ -130,13 +130,26 @@ function BankTransferCheckout({ amount, onConfirmed, onError }) {
       {bankAccounts.length ? (
         <div className="bank-account-list">
           {bankAccounts.map((bank) => (
-            <div key={bank._id} className="bank-account-card">
+            <button
+              key={bank._id}
+              type="button"
+              className={`bank-account-card ${selectedBankId === bank._id ? 'selected' : ''}`}
+              onClick={() => setSelectedBankId(bank._id)}
+            >
               <strong>{bank.bankName}</strong>
-              <small>Account Number: {bank.accountNumber}</small>
-              <small>Account Holder: {bank.accountHolderName || 'N/A'}</small>
-              {bank.bankCode ? <small>Bank Code: {bank.bankCode}</small> : null}
+              <small>
+                <span>Account Number:</span> {bank.accountNumber}
+              </small>
+              <small>
+                <span>Account Holder:</span> {bank.accountHolderName || 'N/A'}
+              </small>
+              {bank.bankCode ? (
+                <small>
+                  <span>Bank Code:</span> {bank.bankCode}
+                </small>
+              ) : null}
               {bank.additionalInfo ? <small>{bank.additionalInfo}</small> : null}
-            </div>
+            </button>
           ))}
         </div>
       ) : null}
