@@ -36,6 +36,55 @@ function getTelebirrPayloadVariants(responseData) {
   return variants
 }
 
+function collectTelebirrPayloadVariants(responseData) {
+  const queue = [...getTelebirrPayloadVariants(responseData)]
+  const collected = []
+  const seen = new Set()
+
+  while (queue.length) {
+    const current = queue.shift()
+    if (!current || typeof current !== 'object') {
+      continue
+    }
+
+    if (seen.has(current)) {
+      continue
+    }
+
+    seen.add(current)
+    collected.push(current)
+
+    for (const value of Object.values(current)) {
+      if (!value) {
+        continue
+      }
+
+      if (typeof value === 'string') {
+        const parsed = tryParseObject(value)
+        if (parsed) {
+          queue.push(parsed)
+        }
+        continue
+      }
+
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (entry && typeof entry === 'object') {
+            queue.push(entry)
+          }
+        }
+        continue
+      }
+
+      if (typeof value === 'object') {
+        queue.push(value)
+      }
+    }
+  }
+
+  return collected
+}
+
 function normalizeUrlCandidate(candidate) {
   if (typeof candidate !== 'string') {
     return ''
@@ -54,13 +103,31 @@ function normalizeUrlCandidate(candidate) {
   return embeddedHttpMatch?.[0] || ''
 }
 
+function safeDecodeURIComponent(value) {
+  if (typeof value !== 'string' || !value) {
+    return ''
+  }
+
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 function getTelebirrRedirectUrl(responseData) {
   const urlKeys = [
     'redirectUrl',
     'paymentUrl',
     'checkoutUrl',
+    'aCheckoutUrl',
+    'aCheckoutURL',
+    'checkout_url',
+    'checkoutURL',
     'url',
     'toPayUrl',
+    'toPayURL',
+    'to_pay_url',
     'webUrl',
     'h5Url',
     'h5_url',
@@ -71,11 +138,46 @@ function getTelebirrRedirectUrl(responseData) {
     'deepLink',
   ]
 
-  for (const payload of getTelebirrPayloadVariants(responseData)) {
+  for (const payload of collectTelebirrPayloadVariants(responseData)) {
+    const payloadEntries = Object.entries(payload)
+
+    for (const [key, value] of payloadEntries) {
+      if (urlKeys.includes(key)) {
+        const normalized = normalizeUrlCandidate(value)
+        if (normalized) {
+          return normalized
+        }
+      }
+    }
+
+    const loweredPayload = new Map(
+      payloadEntries.map(([key, value]) => [String(key || '').toLowerCase(), value]),
+    )
+
     for (const key of urlKeys) {
-      const normalized = normalizeUrlCandidate(payload?.[key])
+      const normalized = normalizeUrlCandidate(loweredPayload.get(key.toLowerCase()))
       if (normalized) {
         return normalized
+      }
+    }
+
+    for (const value of Object.values(payload)) {
+      if (typeof value !== 'string') {
+        continue
+      }
+
+      const normalized = normalizeUrlCandidate(value)
+      if (normalized) {
+        return normalized
+      }
+
+      const urlFromQueryString = normalizeUrlCandidate(
+        safeDecodeURIComponent(
+          String(value).match(/(?:toPayUrl|checkoutUrl|paymentUrl|url)=([^&\s]+)/i)?.[1] || '',
+        ),
+      )
+      if (urlFromQueryString) {
+        return urlFromQueryString
       }
     }
   }
@@ -106,7 +208,7 @@ function isTelebirrPaid(responseData) {
     '0',
   ])
 
-  for (const payload of getTelebirrPayloadVariants(responseData)) {
+  for (const payload of collectTelebirrPayloadVariants(responseData)) {
     for (const key of statusKeys) {
       const rawStatus = String(payload?.[key] || '').trim().toLowerCase()
       if (rawStatus && paidValues.has(rawStatus)) {
@@ -134,7 +236,7 @@ function getTelebirrTransactionId(responseData) {
     'merchant_order_no',
   ]
 
-  for (const payload of getTelebirrPayloadVariants(responseData)) {
+  for (const payload of collectTelebirrPayloadVariants(responseData)) {
     for (const key of idKeys) {
       const value = payload?.[key]
       if (typeof value === 'string' && value.trim()) {
