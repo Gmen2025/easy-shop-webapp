@@ -28,7 +28,7 @@ import countries from '../../data/countries.json'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
-const isTelebirrEnabled = String(import.meta.env.VITE_ENABLE_TELEBIRR || '').toLowerCase() === 'true'
+const isTelebirrEnabled = false
 const countryOptions = countries
   .map((countryItem) => String(countryItem?.name || '').trim())
   .filter(Boolean)
@@ -275,41 +275,6 @@ function CartPage() {
     return payload
   }
 
-  function extractTelebirrTransactionId(paymentMeta) {
-    const candidates = [
-      paymentMeta?.transactionId,
-      paymentMeta?.txId,
-      paymentMeta?.merchantTransId,
-      paymentMeta?.tradeNo,
-      paymentMeta?.outTradeNo,
-      paymentMeta?.orderId,
-      paymentMeta?.paymentReference,
-      paymentMeta?.reference,
-      paymentMeta?.data?.transactionId,
-      paymentMeta?.data?.tradeNo,
-      paymentMeta?.data?.outTradeNo,
-    ]
-
-    const validId = candidates.find(
-      (value) => typeof value === 'string' && value.trim(),
-    )
-
-    return validId ? validId.trim() : ''
-  }
-
-  function toTelebirrOrderMeta(paymentMeta) {
-    const transactionId = extractTelebirrTransactionId(paymentMeta)
-    const rawStatus = String(
-      paymentMeta?.paymentStatus || paymentMeta?.status || paymentMeta?.transactionStatus || '',
-    ).trim()
-
-    return {
-      provider: 'Telebirr',
-      transactionId,
-      paymentStatus: rawStatus || 'success',
-    }
-  }
-
   function getCheckoutProfilePayload() {
     return {
       phone: phone.trim(),
@@ -341,16 +306,10 @@ function CartPage() {
     let orderPaymentMeta = paymentMeta || bankTransferMeta
 
     if (paymentMethod === 'telebirr') {
-      const transactionId = extractTelebirrTransactionId(paymentMeta)
-      if (!transactionId) {
-        const message =
-          'Telebirr payment could not be verified (missing transaction ID). Order was not placed.'
-        setCardError(message)
-        toast.error(message)
-        return
-      }
-
-      orderPaymentMeta = toTelebirrOrderMeta(paymentMeta)
+      const message = 'Telebirr is currently inactive.'
+      setCardError(message)
+      toast.error(message)
+      return
     }
 
     const action = await dispatch(createOrderWithInventorySync(getOrderPayload(orderPaymentMeta)))
@@ -444,6 +403,13 @@ function CartPage() {
 
     if (paymentMethod === 'bank_transfer') {
       setCardError('Use the bank transfer form below to submit your transfer details.')
+      return
+    }
+
+    if (paymentMethod === 'telebirr') {
+      const message = 'Telebirr is currently inactive.'
+      setCardError(message)
+      toast.error(message)
       return
     }
 
@@ -609,7 +575,7 @@ function CartPage() {
             </Elements>
           ) : null}
 
-          {paymentMethod === 'telebirr' ? (
+          {paymentMethod === 'telebirr' && isTelebirrEnabled ? (
             <TelebirrCheckout
               amount={totals.subtotal}
               onConfirmed={placeOrderAfterPayment}
