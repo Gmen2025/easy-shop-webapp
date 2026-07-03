@@ -50,15 +50,20 @@ export function setSelectedDatabaseName(name) {
 }
 
 export async function apiRequest(path, options = {}) {
+  const { timeoutMs: customTimeoutMs, ...fetchOptions } = options
   const token = localStorage.getItem('authToken')
-  const explicitDatabaseName = options.headers?.['x-database-name']
+  const explicitDatabaseName = fetchOptions.headers?.['x-database-name']
   const databaseName = explicitDatabaseName || getSelectedDatabaseName()
-  const isFormData = options?.body instanceof FormData
+  const isFormData = fetchOptions?.body instanceof FormData
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timeoutMs =
+    Number.isFinite(Number(customTimeoutMs)) && Number(customTimeoutMs) > 0
+      ? Number(customTimeoutMs)
+      : REQUEST_TIMEOUT_MS
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   const headers = {
-    ...(options.headers || {}),
+    ...(fetchOptions.headers || {}),
   }
 
   if (!isFormData && !headers['Content-Type']) {
@@ -76,13 +81,13 @@ export async function apiRequest(path, options = {}) {
   let response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
     })
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again or switch database.', {
+      throw new Error('Request timed out. Please try again.', {
         cause: error,
       })
     }

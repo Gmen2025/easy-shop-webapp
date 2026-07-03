@@ -265,6 +265,7 @@ async function verifyTelebirrPayment(responseData) {
     try {
       const result = await apiRequest(endpoint, {
         method: 'POST',
+        timeoutMs: 90000,
         body: JSON.stringify({
           transactionId,
           payload: responseData,
@@ -303,6 +304,7 @@ function TelebirrCheckout({ amount, onConfirmed, onError }) {
     try {
       const data = await apiRequest('/telebirr/initiate-payment', {
         method: 'POST',
+        timeoutMs: 130000,
         body: JSON.stringify({
           amount: Math.round(amount),
           phoneNumber: phone.replace(/\D/g, ''),
