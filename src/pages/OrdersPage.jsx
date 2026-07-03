@@ -7,6 +7,32 @@ import ErrorState from '../components/ErrorState'
 
 const statusSteps = ['Pending', 'Processing', 'Shipped', 'Delivered']
 
+function getOrderPaymentDetails(order) {
+  const paymentMethod = String(order?.paymentMethod || 'N/A').trim() || 'N/A'
+  const paymentMeta = order?.paymentMeta && typeof order.paymentMeta === 'object'
+    ? order.paymentMeta
+    : {}
+
+  const bankName = String(
+    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || '',
+  ).trim()
+  const senderName = String(
+    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || '',
+  ).trim()
+  const transferReference = String(
+    paymentMeta.transferReference || paymentMeta.reference || paymentMeta.transfer_reference || '',
+  ).trim()
+  const isBankTransfer = /bank\s*transfer/i.test(paymentMethod)
+
+  return {
+    paymentMethod,
+    isBankTransfer,
+    bankName,
+    senderName,
+    transferReference,
+  }
+}
+
 function isObjectIdLike(value) {
   return /^[a-f\d]{24}$/i.test(String(value || ''))
 }
@@ -88,69 +114,79 @@ function OrdersPage() {
         </div>
       ) : (
         <div className="orders-list">
-          {items.map((order) => (
-            <article className="order-card" key={getEntityId(order)}>
-              <div className="order-head">
-                <strong>Order #{getEntityId(order)}</strong>
-                <span>{order.status}</span>
-              </div>
-              <p>
-                User: <strong>{order.user?.name || 'Customer'}</strong>
-              </p>
-              <p>Email: {order.user?.email || order.customerEmail || 'N/A'}</p>
-              <p>Phone: {order.phone || order.user?.phone || 'N/A'}</p>
-              <p>Address 1: {order.shippingAddress1 || 'N/A'}</p>
-              <p>Address 2: {order.shippingAddress2 || 'N/A'}</p>
-              <p>
-                {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
-              </p>
-              <p>
-                Total: <strong>{formatCurrency(order.totalPrice)}</strong>
-              </p>
-              <p>Payment Method: {order.paymentMethod || 'N/A'}</p>
-              {order?.paymentMeta?.transferReference ? (
-                <p>Transfer Ref: {order.paymentMeta.transferReference}</p>
-              ) : null}
-              <p>
-                Date:{' '}
-                {new Date(order.dateOrdered).toLocaleString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
-              </p>
-              <div className="order-items-block">
-                {(order.orderItems || []).map((item) => {
-                  const product = item.product || {}
-                  const quantity = Number(item.quantity || 0)
-                  const price = Number(product.price || 0)
-                  const subtotal = quantity * price
+          {items.map((order) => {
+            const paymentDetails = getOrderPaymentDetails(order)
 
-                  return (
-                    <div className="order-item-row" key={getEntityId(item)}>
-                      <img
-                        src={getPrimaryProductImage(product, 'https://placehold.co/64x64?text=Item')}
-                        alt={product.name || 'Order item'}
-                        width="54"
-                        height="54"
-                      />
-                      <div>
-                        <small>{product.name || 'Unnamed item'}</small>
-                        <small>
-                          Qty: {quantity} | Price: {formatCurrency(price)} | Subtotal:{' '}
-                          {formatCurrency(subtotal)}
-                        </small>
+            return (
+              <article className="order-card" key={getEntityId(order)}>
+                <div className="order-head">
+                  <strong>Order #{getEntityId(order)}</strong>
+                  <span>{order.status}</span>
+                </div>
+                <p>
+                  User: <strong>{order.user?.name || 'Customer'}</strong>
+                </p>
+                <p>Email: {order.user?.email || order.customerEmail || 'N/A'}</p>
+                <p>Phone: {order.phone || order.user?.phone || 'N/A'}</p>
+                <p>Address 1: {order.shippingAddress1 || 'N/A'}</p>
+                <p>Address 2: {order.shippingAddress2 || 'N/A'}</p>
+                <p>
+                  {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
+                </p>
+                <p>
+                  Total: <strong>{formatCurrency(order.totalPrice)}</strong>
+                </p>
+                <p>Payment Method: {paymentDetails.paymentMethod}</p>
+                {paymentDetails.isBankTransfer && paymentDetails.bankName ? (
+                  <p>Bank Name: {paymentDetails.bankName}</p>
+                ) : null}
+                {paymentDetails.isBankTransfer && paymentDetails.senderName ? (
+                  <p>Sender Name: {paymentDetails.senderName}</p>
+                ) : null}
+                {paymentDetails.isBankTransfer && paymentDetails.transferReference ? (
+                  <p>Transfer Ref: {paymentDetails.transferReference}</p>
+                ) : null}
+                <p>
+                  Date:{' '}
+                  {new Date(order.dateOrdered).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </p>
+                <div className="order-items-block">
+                  {(order.orderItems || []).map((item) => {
+                    const product = item.product || {}
+                    const quantity = Number(item.quantity || 0)
+                    const price = Number(product.price || 0)
+                    const subtotal = quantity * price
+
+                    return (
+                      <div className="order-item-row" key={getEntityId(item)}>
+                        <img
+                          src={getPrimaryProductImage(product, 'https://placehold.co/64x64?text=Item')}
+                          alt={product.name || 'Order item'}
+                          width="54"
+                          height="54"
+                        />
+                        <div>
+                          <small>{product.name || 'Unnamed item'}</small>
+                          <small>
+                            Qty: {quantity} | Price: {formatCurrency(price)} | Subtotal:{' '}
+                            {formatCurrency(subtotal)}
+                          </small>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <StatusTracker status={order.status} />
-            </article>
-          ))}
+                    )
+                  })}
+                </div>
+                <StatusTracker status={order.status} />
+              </article>
+            )
+          })}
         </div>
       )}
     </section>

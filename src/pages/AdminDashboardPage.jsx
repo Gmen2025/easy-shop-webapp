@@ -37,6 +37,32 @@ const defaultProduct = {
 }
 const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 
+function getOrderPaymentDetails(order) {
+  const paymentMethod = String(order?.paymentMethod || 'N/A').trim() || 'N/A'
+  const paymentMeta = order?.paymentMeta && typeof order.paymentMeta === 'object'
+    ? order.paymentMeta
+    : {}
+
+  const bankName = String(
+    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || '',
+  ).trim()
+  const senderName = String(
+    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || '',
+  ).trim()
+  const transferReference = String(
+    paymentMeta.transferReference || paymentMeta.reference || paymentMeta.transfer_reference || '',
+  ).trim()
+  const isBankTransfer = /bank\s*transfer/i.test(paymentMethod)
+
+  return {
+    paymentMethod,
+    isBankTransfer,
+    bankName,
+    senderName,
+    transferReference,
+  }
+}
+
 function AdminDashboardPage() {
   const dispatch = useDispatch()
   const { categories, products, orders, loading, saving, error, message } = useSelector(
@@ -567,6 +593,7 @@ function AdminDashboardPage() {
           {orders.map((order) => {
             const orderId = order.id || order._id
             const orderUser = order.user
+            const paymentDetails = getOrderPaymentDetails(order)
             const customerName =
               typeof orderUser === 'object' ? orderUser?.name || 'Customer' : 'Customer'
             const customerEmail =
@@ -601,6 +628,16 @@ function AdminDashboardPage() {
                     })}
                   </small>
                   <small>Subtotal: {formatCurrency(order.totalPrice || 0)}</small>
+                  <small>Payment Method: {paymentDetails.paymentMethod}</small>
+                  {paymentDetails.isBankTransfer && paymentDetails.bankName ? (
+                    <small>Bank Name: {paymentDetails.bankName}</small>
+                  ) : null}
+                  {paymentDetails.isBankTransfer && paymentDetails.senderName ? (
+                    <small>Sender Name: {paymentDetails.senderName}</small>
+                  ) : null}
+                  {paymentDetails.isBankTransfer && paymentDetails.transferReference ? (
+                    <small>Transfer Ref: {paymentDetails.transferReference}</small>
+                  ) : null}
                   <div className="order-items-block">
                     {orderItems.map((item) => {
                       const itemId = item.id || item._id
