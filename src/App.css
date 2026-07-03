@@ -319,14 +319,16 @@
 }
 
 .bank-account-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
 }
 
 .bank-account-card {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.2rem;
-  padding: 0.75rem;
+  padding: 0.9rem;
   border: 1px solid #d9d9d9;
   border-radius: 10px;
   background: #fffdf9;
