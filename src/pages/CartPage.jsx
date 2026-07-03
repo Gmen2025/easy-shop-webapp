@@ -515,8 +515,10 @@ function CartPage() {
           >
             {isEthio ? <option value="cod">Cash On Delivery</option> : null}
             {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
-            {isEthio && isTelebirrEnabled ? (
-              <option value="telebirr">Telebirr</option>
+            {isEthio ? (
+              <option value="telebirr" disabled={!isTelebirrEnabled}>
+                {isTelebirrEnabled ? 'Telebirr' : 'Telebirr (Inactive)'}
+              </option>
             ) : (
               <option value="card">Stripe Card</option>
             )}
