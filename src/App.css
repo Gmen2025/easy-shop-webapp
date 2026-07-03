@@ -317,3 +317,21 @@
   color: var(--muted);
   margin: 0;
 }
+
+.bank-account-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bank-account-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  background: #fffdf9;
+}
+
+.bank-account-card small {
+  color: var(--muted);
+}

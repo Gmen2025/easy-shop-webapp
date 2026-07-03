@@ -1,29 +1,97 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { apiRequest } from '../api/client'
 
-const ETHIOPIAN_BANKS = [
-  'Commercial Bank of Ethiopia (CBE)',
-  'Awash Bank',
-  'Dashen Bank',
-  'Bank of Abyssinia',
-  'Cooperative Bank of Oromia',
-  'Nib International Bank',
-  'Wegagen Bank',
-  'Zemen Bank',
-  'Abyssinia Bank',
-]
+function toBankId(bank) {
+  return String(bank?._id || bank?.id || '').trim()
+}
+
+function normalizeBankAccounts(payload) {
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.bankAccounts)
+      ? payload.bankAccounts
+      : Array.isArray(payload?.data?.bankAccounts)
+        ? payload.data.bankAccounts
+        : []
+
+  return list
+    .filter((bank) => bank && typeof bank === 'object')
+    .map((bank) => ({
+      _id: toBankId(bank),
+      bankName: String(bank?.bankName || bank?.bank || '').trim(),
+      accountNumber: String(bank?.accountNumber || '').trim(),
+      accountHolderName: String(bank?.accountHolderName || '').trim(),
+      bankCode: String(bank?.bankCode || '').trim(),
+      additionalInfo: String(bank?.additionalInfo || '').trim(),
+    }))
+    .filter((bank) => bank._id && bank.bankName && bank.accountNumber)
+}
 
 function BankTransferCheckout({ amount, onConfirmed, onError }) {
-  const [bankName, setBankName] = useState(ETHIOPIAN_BANKS[0])
+  const [bankAccounts, setBankAccounts] = useState([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(true)
+  const [bankAccountsError, setBankAccountsError] = useState('')
+  const [selectedBankId, setSelectedBankId] = useState('')
   const [transferReference, setTransferReference] = useState('')
   const [senderName, setSenderName] = useState('')
 
   const roundedAmount = useMemo(() => Math.round(Number(amount || 0)), [amount])
+  const selectedBank = useMemo(
+    () => bankAccounts.find((bank) => toBankId(bank) === selectedBankId) || null,
+    [bankAccounts, selectedBankId],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadBankAccounts() {
+      setBankAccountsLoading(true)
+      setBankAccountsError('')
+
+      try {
+        const payload = await apiRequest('/settings/bank-account')
+        if (cancelled) {
+          return
+        }
+
+        const normalized = normalizeBankAccounts(payload)
+        setBankAccounts(normalized)
+        setSelectedBankId((current) => current || toBankId(normalized[0]))
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        setBankAccounts([])
+        setSelectedBankId('')
+        setBankAccountsError(
+          error?.message || 'Unable to load bank accounts right now. Please try again.',
+        )
+      } finally {
+        if (!cancelled) {
+          setBankAccountsLoading(false)
+        }
+      }
+    }
+
+    loadBankAccounts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleConfirm() {
     const normalizedReference = transferReference.trim()
     const normalizedSenderName = senderName.trim()
+    const selected = selectedBank
 
-    if (!bankName.trim()) {
+    if (!selected) {
+      onError?.('No bank account is available right now. Please contact support.')
+      return
+    }
+
+    if (!selected.bankName) {
       onError?.('Please choose a bank for your transfer.')
       return
     }
@@ -39,7 +107,10 @@ function BankTransferCheckout({ amount, onConfirmed, onError }) {
     }
 
     onConfirmed?.({
-      bankName: bankName.trim(),
+      bankAccountId: selected._id,
+      bankName: selected.bankName,
+      accountNumber: selected.accountNumber,
+      accountHolderName: selected.accountHolderName,
       transferReference: normalizedReference,
       senderName: normalizedSenderName,
       amount: roundedAmount,
@@ -50,18 +121,37 @@ function BankTransferCheckout({ amount, onConfirmed, onError }) {
   return (
     <div className="bank-transfer-form">
       <p className="section-note">
-        Transfer the exact amount below using your preferred Ethiopian bank, then submit your transfer details.
+        Transfer the exact amount below to one of the official accounts, then submit your transfer details.
       </p>
+
+      {bankAccountsLoading ? <p className="section-note">Loading bank accounts...</p> : null}
+      {bankAccountsError ? <p className="form-error">{bankAccountsError}</p> : null}
+
+      {bankAccounts.length ? (
+        <div className="bank-account-list">
+          {bankAccounts.map((bank) => (
+            <div key={bank._id} className="bank-account-card">
+              <strong>{bank.bankName}</strong>
+              <small>Account Number: {bank.accountNumber}</small>
+              <small>Account Holder: {bank.accountHolderName || 'N/A'}</small>
+              {bank.bankCode ? <small>Bank Code: {bank.bankCode}</small> : null}
+              {bank.additionalInfo ? <small>{bank.additionalInfo}</small> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <label htmlFor="bank-transfer-bank">Bank</label>
       <select
         id="bank-transfer-bank"
-        value={bankName}
-        onChange={(event) => setBankName(event.target.value)}
+        value={selectedBankId}
+        onChange={(event) => setSelectedBankId(event.target.value)}
+        disabled={!bankAccounts.length || bankAccountsLoading}
       >
-        {ETHIOPIAN_BANKS.map((bank) => (
-          <option key={bank} value={bank}>
-            {bank}
+        {!bankAccounts.length ? <option value="">No active bank account available</option> : null}
+        {bankAccounts.map((bank) => (
+          <option key={bank._id} value={bank._id}>
+            {bank.bankName} - {bank.accountNumber}
           </option>
         ))}
       </select>

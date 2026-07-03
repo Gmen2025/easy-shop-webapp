@@ -7,7 +7,9 @@ import {
   deleteCategoryAdmin,
   deleteOrderAdmin,
   deleteProductAdmin,
+  fetchBankAccountsAdmin,
   fetchAdminCatalog,
+  manageBankAccountAdmin,
   updateOrderStatusAdmin,
   updateCategoryAdmin,
   updateProductAdmin,
@@ -35,6 +37,15 @@ const defaultProduct = {
   countInStock: '',
   isFeatured: false,
 }
+const defaultBankAccountForm = {
+  _id: '',
+  bankName: '',
+  accountNumber: '',
+  accountHolderName: '',
+  bankCode: '',
+  additionalInfo: '',
+  isActive: true,
+}
 const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 
 function getOrderPaymentDetails(order) {
@@ -44,13 +55,17 @@ function getOrderPaymentDetails(order) {
     : {}
 
   const bankName = String(
-    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || '',
+    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || order?.bankName || '',
   ).trim()
   const senderName = String(
-    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || '',
+    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || order?.senderName || '',
   ).trim()
   const transferReference = String(
-    paymentMeta.transferReference || paymentMeta.reference || paymentMeta.transfer_reference || '',
+    paymentMeta.transferReference ||
+    paymentMeta.reference ||
+    paymentMeta.transfer_reference ||
+    order?.transferReference ||
+    '',
   ).trim()
   const isBankTransfer = /bank\s*transfer/i.test(paymentMethod)
 
@@ -65,7 +80,7 @@ function getOrderPaymentDetails(order) {
 
 function AdminDashboardPage() {
   const dispatch = useDispatch()
-  const { categories, products, orders, loading, saving, error, message } = useSelector(
+  const { categories, products, orders, bankAccounts, loading, saving, error, message } = useSelector(
     (state) => state.admin,
   )
   const {
@@ -83,6 +98,8 @@ function AdminDashboardPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
   const [minimumStockThreshold, setMinimumStockThreshold] = useState(() => getLowStockThreshold())
+  const [bankAccountForm, setBankAccountForm] = useState(defaultBankAccountForm)
+  const [bankAccountEditId, setBankAccountEditId] = useState('')
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
@@ -90,6 +107,10 @@ function AdminDashboardPage() {
 
   useEffect(() => {
     dispatch(fetchMaintenanceMode())
+  }, [dispatch])
+
+  useEffect(() => {
+    dispatch(fetchBankAccountsAdmin())
   }, [dispatch])
 
   const effectiveProductCategory =
@@ -243,6 +264,59 @@ function AdminDashboardPage() {
         image: images[0] || '',
       }
     })
+  }
+
+  function populateBankAccountForm(bank) {
+    setBankAccountEditId(bank?._id || bank?.id || '')
+    setBankAccountForm({
+      _id: bank?._id || bank?.id || '',
+      bankName: bank?.bankName || '',
+      accountNumber: bank?.accountNumber || '',
+      accountHolderName: bank?.accountHolderName || '',
+      bankCode: bank?.bankCode || '',
+      additionalInfo: bank?.additionalInfo || '',
+      isActive: bank?.isActive !== false,
+    })
+  }
+
+  function resetBankAccountForm() {
+    setBankAccountEditId('')
+    setBankAccountForm(defaultBankAccountForm)
+  }
+
+  async function submitBankAccount(event) {
+    event.preventDefault()
+    dispatch(clearAdminState())
+
+    const action = bankAccountEditId ? 'update' : 'add'
+    const payload = {
+      ...bankAccountForm,
+      _id: bankAccountEditId || undefined,
+      bankName: String(bankAccountForm.bankName || '').trim(),
+      accountNumber: String(bankAccountForm.accountNumber || '').trim(),
+      accountHolderName: String(bankAccountForm.accountHolderName || '').trim(),
+      bankCode: String(bankAccountForm.bankCode || '').trim(),
+      additionalInfo: String(bankAccountForm.additionalInfo || '').trim(),
+    }
+
+    const resultAction = await dispatch(manageBankAccountAdmin({ action, bankAccount: payload }))
+    if (manageBankAccountAdmin.fulfilled.match(resultAction)) {
+      resetBankAccountForm()
+    }
+  }
+
+  function deleteBankAccount(bankAccountId) {
+    if (!bankAccountId) {
+      return
+    }
+
+    dispatch(clearAdminState())
+    dispatch(
+      manageBankAccountAdmin({
+        action: 'delete',
+        bankAccount: { _id: bankAccountId },
+      }),
+    )
   }
 
   if (loading) {
@@ -581,6 +655,128 @@ function AdminDashboardPage() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="panel admin-grid">
+        <form className="admin-form" onSubmit={submitBankAccount}>
+          <h3>{bankAccountEditId ? 'Update Bank Account' : 'Add Bank Account'}</h3>
+          <input
+            value={bankAccountForm.bankName}
+            onChange={(event) =>
+              setBankAccountForm((current) => ({ ...current, bankName: event.target.value }))
+            }
+            placeholder="Bank Name"
+            required
+          />
+          <input
+            value={bankAccountForm.accountNumber}
+            onChange={(event) =>
+              setBankAccountForm((current) => ({ ...current, accountNumber: event.target.value }))
+            }
+            placeholder="Account Number"
+            required
+          />
+          <input
+            value={bankAccountForm.accountHolderName}
+            onChange={(event) =>
+              setBankAccountForm((current) => ({ ...current, accountHolderName: event.target.value }))
+            }
+            placeholder="Account Holder Name"
+            required
+          />
+          <input
+            value={bankAccountForm.bankCode}
+            onChange={(event) =>
+              setBankAccountForm((current) => ({ ...current, bankCode: event.target.value }))
+            }
+            placeholder="Bank Code (optional)"
+          />
+          <textarea
+            value={bankAccountForm.additionalInfo}
+            onChange={(event) =>
+              setBankAccountForm((current) => ({ ...current, additionalInfo: event.target.value }))
+            }
+            placeholder="Additional Info (optional)"
+            rows={2}
+          />
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={bankAccountForm.isActive}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, isActive: event.target.checked }))
+              }
+            />
+            Active
+          </label>
+          <div className="inline-actions">
+            <button type="submit" className="solid-button" disabled={saving}>
+              {bankAccountEditId ? 'Save Account' : 'Add Account'}
+            </button>
+            {bankAccountEditId ? (
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={resetBankAccountForm}
+                disabled={saving}
+              >
+                Cancel Edit
+              </button>
+            ) : null}
+          </div>
+        </form>
+
+        <div className="admin-list">
+          <div className="panel-header">
+            <h3>Bank Accounts</h3>
+            <span>{bankAccounts.length} active</span>
+          </div>
+          <p className="section-note">
+            These accounts are shown to customers during bank transfer checkout.
+          </p>
+          <div className="inline-actions">
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => dispatch(fetchBankAccountsAdmin())}
+              disabled={saving}
+            >
+              Refresh
+            </button>
+          </div>
+          {bankAccounts.map((bank) => (
+            <article key={bank._id || bank.id} className="admin-item">
+              <div>
+                <strong>{bank.bankName || 'N/A'}</strong>
+                <small>Account Number: {bank.accountNumber || 'N/A'}</small>
+                <small>Account Holder: {bank.accountHolderName || 'N/A'}</small>
+                {bank.bankCode ? <small>Bank Code: {bank.bankCode}</small> : null}
+                {bank.additionalInfo ? <small>{bank.additionalInfo}</small> : null}
+              </div>
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => populateBankAccountForm(bank)}
+                  disabled={saving}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => deleteBankAccount(bank._id || bank.id)}
+                  disabled={saving}
+                >
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+          {bankAccounts.length === 0 ? (
+            <p className="section-note">No active bank accounts are configured yet.</p>
+          ) : null}
         </div>
       </section>
 

@@ -3,6 +3,18 @@ import { apiRequest } from '../../api/client'
 
 const toId = (entity) => entity?.id || entity?._id
 
+const normalizeBankAccounts = (payload) => {
+  const accounts = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.bankAccounts)
+      ? payload.bankAccounts
+      : Array.isArray(payload?.data?.bankAccounts)
+        ? payload.data.bankAccounts
+        : []
+
+  return accounts.filter((bank) => bank && typeof bank === 'object')
+}
+
 const normalizeProductInput = (payload) => {
   const normalizedImages = [
     ...(Array.isArray(payload.images) ? payload.images : []),
@@ -24,12 +36,41 @@ const normalizeProductInput = (payload) => {
 export const fetchAdminCatalog = createAsyncThunk(
   'admin/fetchAdminCatalog',
   async () => {
-    const [categories, products, orders] = await Promise.all([
+    const [categories, products, orders, bankAccountsResponse] = await Promise.all([
       apiRequest('/categories'),
       apiRequest('/products'),
       apiRequest('/orders'),
+      apiRequest('/settings/bank-account'),
     ])
-    return { categories, products, orders }
+    return {
+      categories,
+      products,
+      orders,
+      bankAccounts: normalizeBankAccounts(bankAccountsResponse),
+    }
+  },
+)
+
+export const fetchBankAccountsAdmin = createAsyncThunk(
+  'admin/fetchBankAccountsAdmin',
+  async () => {
+    const response = await apiRequest('/settings/bank-account')
+    return normalizeBankAccounts(response)
+  },
+)
+
+export const manageBankAccountAdmin = createAsyncThunk(
+  'admin/manageBankAccountAdmin',
+  async ({ action, bankAccount }) => {
+    const response = await apiRequest('/settings/bank-account', {
+      method: 'PUT',
+      body: JSON.stringify({ action, bankAccount }),
+    })
+
+    return {
+      message: response?.message || `Bank account ${action}ed successfully.`,
+      bankAccounts: normalizeBankAccounts(response),
+    }
   },
 )
 
@@ -124,6 +165,7 @@ const adminSlice = createSlice({
     categories: [],
     products: [],
     orders: [],
+    bankAccounts: [],
     loading: false,
     saving: false,
     error: null,
@@ -146,10 +188,20 @@ const adminSlice = createSlice({
         state.categories = action.payload.categories
         state.products = action.payload.products
         state.orders = action.payload.orders
+        state.bankAccounts = action.payload.bankAccounts
       })
       .addCase(fetchAdminCatalog.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message
+      })
+      .addCase(fetchBankAccountsAdmin.fulfilled, (state, action) => {
+        state.saving = false
+        state.bankAccounts = action.payload
+      })
+      .addCase(manageBankAccountAdmin.fulfilled, (state, action) => {
+        state.saving = false
+        state.bankAccounts = action.payload.bankAccounts
+        state.message = action.payload.message
       })
       .addCase(createCategoryAdmin.fulfilled, (state, action) => {
         state.saving = false

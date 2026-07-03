@@ -14,13 +14,17 @@ function getOrderPaymentDetails(order) {
     : {}
 
   const bankName = String(
-    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || '',
+    paymentMeta.bankName || paymentMeta.bank || paymentMeta.bank_name || order?.bankName || '',
   ).trim()
   const senderName = String(
-    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || '',
+    paymentMeta.senderName || paymentMeta.sender || paymentMeta.sender_name || order?.senderName || '',
   ).trim()
   const transferReference = String(
-    paymentMeta.transferReference || paymentMeta.reference || paymentMeta.transfer_reference || '',
+    paymentMeta.transferReference ||
+    paymentMeta.reference ||
+    paymentMeta.transfer_reference ||
+    order?.transferReference ||
+    '',
   ).trim()
   const isBankTransfer = /bank\s*transfer/i.test(paymentMethod)
 
