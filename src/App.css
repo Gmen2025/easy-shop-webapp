@@ -358,6 +358,16 @@
   font-size: 0.98rem;
 }
 
+.bank-account-primary {
+  display: grid;
+  gap: 0;
+}
+
+.bank-account-primary strong,
+.bank-account-primary small {
+  margin: 0;
+}
+
 .bank-account-card small {
   color: var(--muted);
   line-height: 1.35;

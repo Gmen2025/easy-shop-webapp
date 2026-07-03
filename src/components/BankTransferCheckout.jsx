@@ -136,13 +136,15 @@ function BankTransferCheckout({ amount, onConfirmed, onError }) {
               className={`bank-account-card ${selectedBankId === bank._id ? 'selected' : ''}`}
               onClick={() => setSelectedBankId(bank._id)}
             >
-              <strong>{bank.bankName}</strong>
-              <small>
-                <span>Account Number:</span> {bank.accountNumber}
-              </small>
-              <small>
-                <span>Account Holder:</span> {bank.accountHolderName || 'N/A'}
-              </small>
+              <div className="bank-account-primary">
+                <strong>{bank.bankName}</strong>
+                <small>
+                  <span>Account Number:</span> {bank.accountNumber}
+                </small>
+                <small>
+                  <span>Account Holder:</span> {bank.accountHolderName || 'N/A'}
+                </small>
+              </div>
               {bank.bankCode ? (
                 <small>
                   <span>Bank Code:</span> {bank.bankCode}
