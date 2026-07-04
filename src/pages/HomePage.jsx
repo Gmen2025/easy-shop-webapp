@@ -28,10 +28,10 @@ function HomePage() {
     <section className="page-stack">
       <section className="hero-panel">
         <p className="eyebrow">Fresh arrivals every week</p>
-        <h1>Shop smarter with your own API-powered storefront.</h1>
+        <h1>Shop smarter and browse easier with our storefront.</h1>
         <p>
-          This website uses Easy Shop backend endpoints for products, categories,
-          authentication, and orders.
+          This website is designed for products, categories,
+          and cart management. You can explore the products, filter by category, and add items to your cart.
         </p>
       </section>
 
