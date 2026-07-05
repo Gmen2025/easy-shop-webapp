@@ -7,6 +7,18 @@ import { fetchProducts } from '../features/products/productsSlice'
 import { fetchCategories } from '../features/categories/categoriesSlice'
 import { getEntityId } from '../utils/format'
 
+const FEATURED_GROUP_SIZE = 4
+
+function chunkProducts(products, size) {
+  const groups = []
+
+  for (let index = 0; index < products.length; index += size) {
+    groups.push(products.slice(index, index + size))
+  }
+
+  return groups
+}
+
 function HomePage() {
   const dispatch = useDispatch()
   const [categoryId, setCategoryId] = useState('')
@@ -19,21 +31,61 @@ function HomePage() {
   }, [dispatch])
 
   useEffect(() => {
-    dispatch(fetchProducts({ categoryId }))
-  }, [dispatch, categoryId])
+    dispatch(fetchProducts())
+  }, [dispatch])
 
-  const productCount = useMemo(() => products.length, [products])
+  const filteredProducts = useMemo(() => {
+    if (!categoryId) {
+      return products
+    }
+
+    return products.filter((product) => {
+      const productCategoryId = String(product?.category?.id || product?.category?._id || '')
+      return productCategoryId === categoryId
+    })
+  }, [products, categoryId])
+
+  const featuredProducts = useMemo(
+    () => products.filter((product) => Boolean(product?.isFeatured)),
+    [products],
+  )
+
+  const featuredProductGroups = useMemo(
+    () => chunkProducts(featuredProducts, FEATURED_GROUP_SIZE),
+    [featuredProducts],
+  )
+
+  const productCount = useMemo(() => filteredProducts.length, [filteredProducts])
 
   return (
     <section className="page-stack">
-      <section className="hero-panel">
-        <p className="eyebrow">Fresh arrivals every week</p>
-        <h1>Shop smarter and browse easier with our storefront.</h1>
-        <p>
-          This website is designed for products, categories,
-          and cart management. You can explore the products, filter by category, and add items to your cart.
-        </p>
-      </section>
+      {featuredProductGroups.length > 0 ? (
+        <section className="panel featured-products-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Featured products</p>
+              <h2>Highlighted picks worth checking first</h2>
+            </div>
+            <span>{featuredProducts.length} featured</span>
+          </div>
+
+          <div className="featured-rail" aria-label="Featured products">
+            {featuredProductGroups.map((group, index) => (
+              <article key={`featured-group-${index + 1}`} className="featured-group-card">
+                <div className="featured-group-header">
+                  <strong>Featured set {index + 1}</strong>
+                  <span>{group.length} items</span>
+                </div>
+                <div className="featured-group-grid">
+                  {group.map((product) => (
+                    <ProductCard key={getEntityId(product)} product={product} />
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel">
         <div className="panel-header">
@@ -61,13 +113,13 @@ function HomePage() {
         {error ? (
           <ErrorState
             message={error}
-            onRetry={() => dispatch(fetchProducts({ categoryId }))}
+            onRetry={() => dispatch(fetchProducts())}
           />
         ) : null}
 
         {!error ? (
           <div className="products-grid">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <ProductCard key={getEntityId(product)} product={product} />
             ))}
           </div>
