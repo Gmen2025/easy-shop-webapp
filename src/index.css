@@ -172,8 +172,14 @@ button {
 .filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.filters input[type='search'] {
+  flex: 1 1 260px;
+  min-width: 220px;
 }
 
 .products-grid {

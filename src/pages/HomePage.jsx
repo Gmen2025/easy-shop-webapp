@@ -22,6 +22,7 @@ function chunkProducts(products, size) {
 function HomePage() {
   const dispatch = useDispatch()
   const [categoryId, setCategoryId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { items: products, loading, error } = useSelector((state) => state.products)
   const categories = useSelector((state) => state.categories.items)
@@ -45,6 +46,27 @@ function HomePage() {
     })
   }, [products, categoryId])
 
+  const visibleProducts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return filteredProducts
+    }
+
+    return filteredProducts.filter((product) => {
+      const searchTarget = [
+        product?.name,
+        product?.brand,
+        product?.description,
+        product?.richDescription,
+      ]
+        .map((value) => String(value || '').toLowerCase())
+        .join(' ')
+
+      return searchTarget.includes(normalizedQuery)
+    })
+  }, [filteredProducts, searchQuery])
+
   const featuredProducts = useMemo(
     () => products.filter((product) => Boolean(product?.isFeatured)),
     [products],
@@ -55,7 +77,7 @@ function HomePage() {
     [featuredProducts],
   )
 
-  const productCount = useMemo(() => filteredProducts.length, [filteredProducts])
+  const productCount = useMemo(() => visibleProducts.length, [visibleProducts])
 
   return (
     <section className="page-stack">
@@ -106,6 +128,15 @@ function HomePage() {
               </option>
             ))}
           </select>
+
+          <label htmlFor="home-product-search">Search</label>
+          <input
+            id="home-product-search"
+            type="search"
+            value={searchQuery}
+            placeholder="Search products by name, brand, description"
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
         </div>
 
         {loading && products.length === 0 ? <LoadingState label="Loading products..." /> : null}
@@ -119,10 +150,14 @@ function HomePage() {
 
         {!error ? (
           <div className="products-grid">
-            {filteredProducts.map((product) => (
+            {visibleProducts.map((product) => (
               <ProductCard key={getEntityId(product)} product={product} />
             ))}
           </div>
+        ) : null}
+
+        {!error && !loading && visibleProducts.length === 0 ? (
+          <p className="section-note">No products match your category and search filters.</p>
         ) : null}
       </section>
     </section>
