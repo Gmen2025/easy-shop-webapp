@@ -6,6 +6,7 @@ import ErrorState from '../components/ErrorState'
 import { fetchProducts } from '../features/products/productsSlice'
 import { fetchCategories } from '../features/categories/categoriesSlice'
 import { getEntityId } from '../utils/format'
+import ProductImage from '../components/ProductImage'
 
 const FEATURED_GROUP_SIZE = 4
 
@@ -100,7 +101,7 @@ function HomePage() {
                 </div>
                 <div className="featured-group-grid">
                   {group.map((product) => (
-                    <ProductCard key={getEntityId(product)} product={product} />
+                    <ProductImage key={getEntityId(product)} product={product} />
                   ))}
                 </div>
               </article>
