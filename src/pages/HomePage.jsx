@@ -7,6 +7,7 @@ import { fetchProducts } from '../features/products/productsSlice'
 import { fetchCategories } from '../features/categories/categoriesSlice'
 import { getEntityId } from '../utils/format'
 import ProductImage from '../components/ProductImage'
+import heroGraphic from '../assets/hero.png'
 
 const FEATURED_GROUP_SIZE = 4
 
@@ -24,6 +25,8 @@ function HomePage() {
   const dispatch = useDispatch()
   const [categoryId, setCategoryId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const homeGeneralGraphicUrl = String(import.meta.env.VITE_HOME_GENERAL_GRAPHIC_URL || '').trim()
+  const homeGraphicSource = homeGeneralGraphicUrl || heroGraphic
 
   const { items: products, loading, error } = useSelector((state) => state.products)
   const categories = useSelector((state) => state.categories.items)
@@ -82,6 +85,23 @@ function HomePage() {
 
   return (
     <section className="page-stack">
+      <section className="panel home-graphic-panel" aria-label="General collection graphic">
+        <img
+          src={homeGraphicSource}
+          alt="AdduGenetE Shop featured collection graphic"
+          className="home-graphic-image"
+          loading="lazy"
+          onError={(event) => {
+            if (event.currentTarget.dataset.fallbackApplied === 'true') {
+              return
+            }
+
+            event.currentTarget.dataset.fallbackApplied = 'true'
+            event.currentTarget.src = heroGraphic
+          }}
+        />
+      </section>
+
       {featuredProductGroups.length > 0 ? (
         <section className="panel featured-products-panel">
           <div className="panel-header">

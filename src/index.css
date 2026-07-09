@@ -252,6 +252,19 @@ button {
   overflow: hidden;
 }
 
+.home-graphic-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.home-graphic-image {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
 .featured-rail {
   display: grid;
   grid-auto-flow: column;
@@ -555,6 +568,10 @@ button {
 
   .featured-rail {
     grid-auto-columns: minmax(280px, 92%);
+  }
+
+  .home-graphic-image {
+    max-height: 240px;
   }
 
   .featured-group-grid {

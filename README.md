@@ -68,6 +68,7 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 VITE_ENABLE_TELEBIRR=false
 VITE_MAINTENANCE_MODE_PATH=/settings/maintenance
 VITE_MAINTENANCE_MODE_METHOD=PUT
+VITE_HOME_GENERAL_GRAPHIC_URL=
 ```
 
 Notes:
@@ -81,6 +82,8 @@ Notes:
 - Telebirr checkout is live-only: mock Telebirr responses are rejected and orders will not be placed.
 - `VITE_MAINTENANCE_MODE_PATH` defaults to `/settings/maintenance` and should match backend route.
 - `VITE_MAINTENANCE_MODE_METHOD` defaults to `PUT` for admin updates.
+- `VITE_HOME_GENERAL_GRAPHIC_URL` controls the Home page graphic shown above the featured products section.
+- If `VITE_HOME_GENERAL_GRAPHIC_URL` is missing or fails to load, Home page falls back to `src/assets/hero.png`.
 
 ## Available Scripts
 
