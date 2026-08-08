@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
@@ -9,6 +10,8 @@ import {
 
 function Header() {
   const dispatch = useDispatch()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const headerRef = useRef(null)
   const user = useSelector((state) => state.auth.user)
   const cartCount = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -16,67 +19,125 @@ function Header() {
 
   const selectedDb = getSelectedDatabaseName()
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (!isMenuOpen) {
+        return
+      }
+
+      if (!headerRef.current?.contains(event.target)) {
+        setIsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [isMenuOpen])
+
+  function closeMenu() {
+    setIsMenuOpen(false)
+  }
+
   return (
-    <header className="topbar">
-      <div className="brand-wrap">
-        <Link to="/" className="brand">
-          Addu Genet Easy Shop
-        </Link>
-        {/* <p className="tagline">React + Redux storefront for Easy Shop API</p> */}
-      </div>
-
-      <nav className="nav-links" aria-label="Main">
-        <NavLink to="/" end>
-          Shop
-        </NavLink>
-        {user ? <NavLink to="/profile">Profile</NavLink> : null}
-        <NavLink to="/orders">My Orders</NavLink>
-        <NavLink to="/cart">Cart ({cartCount})</NavLink>
-        {user?.isAdmin ? <NavLink to="/admin">Admin</NavLink> : null}
-      </nav>
-
-      <div className="header-controls">
-        <select
-          className="db-select"
-          value={selectedDb}
-          onChange={(event) => {
-            const nextDatabase = event.target.value
-            if (nextDatabase === selectedDb) {
-              return
-            }
-
-            setSelectedDatabaseName(nextDatabase)
-            dispatch(switchDatabase())
-            window.location.reload()
-          }}
-          aria-label="Select database"
+    <header className="topbar" ref={headerRef}>
+      <div className="topbar-main">
+        <button
+          type="button"
+          className="menu-toggle"
+          aria-label="Toggle menu"
+          aria-expanded={isMenuOpen}
+          aria-controls="header-menu"
+          onClick={() => setIsMenuOpen((prev) => !prev)}
         >
-          <option value="">Default DB</option>
-          <option value="E_Shopping">Ethio</option>
-          <option value="E_ShopUSA">USA</option>
-        </select>
+          <span />
+          <span />
+          <span />
+        </button>
 
-        {user ? (
-          <>
-            <span className="hello">Hi, {user.name}</span>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => dispatch(logout())}
-            >
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
+        <div className="header-auth">
+          {user ? (
+            <>
+              <span className="hello">Hi, {user.name}</span>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => dispatch(logout())}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
             <Link className="ghost-button" to="/login">
               Login
             </Link>
-            <Link className="solid-button" to="/register">
+          )}
+        </div>
+      </div>
+
+      <div
+        id="header-menu"
+        className={`header-menu${isMenuOpen ? ' open' : ''}`}
+      >
+        <div className="brand-wrap">
+          <Link to="/" className="brand" onClick={closeMenu}>
+            Addu Genet Easy Shop
+          </Link>
+        </div>
+
+        <nav className="nav-links" aria-label="Main">
+          <NavLink to="/" end onClick={closeMenu}>
+            Shop
+          </NavLink>
+          {user ? (
+            <NavLink to="/profile" onClick={closeMenu}>
+              Profile
+            </NavLink>
+          ) : null}
+          <NavLink to="/orders" onClick={closeMenu}>
+            My Orders
+          </NavLink>
+          <NavLink to="/cart" onClick={closeMenu}>
+            Cart ({cartCount})
+          </NavLink>
+          {user?.isAdmin ? (
+            <NavLink to="/admin" onClick={closeMenu}>
+              Admin
+            </NavLink>
+          ) : null}
+        </nav>
+
+        <div className="header-controls">
+          <select
+            className="db-select"
+            value={selectedDb}
+            onChange={(event) => {
+              const nextDatabase = event.target.value
+              if (nextDatabase === selectedDb) {
+                return
+              }
+
+              setSelectedDatabaseName(nextDatabase)
+              dispatch(switchDatabase())
+              window.location.reload()
+            }}
+            aria-label="Select database"
+          >
+            <option value="">Default DB</option>
+            <option value="E_Shopping">Ethio</option>
+            <option value="E_ShopUSA">USA</option>
+          </select>
+
+          {user ? null : (
+            <Link className="solid-button" to="/register" onClick={closeMenu}>
               Create Account
             </Link>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </header>
   )
