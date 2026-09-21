@@ -78,6 +78,15 @@ function getOrderPaymentDetails(order) {
   }
 }
 
+function getDeliveryModeLabel(deliveryMode) {
+  const labels = {
+    SAME_DAY: 'Same Day',
+    NEXT_DAY: 'Next Day',
+    SCHEDULED: 'Scheduled',
+  }
+  return labels[deliveryMode] || 'Same Day'
+}
+
 function AdminDashboardPage() {
   const dispatch = useDispatch()
   const { categories, products, orders, bankAccounts, loading, saving, error, message } = useSelector(
@@ -823,7 +832,14 @@ function AdminDashboardPage() {
                       second: '2-digit',
                     })}
                   </small>
-                  <small>Subtotal: {formatCurrency(order.totalPrice || 0)}</small>
+                  <small>
+                    Delivery: {getDeliveryModeLabel(order.deliveryMode)} (Fee:{' '}
+                    {formatCurrency(order.deliveryFee || 0)})
+                  </small>
+                  {order.deliveryMode === 'SCHEDULED' && order.scheduledFor ? (
+                    <small>Scheduled For: {new Date(order.scheduledFor).toLocaleString()}</small>
+                  ) : null}
+                  <small>Total: {formatCurrency(order.totalPrice || 0)}</small>
                   <small>Payment Method: {paymentDetails.paymentMethod}</small>
                   {paymentDetails.isBankTransfer && paymentDetails.bankName ? (
                     <small>Bank Name: {paymentDetails.bankName}</small>

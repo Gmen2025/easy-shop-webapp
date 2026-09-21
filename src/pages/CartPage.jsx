@@ -37,6 +37,49 @@ function isObjectIdLike(value) {
   return /^[a-f\d]{24}$/i.test(String(value || ''))
 }
 
+// Mirrors backend helpers/delivery.js computeDeliveryFee() so shoppers see an accurate
+// estimate before the server calculates the authoritative fee at order creation.
+const DELIVERY_FEE_RATES = {
+  SAME_DAY: { base: 9, perKm: 1, premium: 4 },
+  NEXT_DAY: { base: 4, perKm: 0.6 },
+  SCHEDULED: { base: 5, perKm: 0.75 },
+}
+
+// Ethio orders use the local driver dispatch network (distance-based, schedulable).
+const DELIVERY_MODE_OPTIONS_ETHIO = [
+  { value: 'SAME_DAY', label: 'Same Day Delivery' },
+  { value: 'NEXT_DAY', label: 'Next Day Delivery' },
+  { value: 'SCHEDULED', label: 'Scheduled Delivery' },
+]
+
+// USA orders have no local driver network, so only offer standard/express shipping
+// (mapped onto the same backend deliveryMode enum, with no distance/scheduling inputs).
+const DELIVERY_MODE_OPTIONS_USA = [
+  { value: 'NEXT_DAY', label: 'Standard Shipping' },
+  { value: 'SAME_DAY', label: 'Express Shipping' },
+]
+
+function estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor) {
+  const distanceKm = Math.max(0, Number(deliveryDistanceKm) || 0)
+
+  if (deliveryMode === 'SAME_DAY') {
+    const rates = DELIVERY_FEE_RATES.SAME_DAY
+    return Math.round((rates.base + rates.premium + distanceKm * rates.perKm) * 100) / 100
+  }
+
+  if (deliveryMode === 'NEXT_DAY') {
+    const rates = DELIVERY_FEE_RATES.NEXT_DAY
+    return Math.round((rates.base + distanceKm * rates.perKm) * 100) / 100
+  }
+
+  const rates = DELIVERY_FEE_RATES.SCHEDULED
+  const scheduledDate = scheduledFor ? new Date(scheduledFor) : null
+  const hour = scheduledDate && !Number.isNaN(scheduledDate.getTime()) ? scheduledDate.getHours() : -1
+  const peakSurcharge = hour >= 17 && hour <= 20 ? 1.5 : 0
+  const offPeakDiscount = hour >= 10 && hour <= 15 ? -0.5 : 0
+  return Math.round((rates.base + distanceKm * rates.perKm + peakSurcharge + offPeakDiscount) * 100) / 100
+}
+
 function CartPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -57,6 +100,9 @@ function CartPage() {
   const [zip, setZip] = useState('')
   const [country, setCountry] = useState('')
   const [phone, setPhone] = useState('')
+  const [deliveryMode, setDeliveryMode] = useState('SAME_DAY')
+  const [deliveryDistanceKm, setDeliveryDistanceKm] = useState('')
+  const [scheduledFor, setScheduledFor] = useState('')
 
   function getCheckoutDraftKey() {
     const dbName = getSelectedDatabaseName() || 'default'
@@ -198,16 +244,31 @@ function CartPage() {
     }
   }, [isEthio, isTelebirrEnabled, paymentMethod])
 
+  const deliveryModeOptions = isEthio ? DELIVERY_MODE_OPTIONS_ETHIO : DELIVERY_MODE_OPTIONS_USA
+
+  // USA has no local driver dispatch network, so drop distance/scheduling once the db switches.
+  useEffect(() => {
+    if (isEthio) {
+      return
+    }
+    setDeliveryDistanceKm('')
+    setScheduledFor('')
+    setDeliveryMode((current) => (current === 'SCHEDULED' ? 'NEXT_DAY' : current))
+  }, [isEthio])
+
   const totals = useMemo(() => {
     const subtotal = items.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
       0,
     )
+    const deliveryFee = estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor)
     return {
       subtotal,
+      deliveryFee,
+      grandTotal: subtotal + deliveryFee,
       itemsCount: items.reduce((sum, item) => sum + item.quantity, 0),
     }
-  }, [items])
+  }, [items, deliveryMode, deliveryDistanceKm, scheduledFor])
 
   function notifyLowStockAfterCheckout(orderPayload) {
     const lowStockProducts = Array.isArray(orderPayload?.lowStockProducts)
@@ -256,6 +317,12 @@ function CartPage() {
       customerEmail: user.email,
       status: paymentMethod === 'card' ? 'Processing' : 'Pending',
       paymentMethod: resolvedPaymentMethod,
+      deliveryMode,
+      deliveryDistanceKm: deliveryDistanceKm === '' ? 0 : Number(deliveryDistanceKm),
+    }
+
+    if (deliveryMode === 'SCHEDULED' && scheduledFor) {
+      payload.scheduledFor = new Date(scheduledFor).toISOString()
     }
 
     if (paymentMethod === 'bank_transfer' && paymentMeta) {
@@ -334,7 +401,7 @@ function CartPage() {
     dispatch(clearPaymentState())
     const stripeAction = await dispatch(
       createPaymentIntent({
-        amount: Math.max(50, Math.round(totals.subtotal * 100)),
+        amount: Math.max(50, Math.round(totals.grandTotal * 100)),
         currency: 'usd',
         orderId: `draft-${Date.now()}`,
       }),
@@ -350,6 +417,17 @@ function CartPage() {
     if (!user) {
       navigate('/login')
       return
+    }
+
+    if (deliveryMode === 'SCHEDULED') {
+      if (!scheduledFor) {
+        setCardError('Please choose a scheduled delivery date and time.')
+        return
+      }
+      if (new Date(scheduledFor).getTime() <= Date.now()) {
+        setCardError('Scheduled delivery time must be in the future.')
+        return
+      }
     }
 
     const checkoutProfilePayload = getCheckoutProfilePayload()
@@ -478,8 +556,55 @@ function CartPage() {
 
       <section className="panel checkout-panel">
         <h2>Checkout</h2>
-        <p className="checkout-total">Total: {formatCurrency(totals.subtotal)}</p>
+        <p className="checkout-total">Subtotal: {formatCurrency(totals.subtotal)}</p>
+        <p className="checkout-total">Delivery Fee (estimated): {formatCurrency(totals.deliveryFee)}</p>
+        <p className="checkout-total">Total: {formatCurrency(totals.grandTotal)}</p>
         <form className="checkout-form" onSubmit={handleCheckout}>
+          <label htmlFor="delivery-mode">Delivery Option</label>
+          <select
+            id="delivery-mode"
+            value={deliveryMode}
+            onChange={(event) => setDeliveryMode(event.target.value)}
+          >
+            {deliveryModeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          {isEthio ? (
+            <>
+              <label htmlFor="delivery-distance">Delivery Distance (km, optional)</label>
+              <input
+                id="delivery-distance"
+                type="number"
+                min="0"
+                step="0.1"
+                value={deliveryDistanceKm}
+                onChange={(event) => setDeliveryDistanceKm(event.target.value)}
+                placeholder="e.g. 5"
+              />
+            </>
+          ) : null}
+
+          {isEthio && deliveryMode === 'SCHEDULED' ? (
+            <>
+              <label htmlFor="scheduled-for">Scheduled Delivery Date &amp; Time</label>
+              <input
+                id="scheduled-for"
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(event) => setScheduledFor(event.target.value)}
+                required
+              />
+            </>
+          ) : null}
+
+          <p className="section-note">
+            Final delivery fee is calculated by the server and may differ slightly from the estimate above.
+          </p>
+
           <label htmlFor="payment-method">Payment Method</label>
           <select
             id="payment-method"
@@ -577,7 +702,7 @@ function CartPage() {
 
           {paymentMethod === 'telebirr' && isTelebirrEnabled ? (
             <TelebirrCheckout
-              amount={totals.subtotal}
+              amount={totals.grandTotal}
               onConfirmed={placeOrderAfterPayment}
               onError={(message) => {
                 setCardError(message)
@@ -587,7 +712,7 @@ function CartPage() {
 
           {paymentMethod === 'bank_transfer' ? (
             <BankTransferCheckout
-              amount={totals.subtotal}
+              amount={totals.grandTotal}
               onConfirmed={(paymentMeta) => {
                 placeOrderAfterPayment(paymentMeta)
               }}

@@ -41,6 +41,15 @@ function isObjectIdLike(value) {
   return /^[a-f\d]{24}$/i.test(String(value || ''))
 }
 
+function getDeliveryModeLabel(deliveryMode) {
+  const labels = {
+    SAME_DAY: 'Same Day',
+    NEXT_DAY: 'Next Day',
+    SCHEDULED: 'Scheduled',
+  }
+  return labels[deliveryMode] || 'Same Day'
+}
+
 function getStatusIndex(status) {
   const index = statusSteps.indexOf(status)
   if (index >= 0) {
@@ -137,6 +146,13 @@ function OrdersPage() {
                 <p>
                   {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
                 </p>
+                <p>
+                  Delivery: <strong>{getDeliveryModeLabel(order.deliveryMode)}</strong>
+                  {' '}(Fee: {formatCurrency(order.deliveryFee)})
+                </p>
+                {order.deliveryMode === 'SCHEDULED' && order.scheduledFor ? (
+                  <p>Scheduled For: {new Date(order.scheduledFor).toLocaleString()}</p>
+                ) : null}
                 <p>
                   Total: <strong>{formatCurrency(order.totalPrice)}</strong>
                 </p>
