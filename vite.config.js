@@ -14,9 +14,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'https://easy-shop-server-wldr.onrender.com',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     },
   },

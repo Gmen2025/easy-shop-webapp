@@ -98,6 +98,11 @@ function Header() {
               Profile
             </NavLink>
           ) : null}
+          {user ? (
+            <NavLink to="/service-request" onClick={closeMenu}>
+              Request Service
+            </NavLink>
+          ) : null}
           <NavLink to="/orders" onClick={closeMenu}>
             My Orders
           </NavLink>

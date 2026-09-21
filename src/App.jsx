@@ -15,6 +15,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import ProfilePage from './pages/ProfilePage'
 import EditProfilePage from './pages/EditProfilePage'
+import ServiceRequestPage from './pages/ServiceRequestPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
@@ -119,6 +120,16 @@ function App() {
             }
           />
           <Route
+            path="service-request"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <ServiceRequestPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
+          <Route
             path="privacy-policy"
             element={showMaintenancePage ? <MaintenancePage /> : <PrivacyPolicyPage />}
           />
@@ -144,5 +155,4 @@ function App() {
     </>
   )
 }
-
 export default App

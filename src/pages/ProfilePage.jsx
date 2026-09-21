@@ -89,6 +89,9 @@ function ProfilePage() {
             <Link className="ghost-button" to="/edit-profile">
               Account Deletion
             </Link>
+            <Link className="solid-button" to="/service-request">
+              Request Service
+            </Link>
           </div>
         </article>
 
