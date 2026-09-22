@@ -481,6 +481,91 @@ button {
   min-width: 0;
 }
 
+.service-requests-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.service-requests-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.service-request-card {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #fff;
+}
+
+.service-request-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.service-request-card-header p,
+.service-request-card > p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.request-status {
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  background: #edf4ed;
+  color: #2f6338;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.request-status-cancelled {
+  background: #fff0ee;
+  color: #9b3026;
+}
+
+.request-status-in_progress,
+.request-status-assigned {
+  background: #fff5df;
+  color: #805d19;
+}
+
+.service-request-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.service-request-summary div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.service-request-summary dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.service-request-summary dd {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .service-request-card-header {
+    flex-direction: column;
+  }
+
+  .service-request-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cart-item img {
   width: 88px;
   height: 88px;

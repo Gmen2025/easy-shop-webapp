@@ -16,6 +16,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import ProfilePage from './pages/ProfilePage'
 import EditProfilePage from './pages/EditProfilePage'
 import ServiceRequestPage from './pages/ServiceRequestPage'
+import ServiceRequestsPage from './pages/ServiceRequestsPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
@@ -126,6 +127,16 @@ function App() {
                 ? <MaintenancePage />
                 : isAuthenticated
                   ? <ServiceRequestPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="service-requests"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <ServiceRequestsPage />
                   : <Navigate to="/login" replace />
             }
           />
