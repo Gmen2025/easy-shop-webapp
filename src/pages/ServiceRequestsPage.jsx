@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getServiceRequests } from '../api/serviceRequests'
+import { getServiceRequests, updateServiceRequest } from '../api/serviceRequests'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 
@@ -31,6 +31,7 @@ function ServiceRequestsPage() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [actionId, setActionId] = useState('')
 
   useEffect(() => {
     let isCurrent = true
@@ -73,6 +74,26 @@ function ServiceRequestsPage() {
       .finally(() => {
         setLoading(false)
       })
+  }
+
+  async function cancelRequest(request) {
+    const requestId = request._id || request.id
+    if (!requestId || !window.confirm('Cancel this service request?')) {
+      return
+    }
+
+    setActionId(requestId)
+    setError('')
+    try {
+      const updated = await updateServiceRequest(requestId, { status: 'cancelled' })
+      setRequests((current) => current.map((item) => (
+        (item._id || item.id) === requestId ? updated : item
+      )))
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to cancel this service request.')
+    } finally {
+      setActionId('')
+    }
   }
 
   if (loading && requests.length === 0) {
@@ -131,6 +152,18 @@ function ServiceRequestsPage() {
                 </div>
               </dl>
               {request.problemDescription ? <p>{request.problemDescription}</p> : null}
+              {!['completed', 'cancelled'].includes(request.status) ? (
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="ghost-button danger-button"
+                    onClick={() => cancelRequest(request)}
+                    disabled={actionId === (request._id || request.id)}
+                  >
+                    {actionId === (request._id || request.id) ? 'Cancelling...' : 'Cancel Request'}
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

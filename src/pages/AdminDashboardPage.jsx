@@ -22,7 +22,11 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
-import { getAllServiceRequests } from '../api/serviceRequests'
+import {
+  deleteServiceRequest,
+  getAllServiceRequests,
+  updateServiceRequest,
+} from '../api/serviceRequests'
 import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
@@ -48,6 +52,7 @@ const defaultBankAccountForm = {
   isActive: true,
 }
 const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+const serviceRequestStatusOptions = ['new', 'assigned', 'in_progress', 'quoted', 'completed', 'cancelled']
 
 function formatServiceRequestStatus(status) {
   return String(status || 'new')
@@ -128,6 +133,7 @@ function AdminDashboardPage() {
   const [serviceRequests, setServiceRequests] = useState([])
   const [serviceRequestsLoading, setServiceRequestsLoading] = useState(true)
   const [serviceRequestsError, setServiceRequestsError] = useState('')
+  const [serviceRequestActionId, setServiceRequestActionId] = useState('')
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
@@ -407,6 +413,40 @@ function AdminDashboardPage() {
       .finally(() => {
         setServiceRequestsLoading(false)
       })
+  }
+
+  async function changeServiceRequestStatus(request, status) {
+    const requestId = request._id || request.id
+    setServiceRequestActionId(requestId)
+    setServiceRequestsError('')
+    try {
+      const updated = await updateServiceRequest(requestId, { status })
+      setServiceRequests((current) => current.map((item) => (
+        (item._id || item.id) === requestId ? updated : item
+      )))
+    } catch (requestError) {
+      setServiceRequestsError(requestError.message || 'Unable to update service request.')
+    } finally {
+      setServiceRequestActionId('')
+    }
+  }
+
+  async function removeServiceRequest(request) {
+    const requestId = request._id || request.id
+    if (!requestId || !window.confirm('Delete this service request permanently?')) {
+      return
+    }
+
+    setServiceRequestActionId(requestId)
+    setServiceRequestsError('')
+    try {
+      await deleteServiceRequest(requestId)
+      setServiceRequests((current) => current.filter((item) => (item._id || item.id) !== requestId))
+    } catch (requestError) {
+      setServiceRequestsError(requestError.message || 'Unable to delete service request.')
+    } finally {
+      setServiceRequestActionId('')
+    }
   }
 
   return (
@@ -1005,6 +1045,28 @@ function AdminDashboardPage() {
                   <small>Status: {formatServiceRequestStatus(request.status)}</small>
                   <small>Submitted: {formatServiceRequestDate(request.createdAt || request.dateCreated)}</small>
                   {request.problemDescription ? <small>{request.problemDescription}</small> : null}
+                  <div className="inline-actions">
+                    <select
+                      value={request.status || 'new'}
+                      onChange={(event) => changeServiceRequestStatus(request, event.target.value)}
+                      disabled={serviceRequestActionId === requestId}
+                      aria-label={`Update status for request ${requestId}`}
+                    >
+                      {serviceRequestStatusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {formatServiceRequestStatus(status)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="ghost-button danger-button"
+                      onClick={() => removeServiceRequest(request)}
+                      disabled={serviceRequestActionId === requestId}
+                    >
+                      {serviceRequestActionId === requestId ? 'Saving...' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               </article>
             )
