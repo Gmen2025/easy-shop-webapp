@@ -1,5 +1,16 @@
 import { apiRequest } from './client'
 
+export function getDeliverySettings() {
+  return apiRequest('/settings/delivery')
+}
+
+export function updateDeliverySettings(deliveryConfig) {
+  return apiRequest('/settings/delivery', {
+    method: 'PUT',
+    body: JSON.stringify({ deliveryConfig }),
+  })
+}
+
 export function getServiceRequests() {
   return apiRequest('/service-requests/mine')
 }

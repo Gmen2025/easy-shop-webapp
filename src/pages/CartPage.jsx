@@ -23,6 +23,7 @@ import StripeCardCheckout from '../components/StripeCardCheckout'
 import TelebirrCheckout from '../components/TelebirrCheckout'
 import BankTransferCheckout from '../components/BankTransferCheckout'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
+import { getDeliverySettings } from '../api/serviceRequests'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import countries from '../../data/countries.json'
 
@@ -39,10 +40,16 @@ function isObjectIdLike(value) {
 
 // Mirrors backend helpers/delivery.js computeDeliveryFee() so shoppers see an accurate
 // estimate before the server calculates the authoritative fee at order creation.
-const DELIVERY_FEE_RATES = {
-  SAME_DAY: { base: 9, perKm: 1, premium: 4 },
-  NEXT_DAY: { base: 4, perKm: 0.6 },
-  SCHEDULED: { base: 5, perKm: 0.75 },
+const DEFAULT_DELIVERY_CONFIG = {
+  sameDayBase: 9,
+  sameDayPerKm: 1,
+  sameDayPremium: 4,
+  nextDayBase: 4,
+  nextDayPerKm: 0.6,
+  scheduledBase: 5,
+  scheduledPerKm: 0.75,
+  scheduledPeakSurcharge: 1.5,
+  scheduledOffPeakDiscount: 0.5,
 }
 
 // Ethio orders use the local driver dispatch network (distance-based, schedulable).
@@ -59,25 +66,22 @@ const DELIVERY_MODE_OPTIONS_USA = [
   { value: 'SAME_DAY', label: 'Express Shipping' },
 ]
 
-function estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor) {
+function estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor, config) {
   const distanceKm = Math.max(0, Number(deliveryDistanceKm) || 0)
 
   if (deliveryMode === 'SAME_DAY') {
-    const rates = DELIVERY_FEE_RATES.SAME_DAY
-    return Math.round((rates.base + rates.premium + distanceKm * rates.perKm) * 100) / 100
+    return Math.round((config.sameDayBase + config.sameDayPremium + distanceKm * config.sameDayPerKm) * 100) / 100
   }
 
   if (deliveryMode === 'NEXT_DAY') {
-    const rates = DELIVERY_FEE_RATES.NEXT_DAY
-    return Math.round((rates.base + distanceKm * rates.perKm) * 100) / 100
+    return Math.round((config.nextDayBase + distanceKm * config.nextDayPerKm) * 100) / 100
   }
 
-  const rates = DELIVERY_FEE_RATES.SCHEDULED
   const scheduledDate = scheduledFor ? new Date(scheduledFor) : null
   const hour = scheduledDate && !Number.isNaN(scheduledDate.getTime()) ? scheduledDate.getHours() : -1
-  const peakSurcharge = hour >= 17 && hour <= 20 ? 1.5 : 0
-  const offPeakDiscount = hour >= 10 && hour <= 15 ? -0.5 : 0
-  return Math.round((rates.base + distanceKm * rates.perKm + peakSurcharge + offPeakDiscount) * 100) / 100
+  const peakSurcharge = hour >= 17 && hour <= 20 ? config.scheduledPeakSurcharge : 0
+  const offPeakDiscount = hour >= 10 && hour <= 15 ? -config.scheduledOffPeakDiscount : 0
+  return Math.round((config.scheduledBase + distanceKm * config.scheduledPerKm + peakSurcharge + offPeakDiscount) * 100) / 100
 }
 
 function CartPage() {
@@ -103,6 +107,22 @@ function CartPage() {
   const [deliveryMode, setDeliveryMode] = useState('SAME_DAY')
   const [deliveryDistanceKm, setDeliveryDistanceKm] = useState('')
   const [scheduledFor, setScheduledFor] = useState('')
+  const [deliveryConfig, setDeliveryConfig] = useState(DEFAULT_DELIVERY_CONFIG)
+
+  useEffect(() => {
+    let isCurrent = true
+    getDeliverySettings()
+      .then((response) => {
+        if (isCurrent && response?.deliveryConfig) {
+          setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      isCurrent = false
+    }
+  }, [selectedDb])
 
   function getCheckoutDraftKey() {
     const dbName = getSelectedDatabaseName() || 'default'
@@ -261,14 +281,14 @@ function CartPage() {
       (sum, item) => sum + item.product.price * item.quantity,
       0,
     )
-    const deliveryFee = estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor)
+    const deliveryFee = estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor, deliveryConfig)
     return {
       subtotal,
       deliveryFee,
       grandTotal: subtotal + deliveryFee,
       itemsCount: items.reduce((sum, item) => sum + item.quantity, 0),
     }
-  }, [items, deliveryMode, deliveryDistanceKm, scheduledFor])
+  }, [items, deliveryMode, deliveryDistanceKm, scheduledFor, deliveryConfig])
 
   function notifyLowStockAfterCheckout(orderPayload) {
     const lowStockProducts = Array.isArray(orderPayload?.lowStockProducts)

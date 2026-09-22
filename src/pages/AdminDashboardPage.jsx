@@ -25,6 +25,8 @@ import { uploadProductImages } from '../api/uploads'
 import {
   deleteServiceRequest,
   getAllServiceRequests,
+  getDeliverySettings,
+  updateDeliverySettings,
   updateServiceRequest,
 } from '../api/serviceRequests'
 import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
@@ -50,6 +52,20 @@ const defaultBankAccountForm = {
   bankCode: '',
   additionalInfo: '',
   isActive: true,
+}
+const defaultDeliveryConfig = {
+  sameDayBase: 9,
+  sameDayPerKm: 1,
+  sameDayPremium: 4,
+  nextDayBase: 4,
+  nextDayPerKm: 0.6,
+  scheduledBase: 5,
+  scheduledPerKm: 0.75,
+  scheduledPeakSurcharge: 1.5,
+  scheduledOffPeakDiscount: 0.5,
+  sameDayWindowHours: 4,
+  nextDayWindowHours: 8,
+  scheduledWindowHours: 2,
 }
 const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 const serviceRequestStatusOptions = ['new', 'assigned', 'in_progress', 'quoted', 'completed', 'cancelled']
@@ -134,6 +150,11 @@ function AdminDashboardPage() {
   const [serviceRequestsLoading, setServiceRequestsLoading] = useState(true)
   const [serviceRequestsError, setServiceRequestsError] = useState('')
   const [serviceRequestActionId, setServiceRequestActionId] = useState('')
+  const [deliveryConfig, setDeliveryConfig] = useState(defaultDeliveryConfig)
+  const [deliveryLoading, setDeliveryLoading] = useState(true)
+  const [deliverySaving, setDeliverySaving] = useState(false)
+  const [deliveryMessage, setDeliveryMessage] = useState('')
+  const [deliveryError, setDeliveryError] = useState('')
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
@@ -146,6 +167,17 @@ function AdminDashboardPage() {
   useEffect(() => {
     dispatch(fetchBankAccountsAdmin())
   }, [dispatch])
+
+  useEffect(() => {
+    getDeliverySettings()
+      .then((response) => {
+        if (response?.deliveryConfig) {
+          setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
+        }
+      })
+      .catch((requestError) => setDeliveryError(requestError.message || 'Unable to load delivery settings.'))
+      .finally(() => setDeliveryLoading(false))
+  }, [])
 
   useEffect(() => {
     let isCurrent = true
@@ -400,6 +432,30 @@ function AdminDashboardPage() {
     await dispatch(updateMaintenanceModeAdmin(!maintenanceEnabled))
   }
 
+  function updateDeliveryField(event) {
+    const { name, value } = event.target
+    setDeliveryConfig((current) => ({ ...current, [name]: value }))
+  }
+
+  async function saveDeliveryConfig(event) {
+    event.preventDefault()
+    setDeliverySaving(true)
+    setDeliveryMessage('')
+    setDeliveryError('')
+    try {
+      const normalized = Object.fromEntries(
+        Object.entries(deliveryConfig).map(([key, value]) => [key, Number(value)]),
+      )
+      const response = await updateDeliverySettings(normalized)
+      setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
+      setDeliveryMessage('Delivery settings saved for the selected database.')
+    } catch (requestError) {
+      setDeliveryError(requestError.message || 'Unable to save delivery settings.')
+    } finally {
+      setDeliverySaving(false)
+    }
+  }
+
   function refreshServiceRequests() {
     setServiceRequestsLoading(true)
     setServiceRequestsError('')
@@ -542,6 +598,52 @@ function AdminDashboardPage() {
             All products are above the minimum stock threshold ({minimumStockThreshold}).
           </p>
         )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h3>Delivery Cost Settings</h3>
+          <span>{deliveryLoading ? 'Loading...' : 'Selected database'}</span>
+        </div>
+        <p className="section-note">
+          These rates control customer estimates and the final server-calculated delivery fee.
+        </p>
+        {deliveryError ? <p className="form-error">{deliveryError}</p> : null}
+        {deliveryMessage ? <p className="form-success">{deliveryMessage}</p> : null}
+        <form className="delivery-settings-form" onSubmit={saveDeliveryConfig}>
+          <div className="delivery-settings-grid">
+            {[
+              ['sameDayBase', 'Same-day base fee'],
+              ['sameDayPerKm', 'Same-day fee per km'],
+              ['sameDayPremium', 'Same-day premium'],
+              ['nextDayBase', 'Next-day base fee'],
+              ['nextDayPerKm', 'Next-day fee per km'],
+              ['scheduledBase', 'Scheduled base fee'],
+              ['scheduledPerKm', 'Scheduled fee per km'],
+              ['scheduledPeakSurcharge', 'Scheduled peak surcharge'],
+              ['scheduledOffPeakDiscount', 'Scheduled off-peak discount'],
+              ['sameDayWindowHours', 'Same-day window (hours)'],
+              ['nextDayWindowHours', 'Next-day window (hours)'],
+              ['scheduledWindowHours', 'Scheduled window (hours)'],
+            ].map(([name, label]) => (
+              <label key={name}>
+                {label}
+                <input
+                  name={name}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={deliveryConfig[name]}
+                  onChange={updateDeliveryField}
+                  required
+                />
+              </label>
+            ))}
+          </div>
+          <button type="submit" className="solid-button" disabled={deliveryLoading || deliverySaving}>
+            {deliverySaving ? 'Saving...' : 'Save Delivery Settings'}
+          </button>
+        </form>
       </section>
 
       <section className="panel admin-grid">
