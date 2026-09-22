@@ -2,10 +2,15 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
+import { getSelectedDatabaseName } from '../api/client'
 import { createServiceRequest } from '../api/serviceRequests'
 
+const getCountryFromDatabase = (databaseName) => {
+  return databaseName === 'E_ShopUSA' ? 'USA' : 'Ethiopia'
+}
+
 const initialForm = {
-  country: 'Ethiopia',
+  country: getCountryFromDatabase(getSelectedDatabaseName()),
   serviceLocation: '',
   machineType: '',
   manufacturer: '',
@@ -21,7 +26,11 @@ const initialForm = {
 
 function ServiceRequestPage() {
   const user = useSelector((state) => state.auth.user)
-  const [formData, setFormData] = useState(initialForm)
+  const selectedDatabase = getSelectedDatabaseName()
+  const [formData, setFormData] = useState(() => ({
+    ...initialForm,
+    country: getCountryFromDatabase(selectedDatabase),
+  }))
   const [submitting, setSubmitting] = useState(false)
 
   if (!user) {
@@ -32,6 +41,11 @@ function ServiceRequestPage() {
     const { name, value } = event.target
     setFormData((current) => ({ ...current, [name]: value }))
   }
+
+  const countryOptions = [
+    { value: 'Ethiopia', label: 'Ethio' },
+    { value: 'USA', label: 'USA' },
+  ]
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -72,8 +86,11 @@ function ServiceRequestPage() {
           <label>
             Country
             <select name="country" value={formData.country} onChange={updateField} required>
-              <option value="Ethiopia">Ethiopia</option>
-              <option value="USA">USA</option>
+              {countryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
           <label>
