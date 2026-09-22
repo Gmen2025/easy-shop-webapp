@@ -22,6 +22,7 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
+import { getAllServiceRequests } from '../api/serviceRequests'
 import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
@@ -47,6 +48,21 @@ const defaultBankAccountForm = {
   isActive: true,
 }
 const orderStatusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+
+function formatServiceRequestStatus(status) {
+  return String(status || 'new')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function formatServiceRequestDate(value) {
+  if (!value) {
+    return 'Date unavailable'
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString()
+}
 
 function getOrderPaymentDetails(order) {
   const paymentMethod = String(order?.paymentMethod || 'N/A').trim() || 'N/A'
@@ -109,6 +125,9 @@ function AdminDashboardPage() {
   const [minimumStockThreshold, setMinimumStockThreshold] = useState(() => getLowStockThreshold())
   const [bankAccountForm, setBankAccountForm] = useState(defaultBankAccountForm)
   const [bankAccountEditId, setBankAccountEditId] = useState('')
+  const [serviceRequests, setServiceRequests] = useState([])
+  const [serviceRequestsLoading, setServiceRequestsLoading] = useState(true)
+  const [serviceRequestsError, setServiceRequestsError] = useState('')
 
   useEffect(() => {
     dispatch(fetchAdminCatalog())
@@ -121,6 +140,31 @@ function AdminDashboardPage() {
   useEffect(() => {
     dispatch(fetchBankAccountsAdmin())
   }, [dispatch])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    getAllServiceRequests()
+      .then((response) => {
+        if (isCurrent) {
+          setServiceRequests(Array.isArray(response) ? response : response?.items || [])
+        }
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setServiceRequestsError(requestError.message || 'Unable to load service requests.')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setServiceRequestsLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   const effectiveProductCategory =
     productForm.category || categories[0]?.id || categories[0]?._id || ''
@@ -348,6 +392,21 @@ function AdminDashboardPage() {
 
   async function handleMaintenanceToggle() {
     await dispatch(updateMaintenanceModeAdmin(!maintenanceEnabled))
+  }
+
+  function refreshServiceRequests() {
+    setServiceRequestsLoading(true)
+    setServiceRequestsError('')
+    getAllServiceRequests()
+      .then((response) => {
+        setServiceRequests(Array.isArray(response) ? response : response?.items || [])
+      })
+      .catch((requestError) => {
+        setServiceRequestsError(requestError.message || 'Unable to load service requests.')
+      })
+      .finally(() => {
+        setServiceRequestsLoading(false)
+      })
   }
 
   return (
@@ -900,6 +959,52 @@ function AdminDashboardPage() {
                   >
                     Delete
                   </button>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h3>Service Requests</h3>
+          <span>{serviceRequests.length} total</span>
+        </div>
+        <div className="inline-actions">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={refreshServiceRequests}
+            disabled={serviceRequestsLoading}
+          >
+            {serviceRequestsLoading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+        {serviceRequestsError ? <p className="form-error">{serviceRequestsError}</p> : null}
+        {!serviceRequestsLoading && !serviceRequestsError && serviceRequests.length === 0 ? (
+          <p className="section-note">No service requests have been submitted.</p>
+        ) : null}
+        <div className="admin-list">
+          {serviceRequests.map((request) => {
+            const requestId = request._id || request.id
+            const customer = request.customer && typeof request.customer === 'object'
+              ? request.customer
+              : null
+
+            return (
+              <article key={requestId} className="admin-item">
+                <div>
+                  <strong>{request.machineType || 'Machine service'}</strong>
+                  <small>Request ID: {requestId}</small>
+                  <small>Customer: {customer?.name || request.customerEmail || 'Customer'}</small>
+                  <small>Email: {customer?.email || request.customerEmail || 'N/A'}</small>
+                  <small>Country: {request.country || 'N/A'}</small>
+                  <small>Location: {request.serviceLocation || request.locationCity || 'N/A'}</small>
+                  <small>Priority: {request.priority || 'Normal'}</small>
+                  <small>Status: {formatServiceRequestStatus(request.status)}</small>
+                  <small>Submitted: {formatServiceRequestDate(request.createdAt || request.dateCreated)}</small>
+                  {request.problemDescription ? <small>{request.problemDescription}</small> : null}
                 </div>
               </article>
             )
