@@ -21,6 +21,7 @@ const initialForm = {
   priority: 'Normal',
   locationCity: '',
   locationAddress: '',
+  contactPhone: '',
   budgetEstimate: '',
 }
 
@@ -149,6 +150,17 @@ function ServiceRequestPage() {
           <label>
             Address
             <input name="locationAddress" value={formData.locationAddress} onChange={updateField} placeholder="Optional" />
+          </label>
+          <label>
+            Contact phone
+            <input
+              name="contactPhone"
+              type="tel"
+              value={formData.contactPhone}
+              onChange={updateField}
+              placeholder="Phone number for service updates"
+              required
+            />
           </label>
           <label>
             Budget estimate

@@ -150,6 +150,14 @@ function ServiceRequestsPage() {
                   <dt>Priority</dt>
                   <dd>{request.priority || 'Normal'}</dd>
                 </div>
+                <div>
+                  <dt>Contact phone</dt>
+                  <dd>{request.contactPhone || request.customer?.phone || 'Not provided'}</dd>
+                </div>
+                <div>
+                  <dt>Address</dt>
+                  <dd>{request.locationAddress || 'Not provided'}</dd>
+                </div>
               </dl>
               {request.problemDescription ? <p>{request.problemDescription}</p> : null}
               {!['completed', 'cancelled'].includes(request.status) ? (

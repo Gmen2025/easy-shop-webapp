@@ -1039,8 +1039,10 @@ function AdminDashboardPage() {
                   <small>Request ID: {requestId}</small>
                   <small>Customer: {customer?.name || request.customerEmail || 'Customer'}</small>
                   <small>Email: {customer?.email || request.customerEmail || 'N/A'}</small>
+                  <small>Contact phone: {request.contactPhone || customer?.phone || 'N/A'}</small>
                   <small>Country: {request.country || 'N/A'}</small>
                   <small>Location: {request.serviceLocation || request.locationCity || 'N/A'}</small>
+                  <small>Address: {request.locationAddress || 'N/A'}</small>
                   <small>Priority: {request.priority || 'Normal'}</small>
                   <small>Status: {formatServiceRequestStatus(request.status)}</small>
                   <small>Submitted: {formatServiceRequestDate(request.createdAt || request.dateCreated)}</small>
