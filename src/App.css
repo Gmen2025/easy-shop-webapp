@@ -274,28 +274,38 @@
 .service-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1rem 1.25rem;
+  align-items: start;
 }
 
-.service-request-form label {
+.service-form-grid > label,
+.service-request-form > label {
   display: grid;
-  gap: 0.35rem;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  width: 100%;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  line-height: 1.4;
 }
 
+.service-form-grid input,
+.service-form-grid select,
+.service-form-grid textarea,
+.service-request-form textarea,
 .service-request-form input,
-.service-request-form select,
-.service-request-form textarea {
+.service-request-form select {
   width: 100%;
   min-height: 48px;
+  box-sizing: border-box;
   font: inherit;
   color: var(--ink);
 }
 
 .service-request-form textarea {
   resize: vertical;
+  min-height: 120px;
 }
 
 .action-row {
@@ -307,6 +317,20 @@
 @media (max-width: 640px) {
   .service-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .service-request-form {
+    gap: 0.9rem;
+  }
+
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .action-row > * {
+    width: 100%;
   }
 }
 
