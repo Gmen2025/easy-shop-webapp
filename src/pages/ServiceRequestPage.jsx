@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
 import { getSelectedDatabaseName } from '../api/client'
@@ -26,6 +26,7 @@ const initialForm = {
 
 function ServiceRequestPage() {
   const user = useSelector((state) => state.auth.user)
+  const navigate = useNavigate()
   const selectedDatabase = getSelectedDatabaseName()
   const [formData, setFormData] = useState(() => ({
     ...initialForm,
@@ -49,6 +50,13 @@ function ServiceRequestPage() {
 
   async function handleSubmit(event) {
     event.preventDefault()
+
+    if (!user || !localStorage.getItem('authToken')) {
+      toast.error('Your session has expired. Please log in again.')
+      navigate('/login', { replace: true })
+      return
+    }
+
     setSubmitting(true)
 
     const payload = {
@@ -61,7 +69,15 @@ function ServiceRequestPage() {
       toast.success('Service request submitted successfully.')
       setFormData(initialForm)
     } catch (error) {
-      toast.error(error?.message || 'Unable to submit the service request.')
+      const isUnauthorized = error?.status === 401 || /unauthorized|session|login/i.test(error?.message || '')
+
+      if (isUnauthorized) {
+        toast.error('Your session has expired. Please log in again.')
+        navigate('/login', { replace: true })
+        return
+      }
+
+      toast.error(error?.payload?.message || error?.message || 'Unable to submit the service request.')
     } finally {
       setSubmitting(false)
     }
