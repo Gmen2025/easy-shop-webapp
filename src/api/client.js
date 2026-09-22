@@ -102,8 +102,11 @@ export async function apiRequest(path, options = {}) {
     : await response.text()
 
   if (!response.ok) {
+    const isHtmlResponse = typeof payload === 'string' && /<!doctype html>|<html[\s>]/i.test(payload)
     const message =
-      typeof payload === 'string'
+      isHtmlResponse
+        ? 'The API returned an HTML page instead of data. Check that the backend URL and server are running.'
+        : typeof payload === 'string'
         ? payload
         : payload?.message || 'Request failed unexpectedly.'
     const error = new Error(message)
