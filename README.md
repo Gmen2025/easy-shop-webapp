@@ -130,6 +130,8 @@ If none exists on the backend, checkout still succeeds and the app reports that 
 
 ## Routing Overview
 
+- `/privacy.html`, `/terms.html`, `/account-deletion.html` - Public static legal pages (no login or API access required)
+- `/privacy-policy` - Legacy app route opening `/privacy.html`, including during maintenance
 - `/` - Home/Catalog
 - `/products/:id` - Product details
 - `/cart` - Cart + checkout
@@ -139,6 +141,45 @@ If none exists on the backend, checkout still succeeds and the app reports that 
 - `/forgot-password`, `/reset-password`
 - `/verify-email`
 - `/payment/success`, `/payment/cancel`
+
+## Google OAuth branding links and policy deployment
+
+After reviewing the policy and Terms of Service, run `npm run build` and deploy
+the resulting `dist` directory to the existing `addugeneteshop.com` website.
+Vite copies the legal pages from `public` into `dist`; deploy the entire output,
+not just the JavaScript assets. The existing Apache configuration lets real files
+pass through before the SPA fallback. On other hosts, ensure these HTML files
+are served before the catch-all SPA rewrite.
+
+Use these exact public URLs in Google Auth Platform > Branding:
+
+- Application home page: `https://addugeneteshop.com/`
+- Privacy policy: `https://addugeneteshop.com/privacy.html`
+- Terms of service: `https://addugeneteshop.com/terms.html`
+- Authorized domain: `addugeneteshop.com` (no scheme or path)
+
+Verify ownership of `addugeneteshop.com` in Google Search Console using an account
+associated with the Google Cloud project. Add the requested DNS TXT record at
+your DNS provider without replacing existing email, hosting, or verification
+records. Hosting these pages on your existing site does not require switching
+DNS to GitHub Pages.
+
+Check all URLs in a private browser window after deployment. They must be
+publicly accessible over HTTPS, match the app's identity, and show the actual
+policy rather than the SPA's not-found page. The homepage footer links to the
+policies. Review the terms with the business/legal operator before publishing;
+no universal refund deadline, arbitration requirement, or governing jurisdiction
+has been invented.
+
+Branding URLs are not OAuth callbacks. Keep the web OAuth client's redirect URI
+aligned with the backend's exact Google callback URL. If that backend uses a
+different host, verify Google's authorized-domain requirements for that host
+separately; do not change callbacks to the policy page.
+
+The mobile app's `assets/common/legalLinks.js` now points to these domain URLs.
+Deploy the public pages before releasing the mobile update. The mobile repository
+also retains GitHub Pages policy copies; keep shared disclosures consistent when
+changing either copy. This deployment does not change backend authentication.
 
 ## API Expectations
 

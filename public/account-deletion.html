@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Deletion - AdduGenet EShop</title>
+    <style>
+        :root {
+            --brand: #8a6c09;
+            --bg: #f6f3ea;
+            --text: #1f1f1f;
+            --muted: #666;
+            --card: #fff;
+            --border: #ded7c5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: linear-gradient(180deg, var(--bg) 0%, #fff 35%, #fff 100%);
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .hero {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-top: 5px solid var(--brand);
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            color: var(--brand);
+        }
+
+        h2 {
+            color: var(--brand);
+            margin-top: 28px;
+        }
+
+        .subtle {
+            color: var(--muted);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 14px;
+        }
+
+        ol {
+            margin-top: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            background: var(--card);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            text-align: left;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f2ecdc;
+            color: #3e3206;
+        }
+
+        a {
+            color: var(--brand);
+        }
+
+        .footer {
+            margin-top: 28px;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <section class="hero">
+            <h1>Account Deletion for AdduGenet EShop</h1>
+            <p class="subtle">
+                This page applies to users of the <strong>AdduGenet EShop</strong> mobile app and website.
+                It explains how to request deletion of your account and what data is deleted or retained.
+            </p>
+            <p class="subtle"><strong>Last updated:</strong> October 23, 2026</p>
+        </section>
+
+        <section class="card">
+            <h2>How To Request Account Deletion</h2>
+            <ol>
+                <li>Open the <strong>AdduGenet EShop</strong> app or website and sign in to your account.</li>
+                <li>Go to <strong>Profile</strong> and open <strong>Edit Profile</strong>.</li>
+                <li>Tap <strong>Delete Account</strong> and confirm the deletion request.</li>
+                <li>For deletion of related records, or if you cannot access the app, email <a href="mailto:easyshop@addugeneteshop.com">easyshop@addugeneteshop.com</a> with subject line: <code>Account Deletion Request</code>. Include your registered email and the scope of your request.</li>
+                <li>We may ask you to verify account ownership. Never send passwords, one-time codes, authenticator keys, recovery codes, or full payment card details.</li>
+            </ol>
+            <p>
+                In-app deletion removes the account's user record on a successful server response and
+                signs you out locally. It does not automatically remove all related records or guarantee
+                immediate invalidation of previously issued tokens.
+            </p>
+            <p>
+                We review email requests and explain applicable retention needs or technical limitations.
+                There is no established general guaranteed completion deadline; legally required response
+                periods still apply where applicable.
+            </p>
+        </section>
+
+        <h2>What Data Is Deleted</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data Type</th>
+                    <th>What Happens After Successful In-App Deletion</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Account profile data</td>
+                    <td>The user record, including its name, email, phone, profile addresses, password hash, and embedded security settings, is removed. Copies in other records or systems are not automatically deleted.</td>
+                </tr>
+                <tr>
+                    <td>Local sign-in session</td>
+                    <td>The app removes its stored sign-in token and signs you out. This does not guarantee immediate revocation of all previously issued tokens or deletion of separate social-identity/authentication records.</td>
+                </tr>
+                <tr>
+                    <td>Local preferences and app data</td>
+                    <td>Account deletion does not guarantee clearing all local preferences, cart data, or caches. Device settings can clear local app data; uninstalling alone does not delete server records.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>What Data May Be Retained</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data Type</th>
+                    <th>Reason and Follow-Up</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Order and payment transaction records</td>
+                    <td>May remain for fulfillment, refunds, legal/accounting requirements, fraud prevention, or disputes. There is no universal seven-year retention promise; request a review of specific records.</td>
+                </tr>
+                <tr>
+                    <td>Rides, driver/store profiles, services, media, and separate authentication records</td>
+                    <td>These are separate from the user record and are not automatically deleted by the current account deletion flow. Email us to request review and removal of related information, subject to applicable retention needs.</td>
+                </tr>
+                <tr>
+                    <td>Operational and security logs</td>
+                    <td>May remain for troubleshooting, security, abuse prevention, or disputes. No general fixed log retention period has been established.</td>
+                </tr>
+                <tr>
+                    <td>Backups</td>
+                    <td>Residual copies may remain under the arrangements of the systems holding them. No blanket 90-day deletion or encrypted-backup guarantee is made.</td>
+                </tr>
+                <tr>
+                    <td>Data under legal hold</td>
+                    <td>Retained only as long as required by law, court order, or active investigation.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <section class="card">
+            <h2>Before You Delete</h2>
+            <p>
+                Account deletion does not itself cancel pending orders, deliveries, rides, or service
+                requests, settle payments, or remove data independently held by payment/social providers
+                or people who already received it. Contact support about outstanding transactions first.
+                Disconnecting Google, Apple, or Facebook is not the same as deleting your EShop account.
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>Need Help?</h2>
+            <p>
+                For questions about account deletion or privacy rights, contact:
+                <a href="mailto:easyshop@addugeneteshop.com">easyshop@addugeneteshop.com</a>.
+            </p>
+        </section>
+
+        <p class="footer">
+            <a href="/">Home</a> | <a href="privacy.html">Privacy Policy</a> | <a href="terms.html">Terms of Service</a>
+        </p>
+    </main>
+</body>
+</html>

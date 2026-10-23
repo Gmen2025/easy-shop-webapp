@@ -142,7 +142,7 @@ function App() {
           />
           <Route
             path="privacy-policy"
-            element={showMaintenancePage ? <MaintenancePage /> : <PrivacyPolicyPage />}
+            element={<PrivacyPolicyPage />}
           />
           <Route
             path="orders"
