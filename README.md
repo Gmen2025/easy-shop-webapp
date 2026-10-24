@@ -144,6 +144,23 @@ If none exists on the backend, checkout still succeeds and the app reports that 
 
 ## Google OAuth branding links and policy deployment
 
+### Admin social sign-in switch
+
+The Admin Dashboard's **Social sign-in** panel reads and updates
+`/settings/social-login`. Only authenticated admins can save its boolean
+`enabled` field. It defaults to OFF and controls Google, Apple, and Facebook
+together across all regions, development and production clients connected to
+the same backend. The value is stored once in the backend's default database,
+not copied into each region.
+
+Deploy the backend setting endpoints before deploying this dashboard and the
+matching mobile update. Existing mobile login screens refresh within 30 seconds
+while open and on focus/foreground; the backend blocks disabled social flows
+at start, callback, handoff exchange, and social-origin 2FA completion. Email
+sign-in and existing sessions remain available. The website currently provides
+email login, not provider sign-in buttons; this panel manages the shared service.
+Provider credentials and callbacks must still be configured separately.
+
 After reviewing the policy and Terms of Service, run `npm run build` and deploy
 the resulting `dist` directory to the existing `addugeneteshop.com` website.
 Vite copies the legal pages from `public` into `dist`; deploy the entire output,

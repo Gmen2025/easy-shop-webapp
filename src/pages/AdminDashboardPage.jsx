@@ -19,6 +19,7 @@ import {
   updateMaintenanceModeAdmin,
 } from '../features/maintenance/maintenanceSlice'
 import LoadingState from '../components/LoadingState'
+import SocialLoginSettings from '../components/SocialLoginSettings'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
@@ -556,6 +557,8 @@ function AdminDashboardPage() {
           </button>
         </div>
       </section>
+
+      <SocialLoginSettings />
 
       <section className="panel">
         <div className="panel-header">
