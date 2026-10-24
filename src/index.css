@@ -255,6 +255,8 @@ button {
 }
 
 .product-card-link {
+  display: block;
+}
 
 .delivery-settings-form {
   display: grid;
@@ -284,8 +286,6 @@ button {
   .delivery-settings-grid {
     grid-template-columns: 1fr;
   }
-}
-  display: block;
 }
 
 .product-card:hover {
@@ -1070,6 +1070,7 @@ textarea {
   .topbar {
     grid-template-columns: 1fr;
   }
+}
 
   .shop-page {
     gap: 1rem;
@@ -1144,7 +1145,7 @@ textarea {
     display: grid;
     justify-items: center;
     gap: 0.45rem;
-    flex: 0 0 84px;
+    flex: 0 0 78px;
     padding: 0;
     color: #29313a;
     background: transparent;
@@ -1587,6 +1588,103 @@ textarea {
     clip-path: inset(50%);
   }
 
+  @media (min-width: 1200px) {
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem clamp(1.25rem, 3vw, 3rem);
+    }
+
+    .topbar-main {
+      display: contents;
+    }
+
+    .topbar-main .topbar-brand {
+      flex: 0 0 auto;
+      font-size: 1.15rem;
+      white-space: nowrap;
+    }
+
+    .menu-toggle {
+      display: none;
+    }
+
+    .header-menu {
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      max-width: none;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .nav-links {
+      flex-wrap: nowrap;
+      gap: 0.15rem;
+    }
+
+    .nav-links a {
+      padding: 0.5rem 0.55rem;
+      color: #333;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .header-controls {
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .header-controls .db-select {
+      max-width: 128px;
+    }
+
+    .header-auth {
+      order: 3;
+      flex: 0 0 auto;
+    }
+
+    .category-rail {
+      gap: 0.45rem;
+    }
+
+    .home-graphic-image {
+      max-height: 320px;
+      object-position: center top;
+    }
+
+    .shop-welcome {
+      padding: 1.35rem 1.8rem;
+    }
+
+    .shop-welcome h1 {
+      font-size: 2.2rem;
+    }
+
+    .category-art {
+      width: 60px;
+      height: 60px;
+    }
+
+    .featured-rail > .product-card {
+      flex-basis: min(205px, 18vw);
+    }
+
+    .featured-rail .product-image-wrap {
+      aspect-ratio: 4 / 3;
+    }
+
+    .products-grid {
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    }
+  }
+
   @media (max-width: 680px) {
     .main-content {
       padding: 1rem 1rem 6rem;
@@ -1720,6 +1818,7 @@ textarea {
     }
   }
 
+@media (max-width: 900px) {
   .header-controls {
     flex-wrap: wrap;
   }
