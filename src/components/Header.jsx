@@ -44,8 +44,12 @@ function Header() {
   }
 
   return (
+    <>
     <header className="topbar" ref={headerRef}>
       <div className="topbar-main">
+        <Link to="/" className="brand topbar-brand" onClick={closeMenu}>
+          Addu Genet Easy Shop
+        </Link>
         <button
           type="button"
           className="menu-toggle"
@@ -83,19 +87,26 @@ function Header() {
         id="header-menu"
         className={`header-menu${isMenuOpen ? ' open' : ''}`}
       >
-        <div className="brand-wrap">
-          <Link to="/" className="brand" onClick={closeMenu}>
-            Addu Genet Easy Shop
-          </Link>
-        </div>
-
         <nav className="nav-links" aria-label="Main">
           <NavLink to="/" end onClick={closeMenu}>
             Shop
           </NavLink>
+          <NavLink to="/stores" onClick={closeMenu}>
+            Stores
+          </NavLink>
           {user ? (
             <NavLink to="/profile" onClick={closeMenu}>
               Profile
+            </NavLink>
+          ) : null}
+          {user ? (
+            <NavLink to="/rides" onClick={closeMenu}>
+              Book a ride
+            </NavLink>
+          ) : null}
+          {user ? (
+            <NavLink to="/rides/mine" onClick={closeMenu}>
+              My rides
             </NavLink>
           ) : null}
           {user ? (
@@ -150,6 +161,17 @@ function Header() {
         </div>
       </div>
     </header>
+    <nav className="mobile-tabbar" aria-label="Quick navigation">
+      <NavLink to="/" end onClick={closeMenu}><span aria-hidden="true">⌂</span>Shop</NavLink>
+      <NavLink to="/stores" onClick={closeMenu}><span aria-hidden="true">▦</span>Stores</NavLink>
+      <NavLink to="/cart" onClick={closeMenu}><span aria-hidden="true">🛒</span>Cart</NavLink>
+      {user ? (
+        <NavLink to="/profile" onClick={closeMenu}><span aria-hidden="true">●</span>Account</NavLink>
+      ) : (
+        <NavLink to="/login" onClick={closeMenu}><span aria-hidden="true">●</span>Account</NavLink>
+      )}
+    </nav>
+    </>
   )
 }
 

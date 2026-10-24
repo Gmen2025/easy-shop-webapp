@@ -22,6 +22,10 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
 import NotFoundPage from './pages/NotFoundPage'
 import MaintenancePage from './pages/MaintenancePage'
+import StoreDirectoryPage from './pages/StoreDirectoryPage'
+import StorefrontPage from './pages/StorefrontPage'
+import RideBookingPage from './pages/RideBookingPage'
+import MyRidesPage from './pages/MyRidesPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
@@ -87,6 +91,26 @@ function App() {
             path="cart"
             element={showMaintenancePage ? <MaintenancePage /> : <CartPage />}
           />
+          <Route
+            path="stores"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <StoreDirectoryPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="stores/:id"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <StorefrontPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={showMaintenancePage ? <MaintenancePage /> : <RegisterPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
@@ -137,6 +161,26 @@ function App() {
                 ? <MaintenancePage />
                 : isAuthenticated
                   ? <ServiceRequestsPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="rides"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <RideBookingPage />
+                  : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="rides/mine"
+            element={
+              showMaintenancePage
+                ? <MaintenancePage />
+                : isAuthenticated
+                  ? <MyRidesPage />
                   : <Navigate to="/login" replace />
             }
           />

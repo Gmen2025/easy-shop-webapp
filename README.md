@@ -14,6 +14,9 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 ## Features
 
 - Product catalog and product details pages
+- Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
+- Store directory and storefront inventory browsing
+- Authenticated ride quotes, ride requests, ride status, and cancellation
 - Cart with quantity management and checkout
 - Payment flows:
 	- Stripe card checkout
@@ -135,12 +138,16 @@ If none exists on the backend, checkout still succeeds and the app reports that 
 - `/` - Home/Catalog
 - `/products/:id` - Product details
 - `/cart` - Cart + checkout
+- `/stores`, `/stores/:id` - Store directory and storefront product listings
+- `/rides`, `/rides/mine` - Ride booking quotes and ride history (sign-in required)
 - `/orders` - User order history (auth required)
 - `/admin` - Admin dashboard (admin auth required)
 - `/login`, `/register`
 - `/forgot-password`, `/reset-password`
 - `/verify-email`
 - `/payment/success`, `/payment/cancel`
+
+Storefront inventory can be browsed on the website, but the existing web checkout does not yet support store-specific inventory reservations. Use the mobile app to purchase those items. Ride booking and status updates use the shared ride API; live map tracking and post-trip payment remain in the mobile app.
 
 ## Google OAuth branding links and policy deployment
 
