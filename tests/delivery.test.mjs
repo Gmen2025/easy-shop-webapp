@@ -120,6 +120,17 @@ test('cart preserves store identity and removes purchased units only once across
     assert.match(markup, /Increase Parcel quantity/)
     assert.match(markup, /Proceed to Checkout/)
     assert.match(markup, /class="mobile-cart-checkout-bar" role="region" aria-label="Continue from cart"/)
+    const { default: ProfilePage } = await server.ssrLoadModule('/src/pages/ProfilePage.jsx')
+    const profileStore = configureStore({ reducer: {
+      auth: () => ({ user: { id: 'customer', name: 'Test Customer', email: 'customer@example.test', shippingAddress1: '810 Grace St' } }),
+    } })
+    const profile = renderToStaticMarkup(createElement(Provider, { store: profileStore },
+      createElement(MemoryRouter, null, createElement(ProfilePage))))
+    for (const text of ['Test Customer', 'customer@example.test', '810 Grace St', 'Order List',
+      'Track Delivery', 'Cancellation', 'Payment', 'Privacy &amp; Account', 'Help &amp; Support',
+      'Sign Out', 'Customer details', 'easyshop@addugeneteshop.com']) assert.ok(profile.includes(text), text)
+    for (const destination of ['/edit-profile', '/orders', '/delivery-checkouts', '/service-requests',
+      '/privacy-policy', '/terms.html', '/service-request']) assert.ok(profile.includes(`href="${destination}"`), destination)
     const { default: CheckoutHeader } = await server.ssrLoadModule('/src/components/CheckoutHeader.jsx')
     const header = renderToStaticMarkup(createElement(CheckoutHeader, { step: 4, title: 'Order Summary' }))
     assert.match(header, /Order Summary/)

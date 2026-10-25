@@ -14,6 +14,11 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 ## Features
 
 - Product catalog and product details pages
+- Mobile-style profile dashboard with a gold account header, edit/service/sign-out
+  actions, order and delivery shortcuts, privacy/account rows and support tiles.
+  Customer details remain available in an expandable section. Web shortcuts use
+  existing order/checkout pages; account settings opens the profile editor rather
+  than advertising mobile-only two-factor controls.
 - Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
 - Store directory and storefront inventory browsing
 - Mobile-style ride booking with labeled saved-address badges, map/stops review,
