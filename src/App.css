@@ -757,6 +757,11 @@
   .admin-data-rows > div, .admin-lifetime { flex-wrap: wrap; }
 }
 
+.admin-product-summary { display: flex; align-items: center; gap: .85rem; min-width: 0; flex: 1 1 200px; }
+.admin-product-details { display: grid; gap: .25rem; min-width: 0; }
+.admin-product-thumbnail { width: 72px; height: 72px; flex: 0 0 72px; object-fit: contain; border: 1px solid #dce2ea; border-radius: 10px; background: #fff; }
+.admin-product-placeholder { display: grid; place-items: center; padding: .3rem; box-sizing: border-box; color: #64748b; font-size: .75rem; text-align: center; }
+
 /* Desktop field alignment leaves the existing phone styles in control. */
 @media (min-width: 641px) {
 .shell .main-content {

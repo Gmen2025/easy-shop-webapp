@@ -52,6 +52,8 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 	  inventory, payouts, lifetime totals, recent sales and searchable tool tiles.
 	- Manage categories
 	- Manage products (including image upload)
+	- Product-list thumbnails use the primary gallery image or legacy image,
+	  with a "No image" placeholder for missing or unavailable images.
 	- Manage order status and deletion
 	- Low-stock alert panel with configurable threshold
 	- Runtime maintenance mode ON/OFF toggle (DB-backed, no redeploy)

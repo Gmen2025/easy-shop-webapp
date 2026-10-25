@@ -36,6 +36,19 @@ import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
 import { getSelectedDatabaseName } from '../api/client'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
+
+function ProductThumbnail({ product }) {
+  const source = getPrimaryProductImage(product, '')
+  const [failedSource, setFailedSource] = useState(null)
+  return source && source !== failedSource ? (
+    <img className="admin-product-thumbnail" src={source} alt={product.name || 'Product'}
+      loading="lazy" width={72} height={72} onError={() => setFailedSource(source)} />
+  ) : (
+    <div className="admin-product-thumbnail admin-product-placeholder" role="img"
+      aria-label={`No image for ${product.name || 'product'}`}>No image</div>
+  )
+}
+
 const defaultProduct = {
   name: '',
   description: '',
@@ -922,13 +935,16 @@ function AdminDashboardPage() {
           <label>Search products<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or brand" /></label>
           {products.filter((product) => `${product.name} ${product.brand || ''}`.toLowerCase().includes(search.toLowerCase())).map((product) => (
             <article key={product.id || product._id} className="admin-item">
-              <div>
-                <strong>{product.name}</strong>
-                <small>{formatCurrency(product.price)}</small>
-                <small>Stock: {Number(product.countInStock || 0)}</small>
-                {Number(product.countInStock || 0) <= minimumStockThreshold ? (
-                  <small className="stock-warning">Low stock</small>
-                ) : null}
+              <div className="admin-product-summary">
+                <ProductThumbnail product={product} />
+                <div className="admin-product-details">
+                  <strong>{product.name}</strong>
+                  <small>{formatCurrency(product.price)}</small>
+                  <small>Stock: {Number(product.countInStock || 0)}</small>
+                  {Number(product.countInStock || 0) <= minimumStockThreshold ? (
+                    <small className="stock-warning">Low stock</small>
+                  ) : null}
+                </div>
               </div>
               <div className="inline-actions">
                 <button

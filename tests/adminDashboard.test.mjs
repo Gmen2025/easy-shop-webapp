@@ -76,7 +76,11 @@ test('admin dashboard and focused catalog screens render accessible controls wit
     const { default: Home } = await server.ssrLoadModule('/src/pages/AdminHomePage.jsx')
     const { default: Tools } = await server.ssrLoadModule('/src/pages/AdminDashboardPage.jsx')
     const store = configureStore({ reducer: {
-      admin: () => ({ products: [], categories: [], orders: [], bankAccounts: [], status: 'succeeded', actionStatus: 'idle' }),
+      admin: () => ({ products: [
+        { _id: 'gallery', name: 'Gallery product', images: ['', 'https://example.test/gallery.png'], image: 'https://example.test/older.png' },
+        { _id: 'legacy', name: 'Legacy product', image: 'https://example.test/legacy.png' },
+        { _id: 'missing', name: 'Missing image product' },
+      ], categories: [], orders: [], bankAccounts: [], status: 'succeeded', actionStatus: 'idle' }),
       maintenance: () => ({ enabled: false, status: 'succeeded', updateStatus: 'idle' }),
     } })
     const render = (path, Component, route) => renderToStaticMarkup(createElement(Provider, { store },
@@ -93,6 +97,11 @@ test('admin dashboard and focused catalog screens render accessible controls wit
     assert.match(inventory, /Rating \(0-5\)/)
     assert.match(inventory, /Number of reviews/)
     assert.doesNotMatch(inventory, /<h3>Orders<\/h3>/)
+    const products = render('/admin/tools/products', Tools, '/admin/tools/:section')
+    assert.match(products, /class="admin-product-thumbnail" src="https:\/\/example.test\/gallery.png" alt="Gallery product"/)
+    assert.match(products, /class="admin-product-thumbnail" src="https:\/\/example.test\/legacy.png" alt="Legacy product"/)
+    assert.match(products, /aria-label="No image for Missing image product"/)
+    assert.match(products, /loading="lazy" width="72" height="72"/)
     const categories = render('/admin/tools/categories', Tools, '/admin/tools/:section')
     assert.match(categories, /Add Category/)
     assert.doesNotMatch(categories, /admin-product-editor/)
