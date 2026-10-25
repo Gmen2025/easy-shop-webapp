@@ -142,6 +142,15 @@ test('cart preserves store identity and removes purchased units only once across
     assert.match(addressInput, /value="810 Grace St"/)
     assert.match(addressInput, /Pickup address/)
     assert.match(addressInput, /required=""/)
+    for (const placeholder of ['Search pickup location', 'Search drop-off location']) {
+      const emptyInput = renderToStaticMarkup(createElement(AddressAutocomplete, {
+        label: 'Street address', value: '', country: 'USA', placeholder,
+        onChange: () => {}, onSelect: () => {},
+      }))
+      assert.ok(emptyInput.includes(`placeholder="${placeholder}"`))
+      assert.match(emptyInput, /value=""/)
+      assert.match(emptyInput, /<label[^>]*>Street address<\/label>/)
+    }
     const reloaded = reducer(state, switchDatabase())
     assert.equal(reloaded.items[0].product.image, 'https://example.test/parcel.jpg')
     assert.equal(reloaded.items[1].product.storefrontName, 'Market A')

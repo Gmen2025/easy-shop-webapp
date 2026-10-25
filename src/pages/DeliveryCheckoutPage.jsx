@@ -256,6 +256,7 @@ export default function DeliveryCheckoutPage() {
             <h2>Drop-off {index + 1}</h2>
             <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => field === 'address1' ?
               <AddressAutocomplete key={`${field}-${address.country}`} label={label} value={address.address1} country={address.country} maxLength={300}
+                placeholder="Search drop-off location"
                 onChange={(value) => setAddresses((previous) => previous.map((entry) =>
                   entry.id === address.id ? editAddress(entry, 'address1', value) : entry))}
                 onSelect={(selected) => setAddresses((previous) => previous.map((entry) =>

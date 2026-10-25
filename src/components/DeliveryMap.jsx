@@ -47,10 +47,7 @@ export default function DeliveryMap({ pickup, dropoff, driver, coordinates = EMP
           if (!current) return
           const route = routes?.[0]
           if (!route?.path?.length) throw new Error('No driving route was returned for these locations.')
-          for (const polyline of route.createPolylines()) {
-            overlays.push(polyline)
-            polyline.setMap(map)
-          }
+          overlays.push(new maps.Polyline({ map, path: route.path, strokeColor: '#2563eb', strokeWeight: 5 }))
           route.path.forEach((point) => bounds.extend(point))
         }
       }

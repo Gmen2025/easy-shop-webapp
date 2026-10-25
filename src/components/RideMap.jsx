@@ -45,10 +45,7 @@ export default function RideMap({ stops, country, onSelectLocation, disabled }) 
       })
       if (!current) return
       if (!routes?.[0]?.path?.length) throw new Error('No driving route was returned.')
-      for (const polyline of routes[0].createPolylines()) {
-        polyline.setMap(map)
-        overlays.push(polyline)
-      }
+      overlays.push(new maps.Polyline({ map, path: routes[0].path, strokeColor: '#2563eb', strokeWeight: 5 }))
       routes[0].path.forEach((point) => bounds.extend(point))
       map.fitBounds(bounds, 45)
     }).catch((failure) => {

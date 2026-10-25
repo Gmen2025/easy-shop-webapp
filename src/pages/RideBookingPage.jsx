@@ -252,6 +252,7 @@ function RideBookingPage() {
               </label>
               <AddressAutocomplete key={`${activeStop.id}-${activeStop.address.country}`}
                 label={activeStop.type === 'pickup' ? 'Search pickup address or landmark' : 'Search drop-off address or landmark'}
+                placeholder={activeStop.type === 'pickup' ? 'Search pickup location' : 'Search drop-off location'}
                 value={activeStop.address.address1} country={activeStop.address.country} required disabled={busy}
                 onChange={(value) => updateAddress('address1', value)}
                 onSelect={(address) => {

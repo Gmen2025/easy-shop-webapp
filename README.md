@@ -302,6 +302,13 @@ This does not introduce a new optimized consolidated multi-stop dispatch model.
 
 ### Browser Google Maps setup
 
+Route previews draw the returned Routes API path with a Maps JavaScript
+polyline, without depending on the route object's `createPolylines` helper.
+Renaming a key's display name in Google Cloud does not change its value.
+If production reports "This page didn't load Google Maps correctly", inspect
+the browser console for the specific Google Maps error code; route-rendering
+errors and key authorization errors are separate problems.
+
 1. In [Google Cloud Console](https://console.cloud.google.com/), create or select
    a project and link a billing account. Enable **Maps JavaScript API**,
    **Routes API**, and **Places API (New)** in APIs & Services > Library.
@@ -336,7 +343,9 @@ This does not introduce a new optimized consolidated multi-stop dispatch model.
 ### Delivery and ride address suggestions
 
 The shared address autocomplete is available for each delivery drop-off,
-legacy shipping checkout, and ride pickup/drop-off. Type at least three
+legacy shipping checkout, and ride pickup/drop-off. Look for the input showing "Search pickup location" or
+"Search drop-off location". These hints appear when the field is empty;
+existing addresses remain visible and editable. Type at least three
 characters, then choose a Google suggestion with the mouse or Arrow keys and
 Enter. Escape closes suggestions. Selection fills street, city, postal code
 and country while preserving apartment/unit and contact details. Delivery and

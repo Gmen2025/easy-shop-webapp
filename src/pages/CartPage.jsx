@@ -671,7 +671,7 @@ function LegacyCartPage() {
               setZip(address.zip)
               setCountry(address.country)
             }}
-            placeholder="Shipping Address"
+            placeholder="Search drop-off location"
             required
           />
           <input
