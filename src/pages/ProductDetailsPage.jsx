@@ -185,15 +185,16 @@ function ProductDetailsPage() {
           <p className="price-tag">{formatCurrency(selectedProduct.price)}</p>
 
           <div className="details-actions">
-            <label htmlFor="qty">Qty</label>
-            <input
-              id="qty"
-              type="number"
-              min="1"
-              max={stock || 1}
-              value={quantity}
-              onChange={(event) => setQuantity(Number(event.target.value || 1))}
-            />
+            <label htmlFor="qty">Qty
+              <input
+                id="qty"
+                type="number"
+                min="1"
+                max={stock || 1}
+                value={quantity}
+                onChange={(event) => setQuantity(Number(event.target.value || 1))}
+              />
+            </label>
             <button
               type="button"
               className="solid-button"

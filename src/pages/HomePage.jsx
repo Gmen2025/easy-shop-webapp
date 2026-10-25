@@ -186,14 +186,16 @@ function HomePage() {
         </div>
         <div className="catalog-search-row">
           <label className="catalog-search">
-            <span className="visually-hidden">Search products</span>
-            <span aria-hidden="true">⌕</span>
-            <input
-              type="search"
-              value={searchQuery}
-              placeholder="Search products, brands, and more"
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
+            <span className="catalog-search-label">Search products</span>
+            <span className="catalog-search-control">
+              <span aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                value={searchQuery}
+                placeholder="Search products, brands, and more"
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </span>
           </label>
           <button
             type="button"

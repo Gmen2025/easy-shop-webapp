@@ -359,25 +359,27 @@ function TelebirrCheckout({ amount, onConfirmed, onError }) {
 
   return (
     <div className="telebirr-form">
-      <label htmlFor="telebirr-name">Full Name</label>
-      <input
-        id="telebirr-name"
-        type="text"
-        value={customerName}
-        onChange={(event) => setCustomerName(event.target.value)}
-        placeholder="Your name"
-        required
-      />
+      <label htmlFor="telebirr-name">Full Name
+        <input
+          id="telebirr-name"
+          type="text"
+          value={customerName}
+          onChange={(event) => setCustomerName(event.target.value)}
+          placeholder="Your name"
+          required
+        />
+      </label>
 
-      <label htmlFor="telebirr-phone">Phone Number</label>
-      <input
-        id="telebirr-phone"
-        type="tel"
-        value={phone}
-        onChange={(event) => setPhone(event.target.value)}
-        placeholder="+251912345678"
-        required
-      />
+      <label htmlFor="telebirr-phone">Phone Number
+        <input
+          id="telebirr-phone"
+          type="tel"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          placeholder="+251912345678"
+          required
+        />
+      </label>
 
       <p className="telebirr-amount">Amount to Pay: {Math.round(amount)} ETB</p>
 

@@ -35,19 +35,18 @@ const normalizeProductInput = (payload) => {
 
 export const fetchAdminCatalog = createAsyncThunk(
   'admin/fetchAdminCatalog',
-  async () => {
-    const [categories, products, orders, bankAccountsResponse] = await Promise.all([
-      apiRequest('/categories'),
-      apiRequest('/products'),
-      apiRequest('/orders'),
-      apiRequest('/settings/bank-account?currency=ALL'),
-    ])
-    return {
-      categories,
-      products,
-      orders,
-      bankAccounts: normalizeBankAccounts(bankAccountsResponse),
+  async (section) => {
+    const resources = {
+      categories: '/categories', products: '/products', orders: '/orders',
+      bankAccounts: '/settings/bank-account?currency=ALL',
     }
+    const sections = { categories: ['categories'], products: ['categories', 'products'],
+      inventory: ['categories', 'products'], orders: ['orders'], banks: ['bankAccounts'] }
+    const keys = sections[section] || Object.keys(resources)
+    return Object.fromEntries(await Promise.all(keys.map(async (key) => {
+      const result = await apiRequest(resources[key])
+      return [key, key === 'bankAccounts' ? normalizeBankAccounts(result) : result]
+    })))
   },
 )
 
@@ -185,10 +184,9 @@ const adminSlice = createSlice({
       })
       .addCase(fetchAdminCatalog.fulfilled, (state, action) => {
         state.loading = false
-        state.categories = action.payload.categories
-        state.products = action.payload.products
-        state.orders = action.payload.orders
-        state.bankAccounts = action.payload.bankAccounts
+        for (const key of ['categories', 'products', 'orders', 'bankAccounts']) {
+          if (action.payload[key]) state[key] = action.payload[key]
+        }
       })
       .addCase(fetchAdminCatalog.rejected, (state, action) => {
         state.loading = false

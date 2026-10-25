@@ -10,6 +10,10 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import OrdersPage from './pages/OrdersPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminHomePage from './pages/AdminHomePage'
+import AdminOperationsPage from './pages/AdminOperationsPage'
+import RideSettingsPage from './pages/RideSettingsPage'
+import AdminNavigation from './components/AdminNavigation'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
@@ -209,9 +213,12 @@ function App() {
           <Route
             path="admin"
             element={
-              isAuthenticated && isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" replace />
+              isAuthenticated && isAdmin ? <AdminHomePage /> : <Navigate to="/login" replace />
             }
           />
+          <Route path="admin/tools/:section" element={isAuthenticated && isAdmin ? <AdminDashboardPage key={location.pathname} /> : <Navigate to="/login" replace />} />
+          <Route path="admin/operations/:section" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><AdminOperationsPage key={location.pathname} /></section> : <Navigate to="/login" replace />} />
+          <Route path="admin/rides" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><RideSettingsPage /></section> : <Navigate to="/login" replace />} />
           <Route path="delivery-checkouts" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutsPage /> : <Navigate to="/login" replace />} />
           <Route path="delivery-checkouts/:id" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="driver/deliveries" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DriverDeliveriesPage /> : <Navigate to="/login" replace />} />

@@ -71,23 +71,25 @@ function ResetPasswordPage() {
           <p className="form-error">Reset token is invalid or expired.</p>
         ) : null}
 
-        <label htmlFor="new-password">New Password</label>
-        <input
-          id="new-password"
-          type="password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          required
-        />
+        <label htmlFor="new-password">New Password
+          <input
+            id="new-password"
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            required
+          />
+        </label>
 
-        <label htmlFor="confirm-password">Confirm Password</label>
-        <input
-          id="confirm-password"
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          required
-        />
+        <label htmlFor="confirm-password">Confirm Password
+          <input
+            id="confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            required
+          />
+        </label>
 
         {localError ? <p className="form-error">{localError}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}

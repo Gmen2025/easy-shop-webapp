@@ -71,9 +71,11 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
 
   return (
     <div className="stripe-card-form">
-      <label>Card Details</label>
-      <div className="stripe-card-input">
-        <CardElement options={cardStyles} />
+      <div className="form-field">
+        <span>Card Details</span>
+        <div className="stripe-card-input field-control" role="group" aria-label="Card Details">
+          <CardElement options={cardStyles} />
+        </div>
       </div>
       <button
         type="button"

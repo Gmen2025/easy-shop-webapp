@@ -13,6 +13,14 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 
 ## Features
 
+- Website forms use one field per row with aligned labels beside controls on
+  desktop (above 640px). At 640px and below the website keeps its existing
+  phone form styling rather than applying the desktop redesign. Styling covers
+  customer, checkout, ride, delivery and admin forms, with visible field labels,
+  consistent spacing and focus states. Checkboxes, radio choices and cart
+  quantity controls retain their compact layouts; address suggestions stay
+  anchored below the address input. This layout change does not alter the
+  native mobile app.
 - Product catalog and product details pages
 - Mobile-style profile dashboard with a gold account header, edit/service/sign-out
   actions, order and delivery shortcuts, privacy/account rows and support tiles.
@@ -21,6 +29,10 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
   authenticator/email two-factor authentication and backup-code flows.
 - Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
 - Store directory and storefront inventory browsing
+- Optional store logos on company-store Create/Edit forms: upload a JPEG, PNG or
+  WebP (up to 5 MB), paste an HTTPS URL, replace it or remove it. Directory,
+  storefront and admin store cards show the logo or initials derived from the
+  registered store name (also used if an image fails to load).
 - Mobile-style ride booking with labeled saved-address badges, map/stops review,
   regular/shared rides, vehicle selection, and pay-after-ride confirmation
 - Authenticated ride quotes, ride requests, ride status, and cancellation
@@ -35,17 +47,76 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 	- Forgot/reset password
 	- Email verification
 - Admin dashboard:
+	- Mobile-style sales control center with 24-hour, 7/30/90/365-day
+	  analytics, product/delivery revenue split, payment breakdown, operations,
+	  inventory, payouts, lifetime totals, recent sales and searchable tool tiles.
 	- Manage categories
 	- Manage products (including image upload)
 	- Manage order status and deletion
 	- Low-stock alert panel with configurable threshold
 	- Runtime maintenance mode ON/OFF toggle (DB-backed, no redeploy)
+	- Focused management pages for company stores/drivers, applications,
+	  rejected applications, suspensions, role assignments, store-owner access,
+	  payouts, push broadcasts, ride pricing/pooling, driver ride verification,
+	  ride termination reviews and bank/cash receipt confirmation.
 - Inventory safeguards:
 	- Checkout is blocked if requested quantity exceeds available inventory
 	- Customer gets a clear message to lower quantity
 	- Stock is synced during order creation and reflected in product pages
 	- Low-stock alerts shown after checkout
 	- Best-effort admin low-stock email notification request
+
+## Shared mobile/web administration
+
+`/admin` is the mobile-inspired overview. Its sales figures come from the same
+`GET /orders/admin/dashboard` endpoint as mobile, not locally calculated demo
+data. Revenue reflects completed orders, split into product sales and delivery
+income; order counts use the backend's rolling windows. Figures follow the
+selected regional database. The server inventory low-stock metric uses each
+product's `minStock`; the Inventory tool's alert threshold is a separate
+browser-local preference, as on mobile.
+
+The scrollable admin tool bar and Manage tiles link to focused catalog,
+category, order, inventory, bank, service-request, delivery, maintenance and
+social sign-in screens under `/admin/tools/:section`, along with:
+
+- `/admin/operations/stores`: company stores, approval queues, nearby inventory,
+  rejected applications and inventory migration.
+- `/admin/operations/drivers`: company driver creation/editing, onboarding,
+  approvals/rejections, suspension/reinstatement, availability and nearby work.
+- `/admin/operations/store-owners` and `/admin/operations/roles`: owner onboarding
+  and access, plus assignment of existing users to driver/store-owner roles.
+- `/admin/operations/payouts`: regional settlement filters, paid/rejected records
+  and weekly settlement batches. **Marking payouts paid records settlement; it
+  does not move money or trigger a bank transfer.**
+- `/admin/operations/broadcast`: push broadcasts through the shared backend.
+  This targets registered mobile push tokens, **not web push subscriptions**;
+  provider configuration and recipient tokens are required, and delivery is not
+  guaranteed. Provider failures are shown instead of reporting false delivery.
+- `/admin/rides`: shared ride/pooling pricing, company-driver vehicle class and
+  seat verification, termination review, and ride payment receipt confirmation.
+- `/admin/delivery`: shared vehicle capacity/pricing, delivery windows,
+  packaged product measurements and driver vehicle availability.
+- `/admin/international-payments`: FX policy/current-rate/history and USA hub,
+  tariff and product export approval; `/admin/delivery-payments` verifies shared
+  checkout payments, handles cancellation/refund records and shipment tracking.
+
+All pages require a signed-in admin and use existing admin-protected backend
+APIs and the selected database header. There is no separate web admin datastore.
+Configuration, approvals and payment actions are shared with mobile. A production
+backend exposing these existing mobile endpoints is required. Maps, FX provider
+fetches, social sign-in, payment gateways, email and push continue to require
+their server/browser credentials and external services. Shipping configuration
+does not book carriers or buy labels. No live payouts, broadcasts, approvals or
+real payment confirmations are performed by the automated UI checks.
+
+Store logos use the existing shared `Store.logo` field and Cloudinary signing
+integration (`eshop/stores` folder); no database migration or new credentials
+are needed if product-image uploads already work. Deploy the matching backend
+before the clients. A selected image is uploaded first, then saved to the store
+only when the form is submitted. Cancelling the form preserves the saved logo;
+removing it and saving switches both clients to initials. Old Cloudinary assets
+are not automatically deleted, to avoid removing images still in use elsewhere.
 
 ## Requirements
 

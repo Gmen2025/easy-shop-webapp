@@ -6,6 +6,7 @@ import { deliveryRequest } from '../api/delivery'
 import { formatCurrency } from '../utils/format'
 import DeliveryMap from '../components/DeliveryMap'
 import DeliveryWindow from '../components/DeliveryWindow'
+import AdminNavigation from '../components/AdminNavigation'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { money, paymentAmount, SHIPMENT_STAGES } from '../utils/checkoutPayment'
 
@@ -89,6 +90,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
   }
   if (!permitted) return <p role="alert">Admin access required.</p>
   return <section className="panel delivery-page">
+    {admin ? <AdminNavigation /> : null}
     <div className="panel-header"><h1>{admin ? 'Combined delivery payments' : 'My delivery checkouts'}</h1>
       <Link to={admin ? '/admin' : '/cart'}>{admin ? 'Admin dashboard' : 'Return to cart'}</Link></div>
     {error ? <p role="alert" className="error-text">{error}</p> : null}

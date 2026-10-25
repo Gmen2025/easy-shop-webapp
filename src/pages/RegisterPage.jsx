@@ -35,40 +35,44 @@ function RegisterPage() {
         <h2>Create Your Account</h2>
         <p>Register using the Easy Shop API and verify by email.</p>
 
-        <label htmlFor="name">Full Name</label>
-        <input
-          id="name"
-          value={formData.name}
-          onChange={(event) => updateField('name', event.target.value)}
-          required
-        />
+        <label htmlFor="name">Full Name
+          <input
+            id="name"
+            value={formData.name}
+            onChange={(event) => updateField('name', event.target.value)}
+            required
+          />
+        </label>
 
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          value={formData.email}
-          onChange={(event) => updateField('email', event.target.value.trimStart())}
-          onBlur={(event) => updateField('email', event.target.value.trim().toLowerCase())}
-          required
-        />
+        <label htmlFor="email">Email
+          <input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(event) => updateField('email', event.target.value.trimStart())}
+            onBlur={(event) => updateField('email', event.target.value.trim().toLowerCase())}
+            required
+          />
+        </label>
 
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          value={formData.password}
-          onChange={(event) => updateField('password', event.target.value)}
-          required
-        />
+        <label htmlFor="password">Password
+          <input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(event) => updateField('password', event.target.value)}
+            required
+          />
+        </label>
 
-        <label htmlFor="phone">Phone</label>
-        <input
-          id="phone"
-          value={formData.phone}
-          onChange={(event) => updateField('phone', event.target.value)}
-          required
-        />
+        <label htmlFor="phone">Phone
+          <input
+            id="phone"
+            value={formData.phone}
+            onChange={(event) => updateField('phone', event.target.value)}
+            required
+          />
+        </label>
 
         {error ? <p className="form-error">{error}</p> : null}
         {registerMessage ? <p className="form-success">{registerMessage}</p> : null}

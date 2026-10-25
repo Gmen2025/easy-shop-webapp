@@ -78,9 +78,10 @@ export default function AddressAutocomplete({ label = 'Street address', value, c
     }
   }
 
-  return <div className="address-autocomplete"
+  return <div className="address-autocomplete form-field"
     onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close() }}>
     <label htmlFor={id}>{label}</label>
+    <div className="address-input-control">
     <input maxLength={300} {...inputProps} id={id} name="address1" value={value || ''} autoComplete="off"
       role="combobox" aria-autocomplete="list" aria-expanded={visible}
       aria-controls={`${id}-suggestions`} aria-describedby={`${id}-status`}
@@ -117,5 +118,6 @@ export default function AddressAutocomplete({ label = 'Street address', value, c
     <small id={`${id}-status`} role={error ? 'alert' : 'status'}>
       {error || (loading ? 'Looking up address...' : !hasKey ? 'Google address suggestions need a configured browser key. Enter the address manually.' : '')}
     </small>
+    </div>
   </div>
 }

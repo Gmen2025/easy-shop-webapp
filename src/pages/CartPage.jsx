@@ -578,24 +578,24 @@ function LegacyCartPage() {
         <p className="checkout-total">Delivery Fee (estimated): {formatCurrency(totals.deliveryFee)}</p>
         <p className="checkout-total">Total: {formatCurrency(totals.grandTotal)}</p>
         <form className="checkout-form" onSubmit={handleCheckout}>
-          <label htmlFor="delivery-mode">Delivery Option</label>
-          <select
-            id="delivery-mode"
-            value={deliveryMode}
-            onChange={(event) => setDeliveryMode(event.target.value)}
-          >
-            {deliveryModeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="delivery-mode">Delivery Option
+            <select
+              id="delivery-mode"
+              value={deliveryMode}
+              onChange={(event) => setDeliveryMode(event.target.value)}
+            >
+              {deliveryModeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {isEthio ? (
             <>
               <label htmlFor="delivery-distance">
                 Delivery Distance (km){distanceApiEnabled ? ' — auto-calculated from your address' : ' (optional)'}
-              </label>
               <input
                 id="delivery-distance"
                 type="number"
@@ -607,7 +607,7 @@ function LegacyCartPage() {
                   setDistanceAutoCalculated(false)
                 }}
                 placeholder="e.g. 5"
-              />
+              /></label>
               {distanceEstimating ? <p className="section-note">Calculating distance...</p> : null}
               {distanceAutoCalculated && !distanceEstimating ? (
                 <p className="section-note">Distance auto-calculated from your shipping address. You can edit it manually if needed.</p>
@@ -617,14 +617,15 @@ function LegacyCartPage() {
 
           {isEthio && deliveryMode === 'SCHEDULED' ? (
             <>
-              <label htmlFor="scheduled-for">Scheduled Delivery Date &amp; Time</label>
-              <input
-                id="scheduled-for"
-                type="datetime-local"
-                value={scheduledFor}
-                onChange={(event) => setScheduledFor(event.target.value)}
-                required
-              />
+              <label htmlFor="scheduled-for">Scheduled Delivery Date &amp; Time
+                <input
+                  id="scheduled-for"
+                  type="datetime-local"
+                  value={scheduledFor}
+                  onChange={(event) => setScheduledFor(event.target.value)}
+                  required
+                />
+              </label>
             </>
           ) : null}
 
@@ -632,26 +633,27 @@ function LegacyCartPage() {
             Final delivery fee is calculated by the server and may differ slightly from the estimate above.
           </p>
 
-          <label htmlFor="payment-method">Payment Method</label>
-          <select
-            id="payment-method"
-            value={paymentMethod}
-            onChange={(event) => {
-              setPaymentMethod(event.target.value)
-              setBankTransferMeta(null)
-              setCardError('')
-            }}
-          >
-            {cashAvailable ? <option value="cod">Cash On Delivery{!isEthio ? ' (development only)' : ''}</option> : null}
-            {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
-            {isEthio ? (
-              <option value="telebirr" disabled={!isTelebirrEnabled}>
-                {isTelebirrEnabled ? 'Telebirr' : 'Telebirr (Inactive)'}
-              </option>
-            ) : (
-              <option value="card">Stripe Card</option>
-            )}
-          </select>
+          <label htmlFor="payment-method">Payment Method
+            <select
+              id="payment-method"
+              value={paymentMethod}
+              onChange={(event) => {
+                setPaymentMethod(event.target.value)
+                setBankTransferMeta(null)
+                setCardError('')
+              }}
+            >
+              {cashAvailable ? <option value="cod">Cash On Delivery{!isEthio ? ' (development only)' : ''}</option> : null}
+              {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
+              {isEthio ? (
+                <option value="telebirr" disabled={!isTelebirrEnabled}>
+                  {isTelebirrEnabled ? 'Telebirr' : 'Telebirr (Inactive)'}
+                </option>
+              ) : (
+                <option value="card">Stripe Card</option>
+              )}
+            </select>
+          </label>
 
           {isEthio && !isTelebirrEnabled ? (
             <p className="section-note">
@@ -674,24 +676,30 @@ function LegacyCartPage() {
             placeholder="Search drop-off location"
             required
           />
-          <input
-            value={shippingAddress2}
-            onChange={(event) => setShippingAddress2(event.target.value)}
-            placeholder="Address Line 2"
-          />
-          <input
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-            placeholder="City"
-            required
-          />
-          <input
-            value={zip}
-            onChange={(event) => setZip(event.target.value)}
-            placeholder="Postal Code"
-            required
-          />
-          <select
+          <label>Address Line 2
+            <input
+              value={shippingAddress2}
+              onChange={(event) => setShippingAddress2(event.target.value)}
+              placeholder="Address Line 2"
+            />
+          </label>
+          <label>City
+            <input
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="City"
+              required
+            />
+          </label>
+          <label>Postal Code
+            <input
+              value={zip}
+              onChange={(event) => setZip(event.target.value)}
+              placeholder="Postal Code"
+              required
+            />
+          </label>
+          <label>Country<select
             value={country}
             onChange={(event) => setCountry(event.target.value)}
             required
@@ -705,13 +713,15 @@ function LegacyCartPage() {
                 {countryName}
               </option>
             ))}
-          </select>
-          <input
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="Phone"
-            required
-          />
+          </select></label>
+          <label>Phone
+            <input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="Phone"
+              required
+            />
+          </label>
 
           {error ? <p className="form-error">{error}</p> : null}
           {successMessage ? <p className="form-success">{successMessage}</p> : null}

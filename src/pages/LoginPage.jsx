@@ -142,53 +142,56 @@ function LoginPage() {
         </p>
 
         <div className="login-db-box">
-          <label htmlFor="login-database">Store</label>
-          <select
-            id="login-database"
-            disabled={loading || callbackBusy}
-            value={selectedDatabase}
-            onChange={(event) => {
-              const nextDatabase = event.target.value
-              if (nextDatabase === selectedDatabase) {
-                return
-              }
+          <label htmlFor="login-database">Store
+            <select
+              id="login-database"
+              disabled={loading || callbackBusy}
+              value={selectedDatabase}
+              onChange={(event) => {
+                const nextDatabase = event.target.value
+                if (nextDatabase === selectedDatabase) {
+                  return
+                }
 
-              setSelectedDatabase(nextDatabase)
-              dispatch(logout())
-              sessionStorage.removeItem('socialSignIn')
-              setSelectedDatabaseName(nextDatabase)
-              dispatch(switchDatabase())
-              window.location.assign('/login')
-            }}
-          >
-            <option value="E_Shopping">Ethio</option>
-            <option value="E_ShopUSA">USA</option>
-          </select>
+                setSelectedDatabase(nextDatabase)
+                dispatch(logout())
+                sessionStorage.removeItem('socialSignIn')
+                setSelectedDatabaseName(nextDatabase)
+                dispatch(switchDatabase())
+                window.location.assign('/login')
+              }}
+            >
+              <option value="E_Shopping">Ethio</option>
+              <option value="E_ShopUSA">USA</option>
+            </select>
+          </label>
           <small>
             Current store database: {selectedDatabase === 'E_ShopUSA' ? 'USA' : 'Ethio'}
           </small>
         </div>
 
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          disabled={loading || callbackBusy}
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value.trimStart())}
-          onBlur={() => setEmail((current) => current.trim().toLowerCase())}
-          required
-        />
+        <label htmlFor="email">Email
+          <input
+            id="email"
+            disabled={loading || callbackBusy}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value.trimStart())}
+            onBlur={() => setEmail((current) => current.trim().toLowerCase())}
+            required
+          />
+        </label>
 
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          disabled={loading || callbackBusy}
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+        <label htmlFor="password">Password
+          <input
+            id="password"
+            disabled={loading || callbackBusy}
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
 
         {error ? <p className="form-error">{error}</p> : null}
         {callbackError ? <p role="alert" className="form-error">{callbackError}</p> : null}

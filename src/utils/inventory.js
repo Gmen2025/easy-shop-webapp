@@ -42,7 +42,7 @@ export function normalizeLowStockThreshold(value) {
     return DEFAULT_LOW_STOCK_THRESHOLD
   }
 
-  return Math.max(1, Math.trunc(parsed))
+  return Math.max(0, Math.trunc(parsed))
 }
 
 export function getLowStockThreshold() {

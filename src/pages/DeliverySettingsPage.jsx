@@ -4,6 +4,7 @@ import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { getDeliverySettings, updateDeliverySettings } from '../api/serviceRequests'
 import { VEHICLES } from '../utils/delivery'
+import AdminNavigation from '../components/AdminNavigation'
 
 const vehicleFields = [
   ['baseFee', 'Base fee'], ['distanceRate', 'Distance rate'],
@@ -57,6 +58,7 @@ export default function DeliverySettingsPage() {
     finally { guard.current = false; setBusy(false) }
   }
   return <section className="panel delivery-page">
+    <AdminNavigation />
     <div className="panel-header"><h1>Shared delivery configuration</h1><Link to="/admin">Admin dashboard</Link></div>
     <Link to="/admin/delivery-payments">Combined payments, cancellations & refunds</Link>
     <p><Link to="/admin/international-payments">Daily exchange rates, USD services & US-to-Ethiopia shipping</Link></p>
@@ -111,7 +113,7 @@ export default function DeliverySettingsPage() {
         </> : null}
       </article>
       <section><h2>Company driver vehicle & availability</h2>
-        <p>Existing company-driver accounts are shared with mobile. Onboard and approve accounts through the existing mobile/Admin API flow.
+        <p>Existing company-driver accounts are shared with mobile. <Link to="/admin/operations/drivers">Onboard, approve and manage drivers</Link>.
           Saving a vehicle change is blocked by the server during an active passenger trip. Availability does not override suspension or capacity.</p>
         {drivers.map((driver) => <article className="order-card" key={driver._id}>
           <h3>{driver.name}</h3><p>{driver.email} | Approval: {driver.approvalStatus}{driver.isSuspended ? ' | Suspended' : ''}</p>

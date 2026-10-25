@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { ADDRESS_FIELDS } from '../utils/delivery'
 import { rateIsActive } from '../utils/checkoutPayment'
+import AdminNavigation from '../components/AdminNavigation'
 
 const tariffFields = [
   ['baseUsd', 'Base shipping fee (USD)'], ['perKgUsd', 'USD per billable kg'],
@@ -12,6 +13,7 @@ const tariffFields = [
 ]
 
 export default function InternationalPaymentsSettingsPage() {
+  const { hash } = useLocation()
   const usa = /usa/i.test(getSelectedDatabaseName())
   const [saved, setSaved] = useState(null)
   const [policy, setPolicy] = useState(null)
@@ -51,9 +53,14 @@ export default function InternationalPaymentsSettingsPage() {
     try { await action() } catch (failure) { setError(failure.message) }
     finally { guard.current = false; setBusy(false) }
   }
+  const shippingReady = Boolean(shipping)
+  useEffect(() => {
+    if (shippingReady && hash === '#shipping') document.getElementById('shipping')?.scrollIntoView({ block: 'start' })
+  }, [shippingReady, hash])
   return <section className="panel delivery-page">
+    <AdminNavigation />
     <div className="panel-header"><h1>{usa ? 'US exports paid in birr' : 'Ethiopia USD purchases & service payments'}</h1><Link to="/admin/delivery">Delivery settings</Link></div>
-    <div className="action-row"><Link to="/admin">Bank account configuration</Link><Link to="/admin/delivery-payments">Payments & shipment tracking</Link></div>
+    <div className="action-row"><Link to="/admin/tools/banks">Bank account configuration</Link><Link to="/admin/delivery-payments">Payments & shipment tracking</Link></div>
     <p>{usa ? 'ETB = USD products + US hub route fees + international shipping, multiplied by birr per USD. Product-only; no service or ride birr payments.' :
       'USD = ETB total divided by birr per USD. Products and Admin-quoted non-ride services stay in Ethiopia.'}</p>
     {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
@@ -99,7 +106,7 @@ export default function InternationalPaymentsSettingsPage() {
         </article>
       </> : <p>Loading exchange settings...</p>}
       {usa && shipping ? <>
-        <article className="order-card"><h2>US consolidation hub & shipping tariff</h2>
+        <article id="shipping" className="order-card"><h2>US consolidation hub & shipping tariff</h2>
           <p>This configures Admin pricing, not a live carrier booking or label purchase. Tariff must include final Ethiopian address delivery, excluding customs/duties.</p>
           <label><input type="checkbox" checked={Boolean(shipping.enabled)} onChange={(event) => setShipping({ ...shipping, enabled: event.target.checked })} />Enable international shipping</label>
           <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>Hub {label}

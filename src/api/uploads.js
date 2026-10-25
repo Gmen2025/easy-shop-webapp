@@ -1,6 +1,7 @@
 import { apiRequest } from './client'
+import { normalizeStoreLogo } from '../utils/storeLogo'
 
-export async function uploadProductImage(file) {
+async function uploadImage(file, folder) {
   if (!file) {
     throw new Error('Please choose an image file first.')
   }
@@ -8,7 +9,7 @@ export async function uploadProductImage(file) {
   const signData = await apiRequest('/cloudinary/sign', {
     method: 'POST',
     body: JSON.stringify({
-      folder: 'eshop/products',
+      folder,
     }),
   })
 
@@ -17,7 +18,7 @@ export async function uploadProductImage(file) {
   formData.append('api_key', signData.api_key)
   formData.append('timestamp', String(signData.timestamp))
   formData.append('signature', signData.signature)
-  formData.append('folder', 'eshop/products')
+  formData.append('folder', folder)
 
   const uploadResponse = await fetch(
     `https://api.cloudinary.com/v1_1/${signData.cloud_name}/image/upload`,
@@ -34,6 +35,18 @@ export async function uploadProductImage(file) {
   }
 
   return uploadJson.secure_url
+}
+
+export function uploadProductImage(file) {
+  return uploadImage(file, 'eshop/products')
+}
+
+export async function uploadStoreLogo(file) {
+  if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error('Choose a JPEG, PNG or WebP logo image.')
+  }
+  if (file.size > 5 * 1024 * 1024) throw new Error('Logo images must be 5 MB or smaller.')
+  return normalizeStoreLogo(await uploadImage(file, 'eshop/stores'))
 }
 
 export async function uploadProductImages(files = []) {

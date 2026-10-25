@@ -42,14 +42,15 @@ function VerifyEmailPage() {
         {message ? <p className="form-success">{message}</p> : null}
 
         <form className="auth-form" onSubmit={handleResend}>
-          <label htmlFor="verification-email">Email</label>
-          <input
-            id="verification-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
+          <label htmlFor="verification-email">Email
+            <input
+              id="verification-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
 
           <button className="solid-button" type="submit" disabled={loading}>
             {loading ? 'Sending...' : 'Resend Verification'}

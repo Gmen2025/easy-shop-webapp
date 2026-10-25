@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import AdminNavigation from '../components/AdminNavigation'
 import {
   clearAdminState,
   createCategoryAdmin,
@@ -8,8 +9,8 @@ import {
   deleteCategoryAdmin,
   deleteOrderAdmin,
   deleteProductAdmin,
-  fetchBankAccountsAdmin,
   fetchAdminCatalog,
+  fetchBankAccountsAdmin,
   manageBankAccountAdmin,
   updateOrderStatusAdmin,
   updateCategoryAdmin,
@@ -45,6 +46,8 @@ const defaultProduct = {
   price: '',
   category: '',
   countInStock: '',
+  rating: '0',
+  numReviews: '0',
   isFeatured: false,
 }
 const defaultBankAccountForm = {
@@ -129,6 +132,13 @@ function getDeliveryModeLabel(deliveryMode) {
 }
 
 function AdminDashboardPage() {
+  const { section = 'products' } = useParams()
+  const [search, setSearch] = useState('')
+  const [orderFilter, setOrderFilter] = useState('')
+  const titles = { products: 'Products', categories: 'Categories', orders: 'Orders', inventory: 'Inventory',
+    banks: 'Bank Accounts', services: 'Service Requests', delivery: 'Delivery Cost Settings',
+    maintenance: 'Maintenance', social: 'Social Sign-in' }
+  const catalogSection = ['products', 'inventory', 'categories', 'orders', 'banks'].includes(section)
   const dispatch = useDispatch()
   const { categories, products, orders, bankAccounts, loading, saving, error, message } = useSelector(
     (state) => state.admin,
@@ -148,6 +158,8 @@ function AdminDashboardPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
   const [minimumStockThreshold, setMinimumStockThreshold] = useState(() => getLowStockThreshold())
+  const [thresholdInput, setThresholdInput] = useState(() => String(getLowStockThreshold()))
+  const [thresholdError, setThresholdError] = useState('')
   const [bankAccountForm, setBankAccountForm] = useState(defaultBankAccountForm)
   const [bankAccountEditId, setBankAccountEditId] = useState('')
   const [serviceRequests, setServiceRequests] = useState([])
@@ -163,18 +175,16 @@ function AdminDashboardPage() {
   const [deliveryError, setDeliveryError] = useState('')
 
   useEffect(() => {
-    dispatch(fetchAdminCatalog())
-  }, [dispatch])
+    dispatch(clearAdminState())
+    if (catalogSection) dispatch(fetchAdminCatalog(section))
+  }, [dispatch, section, catalogSection])
 
   useEffect(() => {
-    dispatch(fetchMaintenanceMode())
-  }, [dispatch])
+    if (section === 'maintenance') dispatch(fetchMaintenanceMode())
+  }, [dispatch, section])
 
   useEffect(() => {
-    dispatch(fetchBankAccountsAdmin())
-  }, [dispatch])
-
-  useEffect(() => {
+    if (section !== 'delivery') return
     getDeliverySettings()
       .then((response) => {
         if (response?.deliveryConfig) {
@@ -185,9 +195,10 @@ function AdminDashboardPage() {
       })
       .catch((requestError) => setDeliveryError(requestError.message || 'Unable to load delivery settings.'))
       .finally(() => setDeliveryLoading(false))
-  }, [])
+  }, [section])
 
   useEffect(() => {
+    if (section !== 'services') return
     let isCurrent = true
 
     getAllServiceRequests()
@@ -210,7 +221,7 @@ function AdminDashboardPage() {
     return () => {
       isCurrent = false
     }
-  }, [])
+  }, [section])
 
   const effectiveProductCategory =
     productForm.category || categories[0]?.id || categories[0]?._id || ''
@@ -230,9 +241,19 @@ function AdminDashboardPage() {
     [products, minimumStockThreshold],
   )
 
-  function handleMinimumStockThresholdChange(event) {
-    const normalizedThreshold = setLowStockThreshold(event.target.value)
-    setMinimumStockThreshold(normalizedThreshold)
+  function applyMinimumStockThreshold() {
+    if (!/^\d+$/.test(thresholdInput) || !Number.isSafeInteger(Number(thresholdInput))) {
+      setThresholdError('Enter a whole number of zero or more.')
+      return
+    }
+    try {
+      const normalizedThreshold = setLowStockThreshold(thresholdInput)
+      setMinimumStockThreshold(normalizedThreshold)
+      setThresholdInput(String(normalizedThreshold))
+      setThresholdError('')
+    } catch (failure) {
+      setThresholdError(`Unable to save the threshold in this browser: ${failure.message}`)
+    }
   }
 
   function populateCategoryForm(category) {
@@ -245,6 +266,7 @@ function AdminDashboardPage() {
   }
 
   function populateProductForm(product) {
+    document.getElementById('admin-product-editor')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
     const images = [
       ...(Array.isArray(product.images) ? product.images : []),
       product.image,
@@ -258,9 +280,11 @@ function AdminDashboardPage() {
       image: images[0] || '',
       images,
       brand: product.brand || '',
-      price: String(product.price || ''),
+      price: String(product.price ?? ''),
       category: product.category?.id || product.category?._id || product.category || '',
-      countInStock: String(product.countInStock || ''),
+      countInStock: String(product.countInStock ?? ''),
+      rating: String(product.rating ?? 0),
+      numReviews: String(product.numReviews ?? 0),
       isFeatured: Boolean(product.isFeatured),
     })
     setImageFiles([])
@@ -271,16 +295,15 @@ function AdminDashboardPage() {
     event.preventDefault()
     dispatch(clearAdminState())
 
-    if (categoryEditId) {
-      await dispatch(
+    const result = categoryEditId
+      ? await dispatch(
         updateCategoryAdmin({ id: categoryEditId, payload: categoryForm }),
       )
-    } else {
-      await dispatch(createCategoryAdmin(categoryForm))
+      : await dispatch(createCategoryAdmin(categoryForm))
+    if (result.meta.requestStatus === 'fulfilled') {
+      setCategoryEditId('')
+      setCategoryForm(defaultCategory)
     }
-
-    setCategoryEditId('')
-    setCategoryForm(defaultCategory)
   }
 
   async function submitProduct(event) {
@@ -303,14 +326,15 @@ function AdminDashboardPage() {
       price: Number(productForm.price || 0),
       category: effectiveProductCategory,
       countInStock: Number(productForm.countInStock || 0),
+      rating: Number(productForm.rating),
+      numReviews: Number(productForm.numReviews),
       isFeatured: Boolean(productForm.isFeatured),
     }
 
-    if (productEditId) {
-      await dispatch(updateProductAdmin({ id: productEditId, payload }))
-    } else {
-      await dispatch(createProductAdmin(payload))
-    }
+    const result = productEditId
+      ? await dispatch(updateProductAdmin({ id: productEditId, payload }))
+      : await dispatch(createProductAdmin(payload))
+    if (result.meta.requestStatus !== 'fulfilled') return
 
     setProductEditId('')
     setProductForm({
@@ -407,7 +431,7 @@ function AdminDashboardPage() {
   }
 
   function deleteBankAccount(bankAccountId) {
-    if (!bankAccountId) {
+    if (!bankAccountId || !window.confirm('Delete this bank account? Customers will no longer be able to select it.')) {
       return
     }
 
@@ -420,12 +444,12 @@ function AdminDashboardPage() {
     )
   }
 
-  if (loading) {
-    return <LoadingState label="Loading admin dashboard..." />
+  if (loading && catalogSection) {
+    return <section className="page-stack"><AdminNavigation /><LoadingState label="Loading admin tools..." /></section>
   }
 
-  if (error && !categories.length && !products.length) {
-    return <ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog())} />
+  if (error && catalogSection && !categories.length && !products.length && !orders.length && !bankAccounts.length) {
+    return <section className="page-stack"><AdminNavigation /><ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog(section))} /></section>
   }
 
   function handleOrderStatusChange(orderId, status) {
@@ -434,11 +458,13 @@ function AdminDashboardPage() {
   }
 
   function handleDeleteOrder(orderId, customerEmail, customerName) {
+    if (!window.confirm('Permanently delete this order and notify the customer?')) return
     dispatch(clearAdminState())
     dispatch(deleteOrderAdmin({ id: orderId, customerEmail, customerName }))
   }
 
   async function handleMaintenanceToggle() {
+    if (!window.confirm(`${maintenanceEnabled ? 'Disable' : 'Enable'} maintenance mode across configured regions? ${maintenanceEnabled ? 'Customers can use the shop again.' : 'Customers will not be able to use the shop.'}`)) return
     await dispatch(updateMaintenanceModeAdmin(!maintenanceEnabled))
   }
 
@@ -517,17 +543,19 @@ function AdminDashboardPage() {
   }
 
   return (
-    <section className="page-stack">
+    <section className="page-stack admin-console">
+      <AdminNavigation />
+      {!titles[section] ? <p role="alert">Unknown admin tool. Choose a tool above.</p> : null}
       <section className="panel">
         <div className="panel-header">
-          <h2>Admin Dashboard</h2>
-          <span>{products.length} products</span>
+          <h1>{titles[section] || 'Admin tools'}</h1>
+          {['products', 'inventory'].includes(section) ? <span>{products.length} products</span> : null}
         </div>
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
       </section>
 
-      <section className="panel">
+      {section === 'maintenance' ? <section className="panel">
         <div className="panel-header">
           <h3>Site Maintenance Mode</h3>
           <span className={maintenanceEnabled ? 'status-pill status-on' : 'status-pill status-off'}>
@@ -566,26 +594,29 @@ function AdminDashboardPage() {
             Refresh Status
           </button>
         </div>
-      </section>
+      </section> : null}
 
-      <SocialLoginSettings />
+      {section === 'social' ? <SocialLoginSettings /> : null}
 
-      <section className="panel">
+      {section === 'inventory' ? <section className="panel">
         <div className="panel-header">
           <h3>Low Stock Alerts</h3>
           <span>{lowStockProducts.length} product(s)</span>
         </div>
         <div className="threshold-control">
-          <label htmlFor="minimum-stock-threshold">Minimum threshold</label>
-          <input
-            id="minimum-stock-threshold"
-            type="number"
-            min="1"
-            step="1"
-            value={minimumStockThreshold}
-            onChange={handleMinimumStockThresholdChange}
-          />
+          <label htmlFor="minimum-stock-threshold">Minimum threshold
+            <input
+              id="minimum-stock-threshold"
+              type="number"
+              min="0"
+              step="1"
+              value={thresholdInput}
+              onChange={(event) => setThresholdInput(event.target.value)}
+            />
+          </label>
+          <button type="button" className="ghost-button" onClick={applyMinimumStockThreshold}>Apply threshold</button>
         </div>
+        {thresholdError ? <p role="alert">{thresholdError}</p> : null}
         {lowStockProducts.length ? (
           <div className="admin-list">
             {lowStockProducts.map((product) => (
@@ -611,9 +642,9 @@ function AdminDashboardPage() {
             All products are above the minimum stock threshold ({minimumStockThreshold}).
           </p>
         )}
-      </section>
+      </section> : null}
 
-      <section className="panel">
+      {section === 'delivery' ? <section className="panel">
         <div className="panel-header">
           <h3>Delivery Cost Settings</h3>
           <span>{deliveryLoading ? 'Loading...' : 'Selected database'}</span>
@@ -671,9 +702,9 @@ function AdminDashboardPage() {
             {deliverySaving ? 'Saving...' : 'Save Delivery Settings'}
           </button>
         </form>
-      </section>
+      </section> : null}
 
-      <section className="panel">
+      {section === 'delivery' ? <section className="panel">
         <h2>Shared delivery operations</h2>
         <div className="action-row">
           <Link className="solid-button" to="/admin/delivery">Vehicles, cargo & delivery windows</Link>
@@ -681,32 +712,32 @@ function AdminDashboardPage() {
           <Link className="ghost-button" to="/admin/international-payments">Exchange rates & international shipping</Link>
           <Link className="ghost-button" to="/driver/deliveries">Driver pickup & drop-off</Link>
         </div>
-      </section>
-      <section className="panel admin-grid">
+      </section> : null}
+      {section === 'categories' ? <section className="panel admin-grid">
         <form className="admin-form" onSubmit={submitCategory}>
           <h3>{categoryEditId ? 'Update Category' : 'Create Category'}</h3>
-          <input
+          <label>Category name<input
             value={categoryForm.name}
             onChange={(event) =>
               setCategoryForm((current) => ({ ...current, name: event.target.value }))
             }
             placeholder="Category Name"
             required
-          />
-          <input
+          /></label>
+          <label>Icon<input
             value={categoryForm.icon}
             onChange={(event) =>
               setCategoryForm((current) => ({ ...current, icon: event.target.value }))
             }
             placeholder="Icon"
-          />
-          <input
+          /></label>
+          <label>Category color<input
             type="color"
             value={categoryForm.color}
             onChange={(event) =>
               setCategoryForm((current) => ({ ...current, color: event.target.value }))
             }
-          />
+          /></label>
           <button type="submit" className="solid-button" disabled={saving}>
             {categoryEditId ? 'Save Category' : 'Add Category'}
           </button>
@@ -731,7 +762,7 @@ function AdminDashboardPage() {
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => dispatch(deleteCategoryAdmin(category.id || category._id))}
+                  onClick={() => { if (window.confirm(`Delete category ${category.name}?`)) dispatch(deleteCategoryAdmin(category.id || category._id)) }}
                 >
                   Delete
                 </button>
@@ -739,40 +770,43 @@ function AdminDashboardPage() {
             </article>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="panel admin-grid">
-        <form className="admin-form" onSubmit={submitProduct}>
+      {['products', 'inventory'].includes(section) ? <section className="panel admin-grid">
+        <form id="admin-product-editor" className="admin-form" onSubmit={submitProduct}>
           <h3>{productEditId ? 'Update Product' : 'Create Product'}</h3>
-          <input
+          <label>Product name<input
             value={productForm.name}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, name: event.target.value }))
             }
             placeholder="Product Name"
             required
-          />
-          <input
+          /></label>
+          <label>Brand<input
             value={productForm.brand}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, brand: event.target.value }))
             }
             placeholder="Brand"
-          />
-          <input
+          /></label>
+          <label>Single image URL<input
             value={productForm.image}
             onChange={(event) => handleSingleImageUrlChange(event.target.value.trim())}
             placeholder="Single Image URL"
-          />
+          /></label>
           <div className="file-upload-row">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(event) =>
-                setImageFiles(Array.from(event.target.files || []))
-              }
-            />
+            <label>Product images
+              <input
+                type="file"
+                aria-label="Product images"
+                multiple
+                accept="image/*"
+                onChange={(event) =>
+                  setImageFiles(Array.from(event.target.files || []))
+                }
+              />
+            </label>
             <button
               type="button"
               className="ghost-button"
@@ -801,7 +835,7 @@ function AdminDashboardPage() {
             <small>No images selected yet.</small>
           )}
           {uploadMessage ? <small>{uploadMessage}</small> : null}
-          <textarea
+          <label>Description<textarea
             value={productForm.description}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, description: event.target.value }))
@@ -809,8 +843,8 @@ function AdminDashboardPage() {
             placeholder="Description"
             rows={2}
             required
-          />
-          <textarea
+          /></label>
+          <label>Rich description<textarea
             value={productForm.richDescription}
             onChange={(event) =>
               setProductForm((current) => ({
@@ -820,8 +854,8 @@ function AdminDashboardPage() {
             }
             placeholder="Rich Description"
             rows={2}
-          />
-          <select
+          /></label>
+          <label>Category<select
             value={effectiveProductCategory}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, category: event.target.value }))
@@ -833,25 +867,33 @@ function AdminDashboardPage() {
                 {category.name}
               </option>
             ))}
-          </select>
-          <input
+          </select></label>
+          <label>Price<input
             type="number"
+            min="0"
+            step="0.01"
             value={productForm.price}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, price: event.target.value }))
             }
             placeholder="Price"
             required
-          />
-          <input
+          /></label>
+          <label>Stock<input
             type="number"
+            min="0"
+            step="1"
             value={productForm.countInStock}
             onChange={(event) =>
               setProductForm((current) => ({ ...current, countInStock: event.target.value }))
             }
             placeholder="Stock"
             required
-          />
+          /></label>
+          <label>Rating (0-5)<input type="number" min="0" max="5" step="0.1" required value={productForm.rating}
+            onChange={(event) => setProductForm((current) => ({ ...current, rating: event.target.value }))} /></label>
+          <label>Number of reviews<input type="number" min="0" step="1" required value={productForm.numReviews}
+            onChange={(event) => setProductForm((current) => ({ ...current, numReviews: event.target.value }))} /></label>
           <label className="checkbox-row">
             <input
               type="checkbox"
@@ -866,14 +908,19 @@ function AdminDashboardPage() {
             Featured Product
           </label>
           <small>Category: {selectedCategoryName}</small>
+          <Link to="/admin/delivery">Configure packaged size and weight</Link>
           <button type="submit" className="solid-button" disabled={saving}>
             {productEditId ? 'Save Product' : 'Add Product'}
           </button>
+          {productEditId ? <button type="button" className="ghost-button" onClick={() => {
+            setProductEditId(''); setProductForm(defaultProduct); setImageFiles([]); setUploadMessage('')
+          }}>Cancel product edit</button> : null}
         </form>
 
         <div className="admin-list">
           <h3>Products</h3>
-          {products.map((product) => (
+          <label>Search products<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or brand" /></label>
+          {products.filter((product) => `${product.name} ${product.brand || ''}`.toLowerCase().includes(search.toLowerCase())).map((product) => (
             <article key={product.id || product._id} className="admin-item">
               <div>
                 <strong>{product.name}</strong>
@@ -894,7 +941,7 @@ function AdminDashboardPage() {
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => dispatch(deleteProductAdmin(product.id || product._id))}
+                  onClick={() => { if (window.confirm(`Delete ${product.name}? This cannot be undone.`)) dispatch(deleteProductAdmin(product.id || product._id)) }}
                 >
                   Delete
                 </button>
@@ -902,9 +949,9 @@ function AdminDashboardPage() {
             </article>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="panel admin-grid">
+      {section === 'banks' ? <section className="panel admin-grid">
         <form className="admin-form" onSubmit={submitBankAccount}>
           <h3>{bankAccountEditId ? 'Update Bank Account' : 'Add Bank Account'}</h3>
           <label>Account currency<select value={bankAccountForm.currency || (/usa/i.test(getSelectedDatabaseName()) ? 'USD' : 'ETB')}
@@ -912,45 +959,55 @@ function AdminDashboardPage() {
             <option value="ETB">ETB - birr</option><option value="USD">USD - US dollars</option>
           </select></label>
           <p className="section-note">Use explicitly USD-tagged accounts for Ethiopia USD checkout and ETB-tagged accounts for USA exports. Only matching-currency accounts are offered to shoppers.</p>
-          <input
-            value={bankAccountForm.bankName}
-            onChange={(event) =>
-              setBankAccountForm((current) => ({ ...current, bankName: event.target.value }))
-            }
-            placeholder="Bank Name"
-            required
-          />
-          <input
-            value={bankAccountForm.accountNumber}
-            onChange={(event) =>
-              setBankAccountForm((current) => ({ ...current, accountNumber: event.target.value }))
-            }
-            placeholder="Account Number"
-            required
-          />
-          <input
-            value={bankAccountForm.accountHolderName}
-            onChange={(event) =>
-              setBankAccountForm((current) => ({ ...current, accountHolderName: event.target.value }))
-            }
-            placeholder="Account Holder Name"
-            required
-          />
-          <input
-            value={bankAccountForm.bankCode}
-            onChange={(event) =>
-              setBankAccountForm((current) => ({ ...current, bankCode: event.target.value }))
-            }
-            placeholder="Bank Code (optional)"
-          />
-          <textarea
-            value={bankAccountForm.additionalInfo}
-            onChange={(event) =>
-              setBankAccountForm((current) => ({ ...current, additionalInfo: event.target.value }))
-            }
-            placeholder="Additional Info (optional)"
-            rows={2}
-          />
+          <label>Bank Name
+            <input
+              value={bankAccountForm.bankName}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, bankName: event.target.value }))
+              }
+              placeholder="Bank Name"
+              required
+            />
+          </label>
+          <label>Account Number
+            <input
+              value={bankAccountForm.accountNumber}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, accountNumber: event.target.value }))
+              }
+              placeholder="Account Number"
+              required
+            />
+          </label>
+          <label>Account Holder Name
+            <input
+              value={bankAccountForm.accountHolderName}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, accountHolderName: event.target.value }))
+              }
+              placeholder="Account Holder Name"
+              required
+            />
+          </label>
+          <label>Bank Code (optional)
+            <input
+              value={bankAccountForm.bankCode}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, bankCode: event.target.value }))
+              }
+              placeholder="Bank Code (optional)"
+            />
+          </label>
+          <label>Additional Info (optional)
+            <textarea
+              value={bankAccountForm.additionalInfo}
+              onChange={(event) =>
+                setBankAccountForm((current) => ({ ...current, additionalInfo: event.target.value }))
+              }
+              placeholder="Additional Info (optional)"
+              rows={2}
+            />
+          </label>
           <label className="checkbox-row">
             <input
               type="checkbox"
@@ -1030,15 +1087,21 @@ function AdminDashboardPage() {
             <p className="section-note">No active bank accounts are configured yet.</p>
           ) : null}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="panel">
+      {section === 'orders' ? <section className="panel">
         <div className="panel-header">
           <h3>Orders</h3>
           <span>{orders.length} total</span>
         </div>
+        <div className="form-grid">
+          <label>Search orders<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Order ID, name or email" /></label>
+          <label>Status<select value={orderFilter} onChange={(event) => setOrderFilter(event.target.value)}><option value="">All statuses</option>
+            {orderStatusOptions.map((status) => <option key={status}>{status}</option>)}</select></label>
+        </div>
         <div className="admin-list">
-          {orders.map((order) => {
+          {orders.filter((order) => (!orderFilter || order.status === orderFilter) &&
+            `${order.id || order._id} ${order.user?.name || ''} ${order.user?.email || order.customerEmail || ''}`.toLowerCase().includes(search.toLowerCase())).map((order) => {
             const orderId = order.id || order._id
             const orderUser = order.user
             const paymentDetails = getOrderPaymentDetails(order)
@@ -1122,7 +1185,7 @@ function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="inline-actions">
-                  <select
+                  <label>Order status<select
                     value={order.status || 'Pending'}
                     onChange={(event) =>
                       handleOrderStatusChange(orderId, event.target.value)
@@ -1134,7 +1197,7 @@ function AdminDashboardPage() {
                         {status}
                       </option>
                     ))}
-                  </select>
+                  </select></label>
                   <button
                     type="button"
                     className="ghost-button"
@@ -1148,9 +1211,9 @@ function AdminDashboardPage() {
             )
           })}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="panel">
+      {section === 'services' ? <section className="panel">
         <div className="panel-header">
           <h3>Service Requests</h3>
           <span>{serviceRequests.length} total</span>
@@ -1192,7 +1255,7 @@ function AdminDashboardPage() {
                   <small>Submitted: {formatServiceRequestDate(request.createdAt || request.dateCreated)}</small>
                   {request.problemDescription ? <small>{request.problemDescription}</small> : null}
                   <div className="inline-actions">
-                    <select
+                    <label>Request status<select
                       value={request.status || 'new'}
                       onChange={(event) => changeServiceRequestStatus(request, event.target.value)}
                       disabled={serviceRequestActionId === requestId}
@@ -1203,7 +1266,7 @@ function AdminDashboardPage() {
                           {formatServiceRequestStatus(status)}
                         </option>
                       ))}
-                    </select>
+                    </select></label>
                     <button
                       type="button"
                       className="ghost-button danger-button"
@@ -1218,7 +1281,7 @@ function AdminDashboardPage() {
             )
           })}
         </div>
-      </section>
+      </section> : null}
     </section>
   )
 }

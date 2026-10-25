@@ -4,6 +4,7 @@ import { getStorefront } from '../api/storefronts'
 import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
 import ProductCard from '../components/ProductCard'
+import StoreLogo from '../components/StoreLogo'
 import { getEntityId } from '../utils/format'
 
 function StorefrontPage() {
@@ -42,7 +43,7 @@ function StorefrontPage() {
     <section className="page-stack">
       <Link to="/stores" className="back-link">← All stores</Link>
       <section className="storefront-banner">
-        {store?.logo ? <img src={store.logo} alt="" className="store-logo" /> : null}
+        <StoreLogo name={store?.name} logo={store?.logo} />
         <div>
           <p className="eyebrow">Storefront</p>
           <h1>{store?.name || 'Store products'}</h1>

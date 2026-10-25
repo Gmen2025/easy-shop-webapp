@@ -156,39 +156,42 @@ function BankTransferCheckout({ amount, onConfirmed, onError }) {
         </div>
       ) : null}
 
-      <label htmlFor="bank-transfer-bank">Bank</label>
-      <select
-        id="bank-transfer-bank"
-        value={selectedBankId}
-        onChange={(event) => setSelectedBankId(event.target.value)}
-        disabled={!bankAccounts.length || bankAccountsLoading}
-      >
-        {!bankAccounts.length ? <option value="">No active bank account available</option> : null}
-        {bankAccounts.map((bank) => (
-          <option key={bank._id} value={bank._id}>
-            {bank.bankName} - {bank.accountNumber}
-          </option>
-        ))}
-      </select>
+      <label htmlFor="bank-transfer-bank">Bank
+        <select
+          id="bank-transfer-bank"
+          value={selectedBankId}
+          onChange={(event) => setSelectedBankId(event.target.value)}
+          disabled={!bankAccounts.length || bankAccountsLoading}
+        >
+          {!bankAccounts.length ? <option value="">No active bank account available</option> : null}
+          {bankAccounts.map((bank) => (
+            <option key={bank._id} value={bank._id}>
+              {bank.bankName} - {bank.accountNumber}
+            </option>
+          ))}
+        </select>
+      </label>
 
-      <label htmlFor="bank-transfer-reference">Transfer Reference / Receipt Number</label>
-      <input
-        id="bank-transfer-reference"
-        type="text"
-        value={transferReference}
-        onChange={(event) => setTransferReference(event.target.value)}
-        placeholder="e.g. FT2026-88391"
-        required
-      />
+      <label htmlFor="bank-transfer-reference">Transfer Reference / Receipt Number
+        <input
+          id="bank-transfer-reference"
+          type="text"
+          value={transferReference}
+          onChange={(event) => setTransferReference(event.target.value)}
+          placeholder="e.g. FT2026-88391"
+          required
+        />
+      </label>
 
-      <label htmlFor="bank-transfer-sender">Sender Name (optional)</label>
-      <input
-        id="bank-transfer-sender"
-        type="text"
-        value={senderName}
-        onChange={(event) => setSenderName(event.target.value)}
-        placeholder="Name on the bank account"
-      />
+      <label htmlFor="bank-transfer-sender">Sender Name (optional)
+        <input
+          id="bank-transfer-sender"
+          type="text"
+          value={senderName}
+          onChange={(event) => setSenderName(event.target.value)}
+          placeholder="Name on the bank account"
+        />
+      </label>
 
       <p className="telebirr-amount">Amount to Transfer: {roundedAmount} ETB</p>
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getStores } from '../api/storefronts'
 import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
+import StoreLogo from '../components/StoreLogo'
 
 function StoreDirectoryPage() {
   const [stores, setStores] = useState([])
@@ -47,9 +48,7 @@ function StoreDirectoryPage() {
         <div className="store-grid">
           {stores.map((store) => (
             <article className="store-card" key={store._id}>
-              {store.logo ? <img src={store.logo} alt="" className="store-logo" loading="lazy" /> : (
-                <div className="store-logo store-logo-placeholder" aria-hidden="true">AG</div>
-              )}
+              <StoreLogo name={store.name} logo={store.logo} />
               <div className="store-details">
                 <p className="eyebrow">Addu Genet partner</p>
                 <h2>{store.name}</h2>

@@ -23,14 +23,15 @@ function ForgotPasswordPage() {
         <h2>Forgot Password</h2>
         <p>Enter your email and we will send a reset link.</p>
 
-        <label htmlFor="forgot-email">Email</label>
-        <input
-          id="forgot-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
+        <label htmlFor="forgot-email">Email
+          <input
+            id="forgot-email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+        </label>
 
         {error ? <p className="form-error">{error}</p> : null}
         {message ? <p className="form-success">{message}</p> : null}

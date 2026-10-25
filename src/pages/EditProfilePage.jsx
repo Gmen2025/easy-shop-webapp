@@ -221,77 +221,91 @@ function EditProfilePage() {
             </p>
           </div>
 
-          <input
-            id="name"
-            name="name"
-            autoComplete="name"
-            value={formData.name}
-            onChange={(event) => updateField('name', event.target.value)}
-            placeholder="Customer Name"
-            required
-          />
+          <label>Customer Name
+            <input
+              id="name"
+              name="name"
+              autoComplete="name"
+              value={formData.name}
+              onChange={(event) => updateField('name', event.target.value)}
+              placeholder="Customer Name"
+              required
+            />
+          </label>
 
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={formData.email}
-            onChange={(event) => updateField('email', event.target.value)}
-            placeholder="Email"
-            required
-          />
+          <label>Email
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={(event) => updateField('email', event.target.value)}
+              placeholder="Email"
+              required
+            />
+          </label>
 
-          <input
-            id="phone"
-            name="phone"
-            autoComplete="tel"
-            value={formData.phone}
-            onChange={(event) => updateField('phone', event.target.value)}
-            placeholder="Phone"
-            required
-          />
+          <label>Phone
+            <input
+              id="phone"
+              name="phone"
+              autoComplete="tel"
+              value={formData.phone}
+              onChange={(event) => updateField('phone', event.target.value)}
+              placeholder="Phone"
+              required
+            />
+          </label>
 
-          <input
-            id="addressLine1"
-            name="addressLine1"
-            autoComplete="address-line1"
-            value={formData.addressLine1}
-            onChange={(event) => updateField('addressLine1', event.target.value)}
-            placeholder="Address Line 1"
-            required
-          />
+          <label>Address Line 1
+            <input
+              id="addressLine1"
+              name="addressLine1"
+              autoComplete="address-line1"
+              value={formData.addressLine1}
+              onChange={(event) => updateField('addressLine1', event.target.value)}
+              placeholder="Address Line 1"
+              required
+            />
+          </label>
 
-          <input
-            id="addressLine2"
-            name="addressLine2"
-            autoComplete="address-line2"
-            value={formData.addressLine2}
-            onChange={(event) => updateField('addressLine2', event.target.value)}
-            placeholder="Address Line 2"
-          />
+          <label>Address Line 2
+            <input
+              id="addressLine2"
+              name="addressLine2"
+              autoComplete="address-line2"
+              value={formData.addressLine2}
+              onChange={(event) => updateField('addressLine2', event.target.value)}
+              placeholder="Address Line 2"
+            />
+          </label>
 
-          <input
-            id="city"
-            name="city"
-            autoComplete="address-level2"
-            value={formData.city}
-            onChange={(event) => updateField('city', event.target.value)}
-            placeholder="City"
-            required
-          />
+          <label>City
+            <input
+              id="city"
+              name="city"
+              autoComplete="address-level2"
+              value={formData.city}
+              onChange={(event) => updateField('city', event.target.value)}
+              placeholder="City"
+              required
+            />
+          </label>
 
-          <input
-            id="postalCode"
-            name="postalCode"
-            autoComplete="postal-code"
-            value={formData.postalCode}
-            onChange={(event) => updateField('postalCode', event.target.value)}
-            placeholder="Postal Code"
-            required
-          />
+          <label>Postal Code
+            <input
+              id="postalCode"
+              name="postalCode"
+              autoComplete="postal-code"
+              value={formData.postalCode}
+              onChange={(event) => updateField('postalCode', event.target.value)}
+              placeholder="Postal Code"
+              required
+            />
+          </label>
 
-          <select
+          <label>Country<select
             id="country"
             name="country"
             autoComplete="country-name"
@@ -308,7 +322,7 @@ function EditProfilePage() {
                 {countryName}
               </option>
             ))}
-          </select>
+          </select></label>
 
           <div className="action-row">
             <button type="submit" className="solid-button">
