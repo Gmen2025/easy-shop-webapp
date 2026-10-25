@@ -16,6 +16,8 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 - Product catalog and product details pages
 - Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
 - Store directory and storefront inventory browsing
+- Mobile-style ride booking with labeled saved-address badges, map/stops review,
+  regular/shared rides, vehicle selection, and pay-after-ride confirmation
 - Authenticated ride quotes, ride requests, ride status, and cancellation
 - Cart with quantity management and checkout
 - Payment flows:
@@ -95,7 +97,7 @@ Notes:
 - `npm run build` - Build production bundle
 - `npm run preview` - Preview production build locally
 - `npm run lint` - Run ESLint
-- `npm test` - Validate delivery allocation, shared-fee preview, route coordinates and cart recovery
+- `npm test` - Validate delivery allocation, shared fees, route coordinates, cart recovery, and ride booking contracts
 
 ## Shared mobile / web delivery
 
@@ -106,6 +108,31 @@ Point both clients to the same API deployment and select the same regional
 database. The existing Vite proxy sends `/api` to `http://localhost:3001`;
 start the shared backend on that port for local development, or set
 `VITE_API_BASE_URL` to its `/api/v1` URL.
+
+### Ride booking
+
+- `/rides` follows the mobile app's Your trip, Map & stops, Select ride, and
+  Trip summary flow. Regular rides support up to 12 ordered stops; shared rides
+  have one pickup and one drop-off. The final drop-off passenger count is
+  balanced automatically and all passengers must be accounted for.
+- Every stop includes a delivery/stop label and contact phone. **Save address
+  as badge** persists the address through the shared `/stores/delivery-addresses`
+  API, making it reusable on both web and mobile. Selecting a badge fills the
+  active stop, including its label. Label/contact edits can update a selected
+  saved address; location edits detach it so saving creates a new address.
+  The current account address is also offered when available in the region.
+- Search suggestions and the interactive route preview use
+  `VITE_GOOGLE_MAPS_BROWSER_KEY` (Maps JavaScript, Places and Routes API access).
+  Without it, manual entry, saved badges and server-calculated fares still work.
+  During Map & stops, clicking the map reverse-geocodes the active stop through
+  the shared ride API. **Use my current location for pickup** requests browser
+  location permission explicitly; denied/unavailable GPS shows an error and
+  leaves manual entry available.
+- Changing addresses, passengers, stop order or ride mode invalidates prices.
+  The shared backend verifies addresses, calculates road fares and expires
+  quotes. Selecting a vehicle or reviewing a summary does not request a driver;
+  only **Request driver (pay after ride)** does. No payment is collected during
+  booking. Backend ride and saved-address endpoints remain shared with mobile.
 
 ### Customer checkout
 

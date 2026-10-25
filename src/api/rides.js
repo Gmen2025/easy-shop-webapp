@@ -4,6 +4,13 @@ export function getRideConfig() {
   return apiRequest('/rides/config')
 }
 
+export function getRideLocation(latitude, longitude) {
+  return apiRequest('/rides/places/current-location', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  })
+}
+
 export function getRides() {
   return apiRequest('/rides')
 }
