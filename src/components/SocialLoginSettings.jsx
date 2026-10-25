@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 
+const providerLabels = { google: 'Google', apple: 'Apple', facebook: 'Facebook' }
+
 function validateSetting(setting) {
-  if (setting?.success !== true || typeof setting.enabled !== 'boolean') {
+  if (setting?.success !== true || !setting.providers ||
+      Object.keys(providerLabels).some((provider) => typeof setting.providers[provider] !== 'boolean')) {
     throw new Error('The server returned invalid social sign-in settings.')
   }
   return setting
@@ -23,12 +26,12 @@ export default function SocialLoginSettings() {
     return () => { active = false }
   }, [])
 
-  async function sync(enabled) {
+  async function sync(provider, enabled) {
     setBusy(true)
     setError('')
     try {
-      const options = enabled === undefined ? {} : {
-        method: 'PUT', body: JSON.stringify({ enabled }),
+      const options = provider === undefined ? {} : {
+        method: 'PUT', body: JSON.stringify({ providers: { [provider]: enabled } }),
       }
       setSetting(validateSetting(await apiRequest('/settings/social-login', options)))
     } catch (requestError) {
@@ -43,22 +46,25 @@ export default function SocialLoginSettings() {
     <section className="panel">
       <div className="panel-header">
         <h3>Social sign-in</h3>
-        <span>{setting ? (setting.enabled ? 'ON' : 'OFF') : 'Status unavailable'}</span>
+        <span>{setting ? 'Provider settings loaded' : 'Status unavailable'}</span>
       </div>
       <p className="section-note">
-        One global switch for Google, Apple, and Facebook across all regions,
-        development and production. Disabling blocks new and in-progress social
-        sign-ins, not existing sessions or email login. Mobile login screens refresh
+        Control Google, Apple, and Facebook separately across all regions,
+        development and production. Disabling a provider blocks its new and in-progress
+        sign-ins, not other providers, existing sessions or email login. Mobile login screens refresh
         within 30 seconds while open or when reopened.
       </p>
       {error ? <p role="alert" className="form-error">{error}</p> : null}
       <div className="inline-actions">
-        <button type="button" role="switch" aria-checked={setting?.enabled === true}
-          aria-label="Enable Google, Apple, and Facebook sign-in"
-          className="solid-button" disabled={busy || !setting}
-          onClick={() => sync(!setting.enabled)}>
-          {busy ? 'Loading...' : setting?.enabled ? 'Turn social sign-in OFF' : 'Turn social sign-in ON'}
-        </button>
+        {Object.entries(providerLabels).map(([provider, label]) => (
+          <button key={provider} type="button" role="switch"
+            aria-checked={setting?.providers[provider] === true}
+            aria-label={`Enable ${label} sign-in`}
+            className="solid-button" disabled={busy || !setting}
+            onClick={() => sync(provider, !setting.providers[provider])}>
+            {label}: {busy ? 'Loading...' : !setting ? 'Unavailable' : setting.providers[provider] ? 'ON' : 'OFF'}
+          </button>
+        ))}
         <button type="button" className="ghost-button" disabled={busy} onClick={() => sync()}>
           Refresh social sign-in status
         </button>
