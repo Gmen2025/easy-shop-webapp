@@ -4,6 +4,8 @@ import toast from 'react-hot-toast'
 import { getSelectedDatabaseName } from '../api/client'
 import { getRideConfig, getRideQuotes, requestRide } from '../api/rides'
 import LoadingState from '../components/LoadingState'
+import AddressAutocomplete from '../components/AddressAutocomplete'
+import { editAddress } from '../utils/addressAutocomplete'
 
 const VEHICLE_NAMES = {
   economy: 'Economy',
@@ -50,7 +52,7 @@ function RideBookingPage() {
     const { name, value } = event.target
     setTrip((current) => ({
       ...current,
-      [stopName]: { ...current[stopName], [name]: value },
+      [stopName]: editAddress(current[stopName], name, value),
     }))
     setQuotes([])
   }
@@ -127,16 +129,13 @@ function RideBookingPage() {
             {['pickup', 'dropoff'].map((stopName) => (
               <fieldset className="ride-stop-card" key={stopName}>
                 <legend>{stopName === 'pickup' ? 'Pickup' : 'Drop-off'}</legend>
-                <label>
-                  Street address or landmark
-                  <input
-                    name="address1"
-                    value={trip[stopName].address1}
-                    onChange={(event) => updateAddress(stopName, event)}
-                    autoComplete="street-address"
-                    required
-                  />
-                </label>
+                <AddressAutocomplete key={trip[stopName].country} label="Street address or landmark"
+                  value={trip[stopName].address1} country={trip[stopName].country} required
+                  onChange={(value) => updateAddress(stopName, { target: { name: 'address1', value } })}
+                  onSelect={(address) => {
+                    setTrip((current) => ({ ...current, [stopName]: { ...current[stopName], ...address } }))
+                    setQuotes([])
+                  }} />
                 <label>
                   Apartment or unit (optional)
                   <input name="address2" value={trip[stopName].address2} onChange={(event) => updateAddress(stopName, event)} />

@@ -57,6 +57,8 @@ export default function CartContents({ disabled = false, onCheckout, children })
       {children}
       <div className="mobile-cart-summary">
         <p>Delivery fees are calculated after choosing addresses, delivery speed and vehicles. Only server-confirmed charges apply.</p>
+      </div>
+      <div className="mobile-cart-checkout-bar" role="region" aria-label="Continue from cart">
         <h2>Products subtotal: <span>{formatCurrency(subtotal)}</span></h2>
         <button type="button" className="solid-button mobile-cart-checkout" disabled={disabled} onClick={() => {
           if (onCheckout) onCheckout()

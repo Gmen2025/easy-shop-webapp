@@ -119,6 +119,9 @@ start the shared backend on that port for local development, or set
   Reservation happens only after review. Back/edit actions restore this tab's
   address, allocation, currency and delivery-speed draft and require a fresh
   quote after address or speed changes. Prepared payments use their saved state.
+  The cart subtotal and Proceed to Checkout button stay visible while scrolling,
+  above the mobile navigation bar, so the Address step remains easy to reach
+  even with a long cart.
 - When `GET stores/delivery-config` returns `enabled: true`, `/cart` uses
   vehicle-based delivery instead of the legacy single-address checkout.
   Errors loading configuration are displayed, never treated as disabled.
@@ -251,14 +254,76 @@ This does not introduce a new optimized consolidated multi-stop dispatch model.
    matching-currency bank accounts. For USA exports, also configure hub/tariff,
    complete packaged measurements and explicit product export approvals.
 4. Optionally set `VITE_GOOGLE_MAPS_BROWSER_KEY` to a **separate**, HTTP-referrer
-   restricted key with **Maps JavaScript API** enabled. This adds embedded
-   pickup/drop-off/driver markers and the driver's server-returned Google road
-   polyline. Without it, explicit Google Maps navigation links still work.
+   restricted key with **Maps JavaScript API**, **Routes API**, and
+   **Places API (New)** enabled,
+   and enable billing. The preview uses the current JavaScript Routes library,
+   not Directions API (Legacy), which is unavailable to new Cloud projects.
+   This adds
+   embedded pickup/drop-off/driver markers, in-app driving-route previews and
+   the driver's server-returned Google road polyline. Browser previews never
+   replace server pricing, and supplied driver polylines avoid another browser
+   directions request. Route-preview failures are shown explicitly.
+   Without the browser key, external Google Maps navigation links still work;
+   they open a new tab. Rebuild/restart the frontend after configuring the key.
+   The directions action uses a wrapping block layout so it cannot overlap
+   adjacent delivery details on narrow screens.
    Browser GPS requires HTTPS or localhost and location permission.
 5. Validate real Google routes, Mongo transaction concurrency, dispatch,
    mobile/web cross-device status updates and live payment/refund recovery in
    staging before rollout. Unit and mocked browser tests do not validate live
    Google authorization, database deployment or bank funds.
+
+### Browser Google Maps setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select
+   a project and link a billing account. Enable **Maps JavaScript API**,
+   **Routes API**, and **Places API (New)** in APIs & Services > Library.
+2. In APIs & Services > Credentials, create an API key for the website only.
+   Under **Application restrictions**, select **Websites (HTTP referrers)**.
+   For production, allow `https://addugeneteshop.com/*`. Add
+   `https://www.addugeneteshop.com/*` only if that hostname serves the website.
+   Under **API restrictions**, restrict the key to **Maps JavaScript API**,
+   **Routes API**, and **Places API (New)**. Save the restrictions.
+3. Prefer a second browser key for development, restricted to the same APIs and
+   your actual development addresses, such as `http://localhost:5173/*` and
+   `http://127.0.0.1:5173/*`. If Vite chooses another port, explicitly allow that
+   origin too. Do not change the mobile or backend keys or their restrictions.
+4. Create or edit the Git-ignored `.env.local` in this frontend directory:
+
+   ```dotenv
+   VITE_GOOGLE_MAPS_BROWSER_KEY=YOUR_RESTRICTED_DEVELOPMENT_BROWSER_KEY
+   ```
+
+   Replace the placeholder locally; do not commit the key or paste it into chat.
+   Restart `npm run dev`. For production, set the same variable to the production
+   browser key in the frontend hosting provider's **build environment**, then
+   rebuild and redeploy. Vite embeds `VITE_` values in the built browser code:
+   this key is public, so referrer/API restrictions are essential.
+5. Configure billing budget alerts and appropriate API quotas. Budget alerts do
+   not impose a spending cap. Open checkout's Delivery stage and confirm that
+   both the map and driving route render. If authorization fails, check the
+   browser console and Google Cloud metrics without sharing key-bearing URLs.
+   Common causes are an unlisted hostname/port, a disabled API, inactive billing,
+   or restrictions that have not propagated yet.
+
+### Delivery and ride address suggestions
+
+The shared address autocomplete is available for each delivery drop-off,
+legacy shipping checkout, and ride pickup/drop-off. Type at least three
+characters, then choose a Google suggestion with the mouse or Arrow keys and
+Enter. Escape closes suggestions. Selection fills street, city, postal code
+and country while preserving apartment/unit and contact details. Delivery and
+ride drafts also retain the selected place ID and coordinates; the backend
+still verifies destinations and calculates authoritative routes and prices.
+Editing address fields clears the selected place metadata to avoid routing
+to an old pin. Suggestions are restricted to USA or Ethiopia when the address
+country matches those regions, including Ethiopian export recipients.
+
+Enable **Places API (New)** and add it to both browser keys' API restrictions.
+Suggestions use debounced requests and a separate billing session per input.
+Without a browser key, or when lookup fails, manual entry remains available
+with an explicit notice. Google performs the suggestion/detail lookups, so
+normal Google Maps usage charges and terms apply.
 
 ## Inventory and Low-Stock Behavior
 

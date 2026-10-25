@@ -11,6 +11,8 @@ import DeliveryMap from '../components/DeliveryMap'
 import DeliveryWindow from '../components/DeliveryWindow'
 import CartContents from '../components/CartContents'
 import CheckoutHeader from '../components/CheckoutHeader'
+import AddressAutocomplete from '../components/AddressAutocomplete'
+import { editAddress } from '../utils/addressAutocomplete'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive } from '../utils/checkoutPayment'
 
@@ -102,7 +104,7 @@ export default function DeliveryCheckoutPage() {
         if (!current) return
         const [address, existing] = result
         const initial = international && !/^(ethiopia|ethio|et)$/i.test(address.country) ?
-          { ...address, address1: '', address2: '', city: '', zip: '', country: 'Ethiopia' } : address
+          { ...editAddress(address, 'country', 'Ethiopia'), address1: '', address2: '', city: '', zip: '' } : address
         setAddresses(restoredDraft?.paymentCurrency === paymentCurrency ? restoredDraft.addresses : [{ ...initial, id: 'current' }])
         setSaved(international ? existing.filter((entry) => /^(ethiopia|ethio|et)$/i.test(entry.country)) : existing)
         setBanks(accounts); setBankId(accounts[0]?._id || ''); setExchange(policy)
@@ -252,9 +254,15 @@ export default function DeliveryCheckoutPage() {
           <p>Allocate every unit to one address. Pickup stores are selected from eligible matching-price stock nearest the delivery address, including the default store.</p>
           {addresses.map((address, index) => <article className="order-card" key={address.id}>
             <h2>Drop-off {index + 1}</h2>
-            <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>{label}
+            <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => field === 'address1' ?
+              <AddressAutocomplete key={`${field}-${address.country}`} label={label} value={address.address1} country={address.country} maxLength={300}
+                onChange={(value) => setAddresses((previous) => previous.map((entry) =>
+                  entry.id === address.id ? editAddress(entry, 'address1', value) : entry))}
+                onSelect={(selected) => setAddresses((previous) => previous.map((entry) =>
+                  entry.id === address.id ? { ...entry, ...selected } : entry))} /> :
+              <label key={field}>{label}
               <input value={address[field] || ''} maxLength={300} onChange={(event) =>
-                setAddresses((previous) => previous.map((entry) => entry.id === address.id ? { ...entry, [field]: event.target.value } : entry))} />
+                setAddresses((previous) => previous.map((entry) => entry.id === address.id ? editAddress(entry, field, event.target.value) : entry))} />
             </label>)}</div>
             {items.map(({ product, quantity }) => <label className="delivery-allocation" key={cartLineKey(product)}>
               {product.name}: units to this drop-off (of {quantity})

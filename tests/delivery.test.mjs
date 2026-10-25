@@ -119,10 +119,29 @@ test('cart preserves store identity and removes purchased units only once across
     assert.match(markup, /60\.00/)
     assert.match(markup, /Increase Parcel quantity/)
     assert.match(markup, /Proceed to Checkout/)
+    assert.match(markup, /class="mobile-cart-checkout-bar" role="region" aria-label="Continue from cart"/)
     const { default: CheckoutHeader } = await server.ssrLoadModule('/src/components/CheckoutHeader.jsx')
     const header = renderToStaticMarkup(createElement(CheckoutHeader, { step: 4, title: 'Order Summary' }))
     assert.match(header, /Order Summary/)
     assert.match(header, /aria-current="step"><span>4<\/span>Payment/)
+    const { default: DeliveryMap } = await server.ssrLoadModule('/src/components/DeliveryMap.jsx')
+    const directions = renderToStaticMarkup(createElement(DeliveryMap, {
+      pickup: { coordinates: [-87.65, 41.95] }, dropoff: { coordinates: [-87.64, 41.94] },
+    }))
+    assert.match(directions, /class="ghost-button delivery-map-directions"/)
+    assert.match(directions, /Open driving directions in Google Maps \(new tab\)/)
+    assert.match(directions, /target="_blank"/)
+    assert.match(directions, /origin=41.95%2C-87.65/)
+    const { default: AddressAutocomplete } = await server.ssrLoadModule('/src/components/AddressAutocomplete.jsx')
+    const addressInput = renderToStaticMarkup(createElement(AddressAutocomplete, {
+      label: 'Pickup address', value: '810 Grace St', country: 'USA',
+      onChange: () => {}, onSelect: () => {}, required: true,
+    }))
+    assert.match(addressInput, /role="combobox"/)
+    assert.match(addressInput, /aria-expanded="false"/)
+    assert.match(addressInput, /value="810 Grace St"/)
+    assert.match(addressInput, /Pickup address/)
+    assert.match(addressInput, /required=""/)
     const reloaded = reducer(state, switchDatabase())
     assert.equal(reloaded.items[0].product.image, 'https://example.test/parcel.jpg')
     assert.equal(reloaded.items[1].product.storefrontName, 'Market A')

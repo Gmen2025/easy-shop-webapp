@@ -29,6 +29,7 @@ import DeliveryCheckoutPage from './DeliveryCheckoutPage'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import CartContents from '../components/CartContents'
+import AddressAutocomplete from '../components/AddressAutocomplete'
 import { cashOnDeliveryAvailable } from '../utils/checkoutPayment'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -658,9 +659,18 @@ function LegacyCartPage() {
             </p>
           ) : null}
 
-          <input
+          <AddressAutocomplete
+            key={country}
+            label="Shipping Address"
             value={shippingAddress1}
-            onChange={(event) => setShippingAddress1(event.target.value)}
+            country={country}
+            onChange={setShippingAddress1}
+            onSelect={(address) => {
+              setShippingAddress1(address.address1)
+              setCity(address.city)
+              setZip(address.zip)
+              setCountry(address.country)
+            }}
             placeholder="Shipping Address"
             required
           />

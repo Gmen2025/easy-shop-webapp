@@ -503,6 +503,26 @@
 
 .delivery-map-panel {
   min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+.delivery-map-panel .delivery-map {
+  margin: 0;
+}
+
+.delivery-map-panel .delivery-map-directions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .delivery-page .order-card {
@@ -549,8 +569,9 @@
 .mobile-cart-actions strong { font-size: 0.95rem; white-space: nowrap; }
 .mobile-cart-summary { padding-block: 1rem; }
 .mobile-cart-summary p { color: #596579; font-size: 0.9rem; }
-.mobile-cart-summary h2 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; font-size: 1.35rem; }
-.mobile-cart-summary .mobile-cart-checkout { width: 100%; margin-top: 0.5rem; }
+.mobile-cart-checkout-bar { position: sticky; bottom: 0; z-index: 5; padding: 0.8rem; border: 1px solid #e7d8c7; border-radius: 12px; background: #fff; box-shadow: 0 -4px 16px rgb(16 24 32 / 10%); }
+.mobile-cart-checkout-bar h2 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin: 0 0 0.6rem; font-size: 1.15rem; }
+.mobile-cart-checkout-bar .mobile-cart-checkout { display: block; width: 100%; }
 .mobile-cart-empty { padding-block: 3rem; color: #596579; }
 .mobile-cart-checkout { background: #ffdb00; color: #030501; border-radius: 10px; min-height: 48px; }
 .mobile-cart button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -560,7 +581,11 @@
   .mobile-cart-image { width: 60px; height: 60px; }
   .mobile-cart .mobile-cart-text-button { padding-inline: 0.2rem; font-size: 0.8rem; }
   .mobile-cart-heading h1 { font-size: 1.35rem; }
-  .mobile-cart-summary h2 { font-size: 1.2rem; }
+  .mobile-cart-checkout-bar h2 { font-size: 1rem; }
+}
+
+@media (max-width: 680px) {
+  .mobile-cart-checkout-bar { bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 @media (max-width: 380px) {
@@ -568,3 +593,22 @@
   .mobile-cart-info { flex-basis: calc(100% - 80px); }
   .mobile-cart-actions { width: 100%; display: flex; align-items: center; justify-content: space-between; padding-left: 68px; }
 }
+.address-autocomplete { position: relative; min-width: 0; display: grid; gap: .4rem; }
+.address-autocomplete input { width: 100%; min-width: 0; }
+.address-autocomplete ul {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+  list-style: none; margin: 0; padding: .35rem; background: white;
+  border: 1px solid #cbd5e1; border-radius: .5rem; box-shadow: 0 8px 24px #0002;
+  max-height: 20rem; overflow-y: auto;
+}
+.address-autocomplete [role="option"] {
+  width: 100%; min-height: 44px; text-align: left; white-space: normal;
+  overflow-wrap: anywhere; background: white; color: #172033; padding: .65rem;
+  border: 0; border-radius: .25rem;
+}
+.address-autocomplete [role="option"]:hover,
+.address-autocomplete [role="option"]:focus,
+.address-autocomplete [aria-selected="true"] { background: #e8f0fe; }
+.address-autocomplete small { overflow-wrap: anywhere; }
+.address-attribution { padding: .35rem; text-align: right; }
+.address-attribution img { width: 120px; height: auto; }
