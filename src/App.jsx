@@ -15,6 +15,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import ProfilePage from './pages/ProfilePage'
 import EditProfilePage from './pages/EditProfilePage'
+import SecuritySettingsPage from './pages/SecuritySettingsPage'
 import ServiceRequestPage from './pages/ServiceRequestPage'
 import ServiceRequestsPage from './pages/ServiceRequestsPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
@@ -39,6 +40,7 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/security-settings',
 ]
 const MAINTENANCE_SYNC_INTERVAL_MS = 30 * 60 * 1000
 
@@ -117,6 +119,7 @@ function App() {
             }
           />
           <Route path="login" element={<LoginPage />} />
+          <Route path="security-settings" element={isAuthenticated ? <SecuritySettingsPage /> : <Navigate to="/login" replace />} />
           <Route path="register" element={showMaintenancePage ? <MaintenancePage /> : <RegisterPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />

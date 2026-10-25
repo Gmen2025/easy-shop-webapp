@@ -146,9 +146,11 @@ function Header() {
                 return
               }
 
+              dispatch(logout())
+              sessionStorage.removeItem('socialSignIn')
               setSelectedDatabaseName(nextDatabase)
               dispatch(switchDatabase())
-              window.location.reload()
+              window.location.assign('/login')
             }}
             aria-label="Select database"
           >

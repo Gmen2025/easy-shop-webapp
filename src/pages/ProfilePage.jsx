@@ -91,6 +91,7 @@ function ProfilePage() {
         <span><h2 id="account-privacy-title">Privacy &amp; Account</h2><span>Manage your privacy and account settings</span></span>
       </div>
       {[
+        ['Security Settings', 'Two-factor authentication and recovery options', 'shield', '/security-settings'],
         ['Account Settings', 'Update your personal details and contact information', 'edit', '/edit-profile'],
         ['Privacy Policy', 'Learn how we protect your data', 'list', '/privacy-policy'],
         ['Terms of Service', 'Review the terms for using our services', 'list', '/terms.html'],

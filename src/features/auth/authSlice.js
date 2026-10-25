@@ -1,5 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { API_BASE_URL, apiRequest } from '../../api/client'
+import { classifyAuthResponse } from '../../utils/authFlow'
+import { securityRequest } from '../../api/auth'
 
 const savedUser = localStorage.getItem('authUser')
 const savedToken = localStorage.getItem('authToken')
@@ -80,6 +82,7 @@ export const loginUser = createAsyncThunk(
         })
       }
 
+      classifyAuthResponse(payload)
       return {
         ...payload,
         _debug: {
@@ -100,6 +103,43 @@ export const loginUser = createAsyncThunk(
     }
   },
 )
+
+export const verifyTwoFactor = createAsyncThunk('auth/verifyTwoFactor', async ({ code, useBackupCode }, { getState }) => {
+  const { challenge, challengeDatabase } = getState().auth
+  if (!challenge) throw new Error('Start sign-in again.')
+  const data = await securityRequest('2fa/verify', { challengeId: challenge.challengeId, code, useBackupCode }, challengeDatabase)
+  classifyAuthResponse(data)
+  return { data, database: challengeDatabase }
+})
+
+export const finishSocialSignIn = createAsyncThunk('auth/finishSocialSignIn', async (result) => {
+  classifyAuthResponse(result.data)
+  return result
+})
+
+function acceptSignIn(state, data, database) {
+  const result = classifyAuthResponse(data)
+  state.loading = false
+  state.error = null
+  if (result.challenge) {
+    state.challenge = result.challenge
+    state.challengeDatabase = database
+    state.user = null
+    state.token = null
+    localStorage.removeItem('authUser')
+    localStorage.removeItem('authToken')
+    return
+  }
+  state.challenge = null
+  state.challengeDatabase = null
+  state.user = normalizeProfileFields(result.user, {
+    email: typeof result.user.user === 'string' ? result.user.user : '',
+  })
+  state.token = result.token
+  localStorage.setItem('authUser', JSON.stringify(state.user))
+  localStorage.setItem('authToken', result.token)
+  if (database) localStorage.setItem('selectedDatabaseName', database)
+}
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
@@ -305,8 +345,15 @@ const authSlice = createSlice({
     error: null,
     loginDebug: null,
     registerMessage: null,
+    challenge: null,
+    challengeDatabase: null,
   },
   reducers: {
+    cancelSignIn(state) {
+      state.challenge = null
+      state.challengeDatabase = null
+      state.error = null
+    },
     clearAuthError(state) {
       state.error = null
       state.loginDebug = null
@@ -326,6 +373,8 @@ const authSlice = createSlice({
       localStorage.removeItem('authToken')
     },
     logout(state) {
+      state.challenge = null
+      state.challengeDatabase = null
       state.user = null
       state.token = null
       localStorage.removeItem('authUser')
@@ -340,21 +389,8 @@ const authSlice = createSlice({
         state.loginDebug = null
       })
       .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false
-        state.user = normalizeProfileFields(action.payload, {
-          _id: action.payload._id,
-          email: action.payload.user,
-          name: action.payload.name,
-          phone: action.payload.phone,
-          isAdmin: action.payload.isAdmin,
-        })
-        state.token = action.payload.token
-        localStorage.setItem('authUser', JSON.stringify(state.user))
-        localStorage.setItem('authToken', action.payload.token)
+        acceptSignIn(state, action.payload, action.meta.arg.databaseName)
         state.loginDebug = action.payload._debug || null
-        if (action.meta?.arg?.databaseName) {
-          localStorage.setItem('selectedDatabaseName', action.meta.arg.databaseName)
-        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false
@@ -428,10 +464,16 @@ const authSlice = createSlice({
         state.loading = false
         state.error = action.payload || action.error.message
       })
+    for (const thunk of [verifyTwoFactor, finishSocialSignIn]) {
+      builder.addCase(thunk.pending, (state) => { state.loading = true; state.error = null })
+        .addCase(thunk.fulfilled, (state, action) => acceptSignIn(state, action.payload.data, action.payload.database))
+        .addCase(thunk.rejected, (state, action) => { state.loading = false; state.error = action.error.message })
+    }
   },
 })
 
 export const {
+  cancelSignIn,
   clearAuthError,
   deleteAccountLocally,
   logout,

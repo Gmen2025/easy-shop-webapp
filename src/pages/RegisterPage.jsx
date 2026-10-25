@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { clearAuthError, registerUser } from '../features/auth/authSlice'
+import SocialSignIn from '../components/SocialSignIn'
 
 function RegisterPage() {
   const dispatch = useDispatch()
@@ -29,7 +30,8 @@ function RegisterPage() {
 
   return (
     <section className="auth-wrap">
-      <form className="panel auth-form" onSubmit={handleSubmit}>
+      <form className="panel auth-form mobile-auth-card" onSubmit={handleSubmit}>
+        <div className="auth-brand"><strong>Addu Genet Eshop</strong><span>Global Products - Local Access</span></div>
         <h2>Create Your Account</h2>
         <p>Register using the Easy Shop API and verify by email.</p>
 
@@ -78,6 +80,7 @@ function RegisterPage() {
         <p>
           Already have an account? <Link to="/login">Login</Link>
         </p>
+        <SocialSignIn disabled={loading} />
         <p>
           Need a new verification email? <Link to="/verify-email">Verify Email</Link>
         </p>

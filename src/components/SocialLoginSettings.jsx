@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
+import { socialSettings } from '../utils/authFlow'
 
 const providerLabels = { google: 'Google', apple: 'Apple', facebook: 'Facebook' }
 
 function validateSetting(setting) {
-  if (setting?.success !== true || !setting.providers ||
-      Object.keys(providerLabels).some((provider) => typeof setting.providers[provider] !== 'boolean')) {
-    throw new Error('The server returned invalid social sign-in settings.')
-  }
+  socialSettings(setting)
   return setting
 }
 
@@ -51,7 +49,7 @@ export default function SocialLoginSettings() {
       <p className="section-note">
         Control Google, Apple, and Facebook separately across all regions,
         development and production. Disabling a provider blocks its new and in-progress
-        sign-ins, not other providers, existing sessions or email login. Mobile login screens refresh
+        sign-ins, not other providers, existing sessions or email login. Mobile and website login screens refresh
         within 30 seconds while open or when reopened.
       </p>
       {error ? <p role="alert" className="form-error">{error}</p> : null}

@@ -17,8 +17,8 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 - Mobile-style profile dashboard with a gold account header, edit/service/sign-out
   actions, order and delivery shortcuts, privacy/account rows and support tiles.
   Customer details remain available in an expandable section. Web shortcuts use
-  existing order/checkout pages; account settings opens the profile editor rather
-  than advertising mobile-only two-factor controls.
+  existing order/checkout pages. Security Settings supports the shared mobile
+  authenticator/email two-factor authentication and backup-code flows.
 - Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
 - Store directory and storefront inventory browsing
 - Mobile-style ride booking with labeled saved-address badges, map/stops review,
@@ -105,6 +105,60 @@ Notes:
 - `npm test` - Validate delivery allocation, shared fees, route coordinates, cart recovery, and ride booking contracts
 
 ## Shared mobile / web delivery
+
+### Social sign-in and two-factor authentication
+
+Changing the region dropdown signs the customer out and opens `/login` for the
+selected region. Both the header and login store selector clear the previous
+session and pending social handoff. A full navigation clears in-memory account
+data; region-specific carts remain separate and the customer can sign in again.
+
+- Website Login and Register show Google, Apple and Facebook only when the
+  existing Admin > Social sign-in provider switch is ON. Settings refresh every
+  30 seconds and on window focus; starting a sign-in rechecks the switch. Failed
+  settings lookups hide social buttons with an error, leaving email sign-in
+  available. The shared backend also enforces switches at start, callback,
+  code exchange and social 2FA verification. Turning a provider off does not
+  disable password sign-in or revoke existing sessions.
+- OAuth uses a full-page redirect through the shared backend, with a random
+  per-tab PKCE verifier. Only a short-lived handoff code returns to `/login`;
+  provider tokens and client secrets never go into frontend configuration.
+  The verifier is removed from session storage at exchange. Unfinished
+  handoffs expire after ten minutes; 2FA challenges stay in memory only.
+- The server must allow the exact website callback in its existing
+  `OAUTH_APP_REDIRECT_URIS` comma-separated allowlist. **Preserve mobile entries**
+  such as `addugeneteshop://auth`, and add `https://addugeneteshop.com/login`.
+  Add `https://www.addugeneteshop.com/login` only if that hostname serves the
+  site. For development add the actual origin and port, for example
+  `http://localhost:5173/login` and `http://127.0.0.1:5173/login`.
+  These are app handoff URLs, not the provider's authorized redirect URLs.
+- Provider dashboards must use the shared backend callback:
+  `<OAUTH_CALLBACK_BASE_URL>/users/auth/social/callback/google` (or `apple`,
+  `facebook`), with the existing HTTPS API base including `/api/v1`.
+  Configure provider credentials **only on the backend**:
+  `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, `FACEBOOK_CLIENT_ID` /
+  `FACEBOOK_CLIENT_SECRET`, or `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`,
+  `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`. Do not alter working mobile credentials
+  without verifying their shared callback configuration. Keep each provider OFF
+  until credentials, callback URLs, consent/review requirements and real sign-in
+  are verified. ON is an availability switch, not a credential-health check;
+  unconfigured providers return an explicit error and do not create a session.
+- Profile > Security Settings supports authenticator-app enrollment with a
+  **locally generated QR code** and manual key, verified-email enrollment,
+  enabling/disabling 2FA, email code resend, and replacement backup codes.
+  Setup secrets and backup codes are never sent to a third-party QR service or
+  persisted by the frontend. Save the displayed single-use backup codes before
+  closing their modal. Refreshing or browser navigation can lose unsaved codes;
+  the page warns on unload and recovery options can generate replacements.
+- Password and social sign-in both stop at the server's 2FA challenge until a
+  valid verification or backup code is accepted. No access token or user session
+  is stored for a challenge. Verification uses the original sign-in database,
+  including automatic password-login region fallback.
+- The existing backend auth prerequisites still apply: shared auth collections,
+  `AUTH_ENCRYPTION_KEY` configuration and working email delivery for email codes.
+  Expired, invalid and rate-limited requests surface server errors. Backend
+  verification remains authoritative; do not enable 2FA in production without
+  checking code delivery and recovery on a test account.
 
 The website uses the existing Express API from `D:\MERN_COURSE\backend`, also
 used by the mobile app at `D:\MERNMobileApp\easy_shopping`. Do not run a second
