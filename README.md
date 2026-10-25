@@ -95,6 +95,170 @@ Notes:
 - `npm run build` - Build production bundle
 - `npm run preview` - Preview production build locally
 - `npm run lint` - Run ESLint
+- `npm test` - Validate delivery allocation, shared-fee preview, route coordinates and cart recovery
+
+## Shared mobile / web delivery
+
+The website uses the existing Express API from `D:\MERN_COURSE\backend`, also
+used by the mobile app at `D:\MERNMobileApp\easy_shopping`. Do not run a second
+web-only delivery backend or duplicate inventory, pricing, orders or dispatch.
+Point both clients to the same API deployment and select the same regional
+database. The existing Vite proxy sends `/api` to `http://localhost:3001`;
+start the shared backend on that port for local development, or set
+`VITE_API_BASE_URL` to its `/api/v1` URL.
+
+### Customer checkout
+
+- Both cart checkout modes share the mobile-style product list: round product
+  thumbnails (including gallery images), store labels, minus/plus quantity
+  controls, line totals, clear-cart confirmation and a products subtotal.
+  Missing or failed images use a local parcel placeholder. Proceed to Checkout
+  starts the shared checkout's separate Address, Delivery, Payment and Order
+  Summary screens without creating an order or payment. Address quantities are
+  validated before delivery; delivery/payment choices use mobile-style cards.
+  Reservation happens only after review. Back/edit actions restore this tab's
+  address, allocation, currency and delivery-speed draft and require a fresh
+  quote after address or speed changes. Prepared payments use their saved state.
+- When `GET stores/delivery-config` returns `enabled: true`, `/cart` uses
+  vehicle-based delivery instead of the legacy single-address checkout.
+  Errors loading configuration are displayed, never treated as disabled.
+  With the gate off, legacy main-catalog checkout remains available.
+  Storefront purchases require the shared delivery gate; they cannot silently
+  fall back to unconstrained catalog purchases.
+- Add up to ten drop-offs, reuse/save/edit/delete private addresses, and allocate
+  each cart item's whole quantities across recipients. Every unit must be
+  allocated exactly once. ZIP is optional in Ethiopia.
+- Standard, Express and Scheduled delivery use the shared server policy and
+  saved delivery windows. The server geocodes addresses and calculates Google
+  driving distances, selects stock/pickups and returns suitable vehicles.
+  Missing domestic package measurements require manual vehicle selection.
+- Preview fees follow the mobile nearby-store/vehicle grouping rule, including
+  exact cent splitting. Server preparation revalidates and reserves stock
+  atomically; the saved reservation total is authoritative.
+- Domestic Ethiopia supports bank transfer and cash; domestic USA supports
+  bank transfer and Stripe card payment. Native USA cash is offered only by
+  Vite development builds (`import.meta.env.DEV`), with the mobile API's
+  `developmentCashOnDelivery: true` preparation marker. It creates real orders;
+  use test inventory. Production builds hide USA cash and block confirmation of
+  development cash reservations. FX, international and service payments never
+  offer cash, even in development.
+- Pickup selection ranks all stock/price-eligible stores, including the default
+  store, by distance to the verified delivery destination. Whole-cart stock and
+  storefront-family rules still apply. Existing orders retain their pickup;
+  recalculate an unprepared quote after deploying backend ranking changes.
+  Driver pickup navigation starts at live driver GPS and ends at that assigned
+  pickup; drop-off navigation goes from driver GPS to the recipient. Driver
+  navigation does not silently substitute a store or browser-chosen starting
+  point when GPS is unavailable.
+- The cart's **Payment currency & destination** selector also offers Ethiopia
+  purchases paid in USD and USA products paid in birr and shipped to Ethiopia.
+  Both reuse the mobile API's daily FX policy. New quotes/reservations require
+  an enabled rate applied strictly under 24 hours ago; prepared payments retain
+  their saved rate and amount even when the policy later expires or is disabled.
+- Ethiopia USD product/service payments support explicitly USD-tagged bank
+  accounts and, when enabled by the API, the dedicated Ethiopia USD Stripe
+  merchant. Converted card payments never substitute the native merchant key.
+  Cash is excluded. Product/service costs stay ETB; USD payments divide by the
+  saved birr-per-USD rate.
+- USA-to-Ethiopia checkout accepts Ethiopian recipients, reserves US inventory
+  and routes US pickups only to the consolidation hub. Shipping is charged once
+  per recipient using the server's weight/volume tariff, including final
+  Ethiopian delivery but excluding customs/duties. Products, hub route fees and
+  shipping remain USD; their combined total is converted to ETB. Payment is
+  **ETB bank transfer only** using explicitly ETB-tagged accounts in the USA
+  database. Submitted transfers enter `bank_review`, keep stock reserved, and
+  block fulfillment until Admin verifies the actual funds. Never pay again
+  while a receipt is under review.
+- `/service-requests` offers **Accept Admin quote & pay in USD** for eligible
+  ETB-quoted Ethiopia services and a resume link for existing payments. Service
+  totals come only from the saved Admin quote, not the cart. Service payments
+  never remove cart items. Submitted/paid service cancellation requires support
+  review and manual refund handling; no automatic service refund is provided.
+- `/delivery-checkouts/:id` resumes a quote/reservation, including one created
+  on mobile. The browser saves the quote ID before reservation or payment.
+  Before calculating a new route/quote, the browser verifies that saved ID with
+  the server. Unreserved quotes can be replaced; missing or cancelled records no
+  longer block checkout. Completed purchases reconcile the cart. Unpaid
+  reservations and bank transfers under review retain their resume/status link
+  and duplicate-payment protection, even when their expiry time has passed.
+  Network/authorization failures do not silently discard payment recovery data.
+  Checkout errors have a labeled red alert; active previous-checkout notices
+  use an amber warning with a clearly marked recovery link.
+  On interrupted requests, refresh that checkout rather than start another
+  payment. Card payments use the group's existing server PaymentIntent;
+  bank transfer submits one combined sender/reference. Only purchased cart
+  quantities are removed on placement (or export bank-review submission), with
+  persisted completion IDs to prevent repeated cart removal after refresh.
+- `/delivery-checkouts` shows saved receipts, child deliveries, cancellations,
+  refund status and live driver markers/status (15-second polling).
+  It also shows converted payment receipts, saved rates, international recipient
+  shipments, carrier/tracking details and milestone history. A US driver
+  delivery marked complete means arrival at the hub, not final Ethiopian delivery.
+
+Nearby stores can share a delivery **price**, but fulfillment and tracking
+remain per store, exactly as in the current mobile/backend implementation.
+This does not introduce a new optimized consolidated multi-stop dispatch model.
+
+### Admin and company driver operations
+
+- `/admin/delivery`: configure shared vehicle activation, capacities and regional
+  route rates, delivery-speed policies, optional product package measurements,
+  and existing company drivers' vehicle type/assignment availability. Account
+  onboarding/approval stays in the existing mobile/Admin API flow.
+- `/admin/delivery-payments`: inspect combined bank receipts, confirm actual
+  received funds, cancel child deliveries, reconcile Stripe refunds and record
+  bank refunds already sent. Confirmation is never proof of payment by itself:
+  Admin must verify funds in the actual bank account.
+- `/admin/international-payments`: configure this region's independent FX
+  enablement/provider/automation, apply or fetch a daily rate, and inspect
+  history/failures. Saving settings does not renew a rate. In the USA region,
+  also configure the server-geocoded US hub, shipping tariff/limits and explicit
+  per-product export approval. Only approve legally shippable products with
+  complete accurate measurements. No carrier booking is made automatically.
+- Admin bank-account forms explicitly select USD or ETB and list both
+  currencies. At `/admin/delivery-payments`, verify/reject international bank
+  receipts and advance shipments sequentially:
+  `awaiting_hub -> at_hub -> shipped -> arrived_ethiopia -> delivered`.
+  The server requires paid orders and completed US hub pickups; export requires
+  carrier/tracking and final delivery requires a proof/recipient-confirmation note.
+- `/driver/deliveries`: approved company-driver accounts see the same offers and
+  ordered active queue as mobile, claim/reroute/reject offers, confirm pickup,
+  request Google driving routes for the current leg, and confirm recipient
+  drop-off. Server permissions and dispatch eligibility remain authoritative.
+  GPS sharing is opt-in and stops when disabled or the page unmounts. It uses
+  the mobile company's `rides/me/location` endpoint; keep the page open.
+  Browser background tracking is not guaranteed. This is not the partner-driver
+  marketplace dashboard.
+
+### Setup and rollout
+
+1. On the shared backend, configure `GOOGLE_MAPS_API_KEY` for **Geocoding** and
+   **Distance Matrix**, and `GOOGLE_ROUTES_API_KEY` for **Routes API**, with
+   billing and appropriate server restrictions. These keys never belong in
+   frontend environment variables. Google failures are displayed; no
+   straight-line pricing or route fallback is used.
+2. Complete the backend's existing per-store inventory migration in each region
+   using its documented Admin/mobile flow (replica-set transactions required).
+   Verify approved/open pickup stores, real pickup coordinates and inventory.
+   This web implementation does not run migrations or enable production gates.
+3. Configure active regional bank accounts, Stripe merchant keys for USA,
+   approved company drivers and vehicle compatibility. Enable vehicles and
+   shared delivery through Admin only after these prerequisites are ready.
+   For Ethiopia USD cards, configure `STRIPE_SECRET_KEY_ETHIOPIA_USD` and
+   `STRIPE_PUBLISHABLE_KEY_ETHIOPIA_USD` on the backend with the matching live
+   USD-capable merchant; the server supplies the public key after reservation.
+   For cross-currency purchases, configure the region's FX policy and
+   matching-currency bank accounts. For USA exports, also configure hub/tariff,
+   complete packaged measurements and explicit product export approvals.
+4. Optionally set `VITE_GOOGLE_MAPS_BROWSER_KEY` to a **separate**, HTTP-referrer
+   restricted key with **Maps JavaScript API** enabled. This adds embedded
+   pickup/drop-off/driver markers and the driver's server-returned Google road
+   polyline. Without it, explicit Google Maps navigation links still work.
+   Browser GPS requires HTTPS or localhost and location permission.
+5. Validate real Google routes, Mongo transaction concurrency, dispatch,
+   mobile/web cross-device status updates and live payment/refund recovery in
+   staging before rollout. Unit and mocked browser tests do not validate live
+   Google authorization, database deployment or bank funds.
 
 ## Inventory and Low-Stock Behavior
 

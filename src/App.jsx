@@ -26,6 +26,11 @@ import StoreDirectoryPage from './pages/StoreDirectoryPage'
 import StorefrontPage from './pages/StorefrontPage'
 import RideBookingPage from './pages/RideBookingPage'
 import MyRidesPage from './pages/MyRidesPage'
+import DeliveryCheckoutPage from './pages/DeliveryCheckoutPage'
+import DeliveryCheckoutsPage from './pages/DeliveryCheckoutsPage'
+import DeliverySettingsPage from './pages/DeliverySettingsPage'
+import DriverDeliveriesPage from './pages/DriverDeliveriesPage'
+import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSettingsPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
@@ -204,6 +209,12 @@ function App() {
               isAuthenticated && isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" replace />
             }
           />
+          <Route path="delivery-checkouts" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutsPage /> : <Navigate to="/login" replace />} />
+          <Route path="delivery-checkouts/:id" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutPage key={location.pathname} /> : <Navigate to="/login" replace />} />
+          <Route path="driver/deliveries" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DriverDeliveriesPage /> : <Navigate to="/login" replace />} />
+          <Route path="admin/delivery" element={isAuthenticated && isAdmin ? <DeliverySettingsPage /> : <Navigate to="/login" replace />} />
+          <Route path="admin/delivery-payments" element={isAuthenticated && isAdmin ? <DeliveryCheckoutsPage admin /> : <Navigate to="/login" replace />} />
+          <Route path="admin/international-payments" element={isAuthenticated && isAdmin ? <InternationalPaymentsSettingsPage /> : <Navigate to="/login" replace />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

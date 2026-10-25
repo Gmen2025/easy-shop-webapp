@@ -122,6 +122,10 @@ function Header() {
           <NavLink to="/orders" onClick={closeMenu}>
             My Orders
           </NavLink>
+          {user ? <>
+            <NavLink to="/delivery-checkouts" onClick={closeMenu}>Delivery checkouts</NavLink>
+            <NavLink to="/driver/deliveries" onClick={closeMenu}>Driver deliveries</NavLink>
+          </> : null}
           <NavLink to="/cart" onClick={closeMenu}>
             Cart ({cartCount})
           </NavLink>

@@ -4,10 +4,17 @@ export function getDeliverySettings() {
   return apiRequest('/settings/delivery')
 }
 
-export function updateDeliverySettings(deliveryConfig) {
+export function updateDeliverySettings(deliveryConfig, deliveryOrigin) {
   return apiRequest('/settings/delivery', {
     method: 'PUT',
-    body: JSON.stringify({ deliveryConfig }),
+    body: JSON.stringify({ deliveryConfig, deliveryOrigin }),
+  })
+}
+
+export function estimateDeliveryDistance(destinationAddress) {
+  return apiRequest('/settings/delivery/estimate-distance', {
+    method: 'POST',
+    body: JSON.stringify({ destinationAddress }),
   })
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
@@ -6,8 +6,6 @@ import { loadStripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
 import {
   clearCart,
-  removeFromCart,
-  updateCartQuantity,
 } from '../features/cart/cartSlice'
 import {
   clearOrderState,
@@ -23,9 +21,15 @@ import StripeCardCheckout from '../components/StripeCardCheckout'
 import TelebirrCheckout from '../components/TelebirrCheckout'
 import BankTransferCheckout from '../components/BankTransferCheckout'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
-import { getDeliverySettings } from '../api/serviceRequests'
-import { formatCurrency, getPrimaryProductImage } from '../utils/format'
+import { estimateDeliveryDistance, getDeliverySettings } from '../api/serviceRequests'
+import { formatCurrency } from '../utils/format'
 import countries from '../../data/countries.json'
+import { deliveryRequest } from '../api/delivery'
+import DeliveryCheckoutPage from './DeliveryCheckoutPage'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
+import CartContents from '../components/CartContents'
+import { cashOnDeliveryAvailable } from '../utils/checkoutPayment'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
@@ -84,7 +88,7 @@ function estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor, con
   return Math.round((config.scheduledBase + distanceKm * config.scheduledPerKm + peakSurcharge + offPeakDiscount) * 100) / 100
 }
 
-function CartPage() {
+function LegacyCartPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [cardError, setCardError] = useState('')
@@ -96,6 +100,7 @@ function CartPage() {
   const payment = useSelector((state) => state.payment)
   const selectedDb = getSelectedDatabaseName()
   const isEthio = selectedDb === 'E_Shopping'
+  const cashAvailable = cashOnDeliveryAvailable(selectedDb, import.meta.env.DEV)
   const [latestOrderPrefill, setLatestOrderPrefill] = useState(null)
 
   const [shippingAddress1, setShippingAddress1] = useState('')
@@ -108,14 +113,20 @@ function CartPage() {
   const [deliveryDistanceKm, setDeliveryDistanceKm] = useState('')
   const [scheduledFor, setScheduledFor] = useState('')
   const [deliveryConfig, setDeliveryConfig] = useState(DEFAULT_DELIVERY_CONFIG)
+  const [distanceApiEnabled, setDistanceApiEnabled] = useState(false)
+  const [distanceEstimating, setDistanceEstimating] = useState(false)
+  const [distanceAutoCalculated, setDistanceAutoCalculated] = useState(false)
+  const distanceLookupTimer = useRef(null)
 
   useEffect(() => {
     let isCurrent = true
     getDeliverySettings()
       .then((response) => {
-        if (isCurrent && response?.deliveryConfig) {
+        if (!isCurrent) return
+        if (response?.deliveryConfig) {
           setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
         }
+        setDistanceApiEnabled(Boolean(response?.distanceApiEnabled))
       })
       .catch(() => {})
 
@@ -123,6 +134,38 @@ function CartPage() {
       isCurrent = false
     }
   }, [selectedDb])
+
+  // Auto-calculate the delivery distance from the shipping address via the server's
+  // Google Distance Matrix lookup, debounced so we don't hit the API on every keystroke.
+  useEffect(() => {
+    if (!isEthio || !distanceApiEnabled) {
+      return undefined
+    }
+
+    const destinationAddress = [shippingAddress1, city, country].filter(Boolean).join(', ')
+    if (!shippingAddress1.trim() || !city.trim()) {
+      return undefined
+    }
+
+    if (distanceLookupTimer.current) {
+      clearTimeout(distanceLookupTimer.current)
+    }
+
+    distanceLookupTimer.current = setTimeout(() => {
+      setDistanceEstimating(true)
+      estimateDeliveryDistance(destinationAddress)
+        .then((response) => {
+          if (response?.distanceKm !== null && response?.distanceKm !== undefined) {
+            setDeliveryDistanceKm(String(response.distanceKm))
+            setDistanceAutoCalculated(true)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setDistanceEstimating(false))
+    }, 800)
+
+    return () => clearTimeout(distanceLookupTimer.current)
+  }, [isEthio, distanceApiEnabled, shippingAddress1, city, country])
 
   function getCheckoutDraftKey() {
     const dbName = getSelectedDatabaseName() || 'default'
@@ -314,6 +357,7 @@ function CartPage() {
   }
 
   function getOrderPayload(paymentMeta = null) {
+    if (paymentMethod === 'cod' && !cashAvailable) throw new Error('USA cash on delivery is available only during development.')
     const resolvedPaymentMethod = paymentMethod === 'bank_transfer'
       ? 'Bank Transfer'
       : paymentMethod === 'telebirr'
@@ -339,6 +383,7 @@ function CartPage() {
       paymentMethod: resolvedPaymentMethod,
       deliveryMode,
       deliveryDistanceKm: deliveryDistanceKm === '' ? 0 : Number(deliveryDistanceKm),
+      ...(paymentMethod === 'cod' && !isEthio ? { developmentCashOnDelivery: import.meta.env.DEV === true } : {}),
     }
 
     if (deliveryMode === 'SCHEDULED' && scheduledFor) {
@@ -523,59 +568,11 @@ function CartPage() {
   return (
     <section className="page-stack">
       <section className="panel">
-        <div className="panel-header">
-          <h2>Your Cart</h2>
-          <span>{totals.itemsCount} items</span>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="empty-state">
-            <p>Your cart is empty.</p>
-            <Link to="/" className="solid-button">
-              Continue Shopping
-            </Link>
-          </div>
-        ) : (
-          <div className="cart-list">
-            {items.map((item) => (
-              <article key={item.product.id} className="cart-item">
-                <img
-                  src={getPrimaryProductImage(item.product, 'https://placehold.co/120x120?text=Item')}
-                  alt={item.product.name}
-                />
-                <div>
-                  <h3>{item.product.name}</h3>
-                  <p>{formatCurrency(item.product.price)}</p>
-                </div>
-                <input
-                  type="number"
-                  min="1"
-                  max={item.product.countInStock || 999}
-                  value={item.quantity}
-                  onChange={(event) =>
-                    dispatch(
-                      updateCartQuantity({
-                        productId: item.product.id,
-                        quantity: Number(event.target.value || 1),
-                      }),
-                    )
-                  }
-                />
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => dispatch(removeFromCart(item.product.id))}
-                >
-                  Remove
-                </button>
-              </article>
-            ))}
-          </div>
-        )}
+        <CartContents disabled={creating || payment.creatingIntent} />
       </section>
 
       <section className="panel checkout-panel">
-        <h2>Checkout</h2>
+        <h2 id="cart-checkout-details" tabIndex={-1}>Checkout</h2>
         <p className="checkout-total">Subtotal: {formatCurrency(totals.subtotal)}</p>
         <p className="checkout-total">Delivery Fee (estimated): {formatCurrency(totals.deliveryFee)}</p>
         <p className="checkout-total">Total: {formatCurrency(totals.grandTotal)}</p>
@@ -595,16 +592,25 @@ function CartPage() {
 
           {isEthio ? (
             <>
-              <label htmlFor="delivery-distance">Delivery Distance (km, optional)</label>
+              <label htmlFor="delivery-distance">
+                Delivery Distance (km){distanceApiEnabled ? ' — auto-calculated from your address' : ' (optional)'}
+              </label>
               <input
                 id="delivery-distance"
                 type="number"
                 min="0"
                 step="0.1"
                 value={deliveryDistanceKm}
-                onChange={(event) => setDeliveryDistanceKm(event.target.value)}
+                onChange={(event) => {
+                  setDeliveryDistanceKm(event.target.value)
+                  setDistanceAutoCalculated(false)
+                }}
                 placeholder="e.g. 5"
               />
+              {distanceEstimating ? <p className="section-note">Calculating distance...</p> : null}
+              {distanceAutoCalculated && !distanceEstimating ? (
+                <p className="section-note">Distance auto-calculated from your shipping address. You can edit it manually if needed.</p>
+              ) : null}
             </>
           ) : null}
 
@@ -635,7 +641,7 @@ function CartPage() {
               setCardError('')
             }}
           >
-            {isEthio ? <option value="cod">Cash On Delivery</option> : null}
+            {cashAvailable ? <option value="cod">Cash On Delivery{!isEthio ? ' (development only)' : ''}</option> : null}
             {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
             {isEthio ? (
               <option value="telebirr" disabled={!isTelebirrEnabled}>
@@ -770,6 +776,32 @@ function CartPage() {
       </section>
     </section>
   )
+}
+
+function CartPage() {
+  const user = useSelector((state) => state.auth.user)
+  const items = useSelector((state) => state.cart.items)
+  const [enabled, setEnabled] = useState(null)
+  const [failure, setFailure] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    if (!user) return undefined
+    let current = true
+    deliveryRequest('delivery-config').then((config) => {
+      if (current) { setEnabled(config.enabled); setFailure('') }
+    }).catch((error) => { if (current) setFailure(error.message) })
+    return () => { current = false }
+  }, [user, attempt])
+  if (!user) return <LegacyCartPage />
+  if (failure) return <ErrorState message={failure} onRetry={() => setAttempt((value) => value + 1)} />
+  if (enabled === null) return <LoadingState label="Loading shared delivery checkout..." />
+  if (!enabled && items.some((item) => item.product.storefrontId)) return <section className="panel">
+    <CartContents />
+    <h2 id="cart-checkout-details" tabIndex={-1}>Checkout unavailable</h2>
+    <p role="alert">Storefront purchases require shared vehicle delivery checkout. Ask Admin to enable delivery in this region.</p>
+    <Link to="/delivery-checkouts">Resume an existing delivery checkout</Link>
+  </section>
+  return enabled ? <DeliveryCheckoutPage /> : <LegacyCartPage />
 }
 
 export default CartPage

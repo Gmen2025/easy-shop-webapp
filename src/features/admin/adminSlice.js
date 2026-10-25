@@ -40,7 +40,7 @@ export const fetchAdminCatalog = createAsyncThunk(
       apiRequest('/categories'),
       apiRequest('/products'),
       apiRequest('/orders'),
-      apiRequest('/settings/bank-account'),
+      apiRequest('/settings/bank-account?currency=ALL'),
     ])
     return {
       categories,
@@ -54,7 +54,7 @@ export const fetchAdminCatalog = createAsyncThunk(
 export const fetchBankAccountsAdmin = createAsyncThunk(
   'admin/fetchBankAccountsAdmin',
   async () => {
-    const response = await apiRequest('/settings/bank-account')
+    const response = await apiRequest('/settings/bank-account?currency=ALL')
     return normalizeBankAccounts(response)
   },
 )

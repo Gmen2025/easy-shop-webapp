@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getServiceRequests, updateServiceRequest } from '../api/serviceRequests'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
+import { deliveryRequest } from '../api/delivery'
+import { getSelectedDatabaseName } from '../api/client'
+import { money } from '../utils/checkoutPayment'
 
 function formatStatus(status) {
   return String(status || 'new')
@@ -28,6 +31,7 @@ function formatDate(value) {
 }
 
 function ServiceRequestsPage() {
+  const navigate = useNavigate()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -91,6 +95,19 @@ function ServiceRequestsPage() {
       )))
     } catch (requestError) {
       setError(requestError.message || 'Unable to cancel this service request.')
+    } finally {
+      setActionId('')
+    }
+  }
+
+  async function startUsdCheckout(request) {
+    const requestId = request._id || request.id
+    setActionId(requestId); setError('')
+    try {
+      const group = await deliveryRequest(`service-checkouts/${requestId}`, { method: 'POST', timeoutMs: 60000 })
+      navigate(`/delivery-checkouts/${group._id}`)
+    } catch (failure) {
+      setError(failure.message)
     } finally {
       setActionId('')
     }
@@ -160,6 +177,16 @@ function ServiceRequestsPage() {
                 </div>
               </dl>
               {request.problemDescription ? <p>{request.problemDescription}</p> : null}
+              {Number.isFinite(request.quotedPrice) ? <p>Admin quote: {money(request.quotedPrice, request.currency || 'ETB')}</p> : null}
+              {request.paymentStatus ? <p>Payment: {request.paymentStatus}</p> : null}
+              {request.checkoutGroup ? <Link className="solid-button" to={`/delivery-checkouts/${request.checkoutGroup}`}>
+                Resume / view service payment
+              </Link> : !/usa/i.test(getSelectedDatabaseName()) && request.country === 'Ethiopia' && request.currency === 'ETB' &&
+                ['quoted', 'in_progress', 'completed'].includes(request.status) && request.quotedPrice > 0 ? <button
+                  className="solid-button" disabled={Boolean(actionId)} onClick={() => startUsdCheckout(request)}>
+                  Accept Admin quote & pay in USD
+                </button> : null}
+              {request.checkoutGroup ? <p>Service payments use the saved checkout. Submitted or paid funds require support review and a manual refund process before cancellation.</p> : null}
               {!['completed', 'cancelled'].includes(request.status) ? (
                 <div className="inline-actions">
                   <button

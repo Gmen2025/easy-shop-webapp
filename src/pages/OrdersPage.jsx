@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchUserOrders } from '../features/orders/ordersSlice'
 import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
@@ -119,6 +120,7 @@ function OrdersPage() {
         <h2>Order History</h2>
         <span>{items.length} orders</span>
       </div>
+      <Link to="/delivery-checkouts">Combined delivery payments, drop-offs & live tracking</Link>
       {loading ? <p className="section-note">Refreshing your orders...</p> : null}
 
       {items.length === 0 ? (

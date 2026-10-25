@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
 import {
   clearAdminState,
   createCategoryAdmin,
@@ -31,6 +32,7 @@ import {
   updateServiceRequest,
 } from '../api/serviceRequests'
 import { getLowStockThreshold, setLowStockThreshold } from '../utils/inventory'
+import { getSelectedDatabaseName } from '../api/client'
 
 const defaultCategory = { name: '', icon: '', color: '#f29a43' }
 const defaultProduct = {
@@ -52,6 +54,7 @@ const defaultBankAccountForm = {
   accountHolderName: '',
   bankCode: '',
   additionalInfo: '',
+  currency: '',
   isActive: true,
 }
 const defaultDeliveryConfig = {
@@ -152,6 +155,8 @@ function AdminDashboardPage() {
   const [serviceRequestsError, setServiceRequestsError] = useState('')
   const [serviceRequestActionId, setServiceRequestActionId] = useState('')
   const [deliveryConfig, setDeliveryConfig] = useState(defaultDeliveryConfig)
+  const [deliveryOriginAddress, setDeliveryOriginAddress] = useState('')
+  const [distanceApiEnabled, setDistanceApiEnabled] = useState(false)
   const [deliveryLoading, setDeliveryLoading] = useState(true)
   const [deliverySaving, setDeliverySaving] = useState(false)
   const [deliveryMessage, setDeliveryMessage] = useState('')
@@ -175,6 +180,8 @@ function AdminDashboardPage() {
         if (response?.deliveryConfig) {
           setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
         }
+        setDeliveryOriginAddress(response?.deliveryOrigin?.address || '')
+        setDistanceApiEnabled(Boolean(response?.distanceApiEnabled))
       })
       .catch((requestError) => setDeliveryError(requestError.message || 'Unable to load delivery settings.'))
       .finally(() => setDeliveryLoading(false))
@@ -367,6 +374,7 @@ function AdminDashboardPage() {
       accountHolderName: bank?.accountHolderName || '',
       bankCode: bank?.bankCode || '',
       additionalInfo: bank?.additionalInfo || '',
+      currency: bank?.currency || (/usa/i.test(getSelectedDatabaseName()) ? 'USD' : 'ETB'),
       isActive: bank?.isActive !== false,
     })
   }
@@ -389,6 +397,7 @@ function AdminDashboardPage() {
       accountHolderName: String(bankAccountForm.accountHolderName || '').trim(),
       bankCode: String(bankAccountForm.bankCode || '').trim(),
       additionalInfo: String(bankAccountForm.additionalInfo || '').trim(),
+      currency: bankAccountForm.currency || (/usa/i.test(getSelectedDatabaseName()) ? 'USD' : 'ETB'),
     }
 
     const resultAction = await dispatch(manageBankAccountAdmin({ action, bankAccount: payload }))
@@ -447,8 +456,9 @@ function AdminDashboardPage() {
       const normalized = Object.fromEntries(
         Object.entries(deliveryConfig).map(([key, value]) => [key, Number(value)]),
       )
-      const response = await updateDeliverySettings(normalized)
+      const response = await updateDeliverySettings(normalized, { address: deliveryOriginAddress.trim() })
       setDeliveryConfig((current) => ({ ...current, ...response.deliveryConfig }))
+      setDeliveryOriginAddress(response?.deliveryOrigin?.address || '')
       setDeliveryMessage('Delivery settings saved for the selected database.')
     } catch (requestError) {
       setDeliveryError(requestError.message || 'Unable to save delivery settings.')
@@ -611,9 +621,23 @@ function AdminDashboardPage() {
         <p className="section-note">
           These rates control customer estimates and the final server-calculated delivery fee.
         </p>
+        <p className="section-note">
+          {distanceApiEnabled
+            ? 'Google-based distance calculation is enabled on the server.'
+            : 'Google-based distance calculation is not configured (set GOOGLE_MAPS_API_KEY on the server). Customers will enter distance manually until then.'}
+        </p>
         {deliveryError ? <p className="form-error">{deliveryError}</p> : null}
         {deliveryMessage ? <p className="form-success">{deliveryMessage}</p> : null}
         <form className="delivery-settings-form" onSubmit={saveDeliveryConfig}>
+          <label>
+            Store/warehouse origin address (used to auto-calculate delivery distance)
+            <input
+              type="text"
+              value={deliveryOriginAddress}
+              onChange={(event) => setDeliveryOriginAddress(event.target.value)}
+              placeholder="e.g. Bole Road, Addis Ababa, Ethiopia"
+            />
+          </label>
           <div className="delivery-settings-grid">
             {[
               ['sameDayBase', 'Same-day base fee'],
@@ -649,6 +673,15 @@ function AdminDashboardPage() {
         </form>
       </section>
 
+      <section className="panel">
+        <h2>Shared delivery operations</h2>
+        <div className="action-row">
+          <Link className="solid-button" to="/admin/delivery">Vehicles, cargo & delivery windows</Link>
+          <Link className="ghost-button" to="/admin/delivery-payments">Combined payments & refunds</Link>
+          <Link className="ghost-button" to="/admin/international-payments">Exchange rates & international shipping</Link>
+          <Link className="ghost-button" to="/driver/deliveries">Driver pickup & drop-off</Link>
+        </div>
+      </section>
       <section className="panel admin-grid">
         <form className="admin-form" onSubmit={submitCategory}>
           <h3>{categoryEditId ? 'Update Category' : 'Create Category'}</h3>
@@ -874,6 +907,11 @@ function AdminDashboardPage() {
       <section className="panel admin-grid">
         <form className="admin-form" onSubmit={submitBankAccount}>
           <h3>{bankAccountEditId ? 'Update Bank Account' : 'Add Bank Account'}</h3>
+          <label>Account currency<select value={bankAccountForm.currency || (/usa/i.test(getSelectedDatabaseName()) ? 'USD' : 'ETB')}
+            onChange={(event) => setBankAccountForm((current) => ({ ...current, currency: event.target.value }))}>
+            <option value="ETB">ETB - birr</option><option value="USD">USD - US dollars</option>
+          </select></label>
+          <p className="section-note">Use explicitly USD-tagged accounts for Ethiopia USD checkout and ETB-tagged accounts for USA exports. Only matching-currency accounts are offered to shoppers.</p>
           <input
             value={bankAccountForm.bankName}
             onChange={(event) =>
@@ -963,6 +1001,7 @@ function AdminDashboardPage() {
               <div>
                 <strong>{bank.bankName || 'N/A'}</strong>
                 <small>Account Number: {bank.accountNumber || 'N/A'}</small>
+                <small>Currency: {bank.currency || (/usa/i.test(getSelectedDatabaseName()) ? 'USD' : 'ETB')}</small>
                 <small>Account Holder: {bank.accountHolderName || 'N/A'}</small>
                 {bank.bankCode ? <small>Bank Code: {bank.bankCode}</small> : null}
                 {bank.additionalInfo ? <small>{bank.additionalInfo}</small> : null}

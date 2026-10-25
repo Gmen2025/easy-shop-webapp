@@ -56,10 +56,7 @@ function ProductCard({ product, storeInventory = false }) {
         <div className="product-meta">
           <strong>{formatCurrency(product.price)}</strong>
         </div>
-        {storeInventory ? (
-          <p className="store-checkout-note">Store inventory checkout is not available on the website yet.</p>
-        ) : (
-          <button
+        <button
             type="button"
             className="product-add-button"
             disabled={stock <= 0}
@@ -69,8 +66,7 @@ function ProductCard({ product, storeInventory = false }) {
             }}
           >
             {stock > 0 ? 'Add to cart' : 'Unavailable'}
-          </button>
-        )}
+        </button>
       </div>
     </article>
   )
