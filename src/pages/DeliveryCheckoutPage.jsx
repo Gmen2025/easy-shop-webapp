@@ -348,6 +348,14 @@ export default function DeliveryCheckoutPage() {
         {group ? <>
           <p>Checkout #{group._id} | <strong>{group.status}</strong> | Payment: {group.paymentStatus}</p>
           <DeliveryWindow value={group} />
+          {group.cartRoute ? <section className="order-card" aria-label="Cart delivery route">
+            <h2>One delivery route for your complete cart</h2>
+            <p>Billable road distance: {(/usa/i.test(database) ? group.cartRoute.distanceKm / 1.609344 : group.cartRoute.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}.
+              One base fee and delivery-speed surcharge for the entire route.</p>
+            <p>Driver travel to the first pickup and detours for other customers are not charged. Your reserved fee stays fixed.
+              Each address can be delivered once all its products are collected.</p>
+            <ol>{group.cartRoute.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol>
+          </section> : null}
           {service ? <p>Service request #{group.serviceRequest}. Pay the Admin ETB quote in USD; fulfillment remains in Ethiopia.
             Submitted or paid service payments require support review and manual refund handling before cancellation.</p> : null}
           <InternationalReceipt group={group} />
@@ -358,17 +366,19 @@ export default function DeliveryCheckoutPage() {
             {group.deliveries.map((delivery) => <article className="order-card" key={delivery.key}>
               <h2>Pickup: {delivery.store.name}</h2><p>{delivery.store.address}</p>
               <p>{international ? 'US consolidation hub' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
-              <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p>
+              {!group.cartRoute ? <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p> : null}
               {delivery.lines.map((line) => <p key={`${line.key}:${line.product}`}>{line.quantity} x {line.name || line.product} at {formatCurrency(line.price)}</p>)}
               <p>Cargo: {delivery.cargo.weightKg ?? 'Unknown'} kg / {delivery.cargo.volumeLiters ?? 'Unknown'} liters</p>
               {delivery.requiresVehicleSelection ? <p role="note">Measurements are incomplete. Choose a vehicle manually; capacity cannot be guaranteed.</p> : null}
               {step === 2 ? <label>Vehicle<select value={selections[delivery.key] || ''} onChange={(event) =>
-                setSelections((previous) => ({ ...previous, [delivery.key]: event.target.value }))}>
+                setSelections((previous) => group.cartRoute ?
+                  Object.fromEntries(group.deliveries.map((entry) => [entry.key, event.target.value])) :
+                  ({ ...previous, [delivery.key]: event.target.value }))}>
                 <option value="">Choose a vehicle</option>
-                {delivery.vehicleOptions.map((option) => <option key={option.type} value={option.type}>{option.type} - unshared route {formatCurrency(option.fee)}</option>)}
+                {delivery.vehicleOptions.map((option) => <option key={option.type} value={option.type}>{option.type} - {group.cartRoute ? 'entire cart route' : 'unshared route'} {formatCurrency(option.fee)}</option>)}
               </select></label> : <p>Vehicle: {selections[delivery.key]}</p>}
-              <p>Delivery share: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
-                {pricing.byKey[delivery.key].storeCount > 1 ? ` (${pricing.byKey[delivery.key].storeCount} nearby stores share this vehicle fee)` : ''}</p>
+              <p>{group.cartRoute ? 'Allocated cart route fee share (not an additional charge)' : 'Delivery share'}: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
+                {!group.cartRoute && pricing.byKey[delivery.key].storeCount > 1 ? ` (${pricing.byKey[delivery.key].storeCount} nearby stores share this vehicle fee)` : ''}</p>
               {step === 2 ? <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} /> : null}
             </article>)}
             {step === 2 ? <div className="action-row">

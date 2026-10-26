@@ -154,7 +154,9 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
           <p>The US delivery status refers to the consolidation hub, not final delivery in Ethiopia.</p>
           <p>{order.internationalShipping.customsNotice}</p>
         </div> : null}
-        {order.deliveryPricingGroup?.storeCount > 1 ? <p>{order.deliveryPricingGroup.storeCount} nearby pickups share a vehicle fee. This delivery shows only its saved share.</p> : null}
+        {order.deliveryPricingGroup?.kind === 'cart-route' ? <p>This store order shows only its allocated share of one fixed cart route fee.
+          Driver travel to the first pickup and detours for other customers are excluded.</p> :
+          order.deliveryPricingGroup?.storeCount > 1 ? <p>{order.deliveryPricingGroup.storeCount} nearby pickups share a vehicle fee. This delivery shows only its saved share.</p> : null}
         {order.refundStatus ? <p>Refund: {order.refundStatus} {order.refundId || ''}</p> : null}
         {order.refundStatus && order.exchangeRate ? <p>Saved refund amount: {money(paymentAmount(order), order.paymentCurrency || selected.currency)}</p> : null}
         {order.fulfillmentStatus !== 'cancelled' ? <button className="ghost-button" onClick={() => setTrackId(trackId === order._id ? '' : order._id)}>Toggle live tracking</button> : null}

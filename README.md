@@ -2,6 +2,29 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Cart-route delivery
+
+New grouped product checkouts share the mobile/backend cart-route behavior in
+both USA and Ethio. Checkout shows one route through the customer's pickup stores
+and delivery addresses, one base fee and one speed surcharge. Driver travel to
+the first pickup and other customers' detours are excluded. Changing a vehicle
+selector changes the vehicle for the entire cart. Per-store amounts are allocated
+shares of that single fee, not extra charges. The reserved fee is fixed even when
+the driver combines accepted carts.
+
+Company Driver offers claim every pickup/drop-off in a cart together. All stores
+must accept first. The route panel groups shared-store pickups across accepted
+carts and blocks premature drop-off: all products for that destination must have
+been collected, but unrelated destinations can still have pending pickups.
+Batching requires measured combined cargo within vehicle limits; unknown
+measurements require a manually chosen single-cart vehicle.
+
+Deploy the matching backend first. Existing saved quotes/orders remain on their
+legacy rules. The route ordering is a dependency-aware geographic heuristic
+priced using actual road legs, not a guaranteed shortest-road-route optimizer.
+US-to-Ethiopia shipping uses this for the US pickup-to-hub leg only; international
+shipping remains separately priced.
+
 ## Tech Stack
 
 - React 19

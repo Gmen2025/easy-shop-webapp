@@ -64,9 +64,13 @@ export function calculateDeliveryPricing(deliveries, selections = {}) {
       ? delivery.vehicleOptions?.find((entry) => entry.type === vehicle)
       : [...(delivery.vehicleOptions || [])].sort((a, b) => a.fee - b.fee)[0]
     if (vehicle && delivery.vehicleOptions?.length && !option) throw new Error('Choose an offered vehicle.')
-    const key = JSON.stringify([delivery.pricingGroup?.key || delivery.key, option?.type || vehicle || ''])
+    const route = delivery.pricingGroup?.kind === 'cart-route'
+    const key = JSON.stringify([delivery.pricingGroup?.key || delivery.key, route ? 'cart' : option?.type || vehicle || ''])
     if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push({ delivery, fee: option?.fee ?? delivery.deliveryFee })
+    if (route && groups.get(key).some((member) => member.vehicle !== (option?.type || vehicle))) {
+      throw new Error('Choose one vehicle for the entire cart route.')
+    }
+    groups.get(key).push({ delivery, fee: option?.fee ?? delivery.deliveryFee, vehicle: option?.type || vehicle })
   }
   const byKey = {}
   let total = 0

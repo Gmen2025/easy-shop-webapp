@@ -64,6 +64,17 @@ test('separate vehicles, destinations and distant stores are not undercharged', 
   assert.equal(calculateDeliveryPricing([unknownCargo]).deliveryFee, 10)
 })
 
+test('cart routes charge once across stores and addresses, conserve cents, and require one vehicle', () => {
+  const deliveries = ['a', 'b', 'c'].map((key) => ({
+    ...delivery(key, 10, 10.01, 'cart-route-v1'), pricingGroup: { key: 'cart-route-v1', kind: 'cart-route' },
+  }))
+  const result = calculateDeliveryPricing(deliveries)
+  assert.equal(result.deliveryFee, 10.01)
+  assert.deepEqual(Object.values(result.byKey).map((line) => line.deliveryFee), [3.34, 3.34, 3.33])
+  assert.equal(calculateDeliveryPricing(deliveries, { a: 'van', b: 'van', c: 'van' }).deliveryFee, 20.02)
+  assert.throws(() => calculateDeliveryPricing(deliveries, { a: 'van' }), /one vehicle for the entire cart/)
+})
+
 test('map coordinates are validated and directions use driving mode', () => {
   assert.deepEqual(latLng({ type: 'Point', coordinates: [38.75, 9.01] }), { lat: 9.01, lng: 38.75 })
   assert.equal(latLng({ latitude: 91, longitude: 38 }), null)

@@ -23,6 +23,7 @@ export default function DriverDeliveriesPage() {
   const [period, setPeriod] = useState('daily')
   const [offers, setOffers] = useState([])
   const [queue, setQueue] = useState([])
+  const [routeStops, setRouteStops] = useState([])
   const [eligibility, setEligibility] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [route, setRoute] = useState(null)
@@ -45,7 +46,7 @@ export default function DriverDeliveriesPage() {
       apiRequest('/orders/company/my-deliveries', { timeoutMs: 20000 }), apiRequest('/drivers/me/queue', { timeoutMs: 20000 }),
     ])
     if (!Array.isArray(offered.orders) || !Array.isArray(active.queue)) throw new Error('The API returned an invalid driver delivery response.')
-    setOffers(offered.orders); setQueue(active.queue)
+    setOffers(offered.orders); setQueue(active.queue); setRouteStops(active.routeStops || [])
     setEligibility(offered.driverEligibility?.message || '')
   }, [])
   useEffect(() => {
@@ -110,6 +111,8 @@ export default function DriverDeliveriesPage() {
   const freshLocation = sharing ? location : null
   const shownRoute = freshLocation && route?.orderId === selectedId && route.stage === stage ? route : null
   const summary = analytics.data?.periods[period]
+  const activeAssignments = new Set(queue.map((entry) =>
+    entry.cartRouteVersion === 1 ? entry.checkoutGroup : entry.orderId)).size
   return <section className="page-stack company-console company-driver delivery-page">
     <CompanyNavigation driver />
     <article className="panel company-ride-service"><p className="company-eyebrow">Ride service</p><h2>Passenger assignments</h2>
@@ -128,14 +131,14 @@ export default function DriverDeliveriesPage() {
     </article>
     <article className="panel company-heading"><div><p className="company-eyebrow">Company Driver</p><h1>Delivery Dispatch</h1>
       <h2>{driverName || 'Company Driver'}</h2>
-      <p>{queue.length} Active Route(s) | {offers.length} Unassigned</p></div></article>
+      <p>{activeAssignments} Active Route(s) | {offers.length} Unassigned</p></div></article>
     <article className="panel"><p className="company-eyebrow">Delivery income</p><h2>Earnings overview</h2>
       <CompanyPeriods value={period} onChange={setPeriod} />
       {analytics.error ? <p role="alert">{analytics.error}</p> : null}
       {analytics.loading && !analytics.data ? <p role="status">Loading earnings...</p> : null}
       {summary ? <><div className="company-sales"><div>Income<strong>{formatCurrency(summary.income)}</strong></div></div>
         <CompanyMetrics items={[['Deliveries', summary.deliveries], ['Average fee', formatCurrency(summary.averageFee)],
-          ['Distance', `${summary.distanceKm.toFixed(1)} km`], ['Active now', queue.length]]} />
+          ['Distance', `${summary.distanceKm.toFixed(1)} km`], ['Active now', activeAssignments]]} />
         <h3>Recent completions</h3>
         {analytics.data.recentDeliveries.length ? analytics.data.recentDeliveries.map((entry) => <div key={entry._id} className="company-order-row">
           <span>{entry.storeName} | #{entry._id.slice(-6)} | {new Date(entry.deliveredAt).toLocaleDateString()}<DeliveryWindow value={entry} /></span>
@@ -167,6 +170,8 @@ export default function DriverDeliveriesPage() {
     {offers.length ? offers.map((offer) => <article key={offer._id} className="order-card">
       <h3>{offer.store?.name || 'Store'} - #{offer._id}</h3>
       <p>{offer.store?.address} | {offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
+      {offer.cartRoute ? <><p>Accept this complete customer cart: all pickup stores and drop-off addresses. Fee shown is for the entire cart.</p>
+        <ol>{offer.cartRoute.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol></> : null}
       <p>Drop-off: {addressText(offer.dropoffAddress)}</p>
       {!offer.dropoffAddress ? <p>Delivery area: {[offer.dropZone?.city, offer.dropZone?.zip].filter(Boolean).join(', ') || 'Address on dispatch'}</p> : null}
       {offer.customerPhone || offer.customer?.phone || offer.dropoffAddress?.phone ? <p>Customer phone: <a
@@ -184,6 +189,15 @@ export default function DriverDeliveriesPage() {
       }}>Reject for Admin review</button>
     </article>) : <p>No offers. The server controls eligibility, assignment and vehicle compatibility.</p>}
     <h2>Your Route ({queue.length})</h2>
+    {routeStops.length ? <section className="order-card" aria-label="Combined delivery stop plan">
+      <h3>Combined accepted cart route</h3>
+      <p>Collect products for each destination before its drop-off. A store visit can collect products for several accepted carts.
+        This operational plan does not change customer delivery prices.</p>
+      <ol>{routeStops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name} ({stop.orderIds.length} store order(s))
+        <button className="ghost-button" disabled={stop.type === 'dropoff' && stop.requires.length > 0}
+          onClick={() => setSelectedId(stop.orderIds[0])}>Show this stop</button>
+      </li>)}</ol>
+    </section> : null}
     {queue.length ? queue.map((entry) => <article className="order-card" key={entry.orderId}>
       <h3>{entry.store?.name} - #{entry.orderId}</h3>
       <p>Batch: {entry.queueBatchId || 'Individual'} | Sequence: {entry.queueSequence} | {entry.deliveryStatus}</p>
@@ -191,6 +205,8 @@ export default function DriverDeliveriesPage() {
       <p>Drop-off: {entry.address ? addressText(entry.address) : `${entry.dropZone?.city || 'Delivery area'} (exact address unlocks after pickup)`}</p>
       {entry.customer?.phone ? <p>Recipient: {entry.customer.name} - <a href={`tel:${entry.customer.phone.replace(/[^\d+]/g, '')}`}>{entry.customer.phone}</a></p> : null}
       <DeliveryWindow value={entry} />
+      {entry.cartRouteVersion === 1 && !entry.dropoffReady ? <p>Collect all products for this address first.
+        Remaining pickup orders: {entry.pendingPickupOrderIds?.length || 0}.</p> : null}
       {(entry.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <button className="ghost-button" onClick={() => {
         if (selectedId !== entry.orderId) {
@@ -198,7 +214,7 @@ export default function DriverDeliveriesPage() {
           setSelectedId(entry.orderId)
         }
       }}>Show current leg on Google Maps</button>
-      <button disabled={busy} className="solid-button" onClick={() => {
+      <button disabled={busy || (entry.deliveryStatus === 'Picked Up' && entry.dropoffReady === false)} className="solid-button" onClick={() => {
         const status = entry.deliveryStatus === 'Picked Up' ? 'Delivered' : 'Picked Up'
         if (window.confirm(status === 'Picked Up' ? 'Confirm the goods have been picked up from this store?' : 'Confirm this delivery was handed to the recipient?')) {
           act(entry.orderId, '', { deliveryStatus: status })
