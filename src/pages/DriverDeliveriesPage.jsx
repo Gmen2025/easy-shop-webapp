@@ -1,31 +1,48 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { apiRequest } from '../api/client'
 import { orderAction } from '../api/delivery'
 import { addressText, latLng } from '../utils/delivery'
 import { formatCurrency } from '../utils/format'
 import DeliveryMap from '../components/DeliveryMap'
 import DeliveryWindow from '../components/DeliveryWindow'
+import CompanyNavigation, { CompanyMetrics, CompanyPeriods } from '../components/CompanyNavigation'
+import useCompanyResource from '../features/company/useCompanyResource'
+import useDriverLocation from '../features/company/useDriverLocation'
+import { requireList, validateCompanyDashboard, validateDriverRides } from '../utils/company'
+
+const dashboardResponse = (data) => validateCompanyDashboard(data, 'driver')
+const completedResponse = (data) => requireList(data?.orders, 'completed deliveries')
 
 export default function DriverDeliveriesPage() {
+  const driverName = useSelector((state) => state.auth.user?.name)
+  const analytics = useCompanyResource('/drivers/me/dashboard', dashboardResponse, 60000)
+  const completed = useCompanyResource('/drivers/me/completed-today', completedResponse, 60000)
+  const rides = useCompanyResource('/rides/me/driver', validateDriverRides, 15000)
+  const [period, setPeriod] = useState('daily')
   const [offers, setOffers] = useState([])
   const [queue, setQueue] = useState([])
   const [eligibility, setEligibility] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [route, setRoute] = useState(null)
-  const [location, setLocation] = useState(null)
-  const [sharing, setSharing] = useState(false)
-  const [gpsStatus, setGpsStatus] = useState('GPS is off.')
+  const gps = useDriverLocation()
+  const { point: location, sharing, status: gpsStatus, latest: locationRef } = gps
   const [error, setError] = useState('')
   const [routeError, setRouteError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
   const actionGuard = useRef(false)
-  const locationRef = useRef(null)
+  const routePanel = useRef(null)
   const selected = queue.find((entry) => entry.orderId === selectedId)
   const stage = selected?.deliveryStatus
   const routeTiming = useRef({ next: 0 })
+  useEffect(() => {
+    if (selectedId) routePanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [selectedId])
   const load = useCallback(async () => {
     const [offered, active] = await Promise.all([
-      apiRequest('/orders/company/my-deliveries'), apiRequest('/drivers/me/queue'),
+      apiRequest('/orders/company/my-deliveries', { timeoutMs: 20000 }), apiRequest('/drivers/me/queue', { timeoutMs: 20000 }),
     ])
     if (!Array.isArray(offered.orders) || !Array.isArray(active.queue)) throw new Error('The API returned an invalid driver delivery response.')
     setOffers(offered.orders); setQueue(active.queue)
@@ -47,33 +64,6 @@ export default function DriverDeliveriesPage() {
   }, [load])
 
   useEffect(() => {
-    if (!sharing) return undefined
-    if (!navigator.geolocation) return undefined
-    let current = true
-    let sending = false
-    let lastSent = 0
-    const watch = navigator.geolocation.watchPosition(async (position) => {
-      const point = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-      locationRef.current = { ...point, timestamp: position.timestamp }
-      setLocation(point)
-      if (sending || Date.now() - lastSent < 15000) return
-      sending = true; lastSent = Date.now()
-      try {
-        await apiRequest('/rides/me/location', { method: 'POST', body: JSON.stringify(point), timeoutMs: 20000 })
-        if (current) setGpsStatus(`GPS shared at ${new Date().toLocaleTimeString()}. Keep this page open.`)
-      } catch (failure) { if (current) setGpsStatus(`GPS update failed: ${failure.message}`) }
-      finally { sending = false }
-    }, (failure) => {
-      if (current) {
-        locationRef.current = null
-        setLocation(null)
-        setGpsStatus(`GPS unavailable: ${failure.message}. Allow location access and retry.`)
-      }
-    }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 })
-    return () => { current = false; navigator.geolocation.clearWatch(watch) }
-  }, [sharing])
-
-  useEffect(() => {
     let current = true
     let pending = false
     async function fetchRoute() {
@@ -81,7 +71,6 @@ export default function DriverDeliveriesPage() {
       const origin = locationRef.current
       if (!origin || Date.now() - origin.timestamp > 120000) {
         if (current) {
-          setLocation(null)
           setRouteError('Enable live GPS and wait for a fresh position before calculating your route.')
         }
         return
@@ -103,40 +92,88 @@ export default function DriverDeliveriesPage() {
     fetchRoute()
     const timer = setInterval(fetchRoute, 10000)
     return () => { current = false; clearInterval(timer) }
-  }, [selectedId, stage])
+  }, [selectedId, stage, locationRef])
 
   async function act(id, action, data) {
     if (actionGuard.current) return
-    actionGuard.current = true; setBusy(true); setError('')
+    actionGuard.current = true; setBusy(true); setError(''); setNotice('')
     try {
       await orderAction(id, action, data)
       routeTiming.current.next = Math.min(routeTiming.current.next, Date.now() + 10000)
       await load()
+      if (!action && data?.deliveryStatus === 'Delivered') await Promise.all([analytics.reload(), completed.reload()])
+      setNotice(data?.deliveryStatus === 'Delivered' ? 'Delivery completed. The queue and earnings have been refreshed.' :
+        data?.deliveryStatus === 'Picked Up' ? 'Pickup confirmed. Continue to the recipient delivery leg.' : 'Delivery response saved.')
     } catch (failure) { setError(failure.message) }
     finally { actionGuard.current = false; setBusy(false) }
   }
   const freshLocation = sharing ? location : null
   const shownRoute = freshLocation && route?.orderId === selectedId && route.stage === stage ? route : null
-  return <section className="panel delivery-page">
-    <h1>Company driver deliveries</h1>
+  const summary = analytics.data?.periods[period]
+  return <section className="page-stack company-console company-driver delivery-page">
+    <CompanyNavigation driver />
+    <article className="panel company-ride-service"><p className="company-eyebrow">Ride service</p><h2>Passenger assignments</h2>
+      <p>Separate ride offers, passenger route and service preferences.</p>
+      {rides.error ? <p role="alert">{rides.error}</p> : null}
+      {rides.data ? <><p>Approval: {rides.data.driver.approvalStatus} | {rides.data.driver.isAvailable ? 'Online' : 'Offline'}
+        {rides.data.driver.isSuspended ? ' - Suspended' : ''}</p>
+        <p>Vehicle: {rides.data.driver.vehicleType} | Passenger seats: {rides.data.driver.passengerSeats || 'Not configured'}
+          {rides.data.driver.carClass ? ` | ${rides.data.driver.carClass}` : ''}</p>
+        <p>Regular rides: {rides.data.driver.serviceModes.regular ? 'Enabled' : 'Disabled'} | Shared rides: {rides.data.driver.serviceModes.shared ? 'Enabled' : 'Disabled'}</p>
+        {rides.data.driver.pendingVehicleType ? <p>Vehicle change awaiting Admin verification: {rides.data.driver.pendingVehicleType}. New passenger offers are paused.</p> : null}
+        {rides.data.driver.rideProfilePhotoRequired ? <p>Refresh your ride profile photo to receive offers (every 90 days).</p> : null}
+        <p>{rides.data.trip ? 'Active passenger route. ' : ''}{rides.data.offer ? 'A ride offer is waiting. Open assignments to respond.' : 'No current ride offer.'}</p>
+      </> : null}
+      <Link className="solid-button" to="/driver/rides">Open ride assignments & route</Link>
+    </article>
+    <article className="panel company-heading"><div><p className="company-eyebrow">Company Driver</p><h1>Delivery Dispatch</h1>
+      <h2>{driverName || 'Company Driver'}</h2>
+      <p>{queue.length} Active Route(s) | {offers.length} Unassigned</p></div></article>
+    <article className="panel"><p className="company-eyebrow">Delivery income</p><h2>Earnings overview</h2>
+      <CompanyPeriods value={period} onChange={setPeriod} />
+      {analytics.error ? <p role="alert">{analytics.error}</p> : null}
+      {analytics.loading && !analytics.data ? <p role="status">Loading earnings...</p> : null}
+      {summary ? <><div className="company-sales"><div>Income<strong>{formatCurrency(summary.income)}</strong></div></div>
+        <CompanyMetrics items={[['Deliveries', summary.deliveries], ['Average fee', formatCurrency(summary.averageFee)],
+          ['Distance', `${summary.distanceKm.toFixed(1)} km`], ['Active now', queue.length]]} />
+        <h3>Recent completions</h3>
+        {analytics.data.recentDeliveries.length ? analytics.data.recentDeliveries.map((entry) => <div key={entry._id} className="company-order-row">
+          <span>{entry.storeName} | #{entry._id.slice(-6)} | {new Date(entry.deliveredAt).toLocaleDateString()}<DeliveryWindow value={entry} /></span>
+          <strong>{formatCurrency(entry.deliveryFee)}</strong></div>) : <p>No recent completions.</p>}
+      </> : null}
+      <button className="ghost-button" disabled={analytics.loading} onClick={() => { analytics.reload().catch((failure) => setError(failure.message)) }}>Refresh earnings</button>
+    </article>
+    <article className="panel company-completed"><h2>Completed Today ({completed.data?.length ?? '...'})</h2>
+      {completed.error ? <p role="alert">{completed.error}</p> : null}
+      {completed.data?.map((entry) => <p key={entry._id}>Order #{entry._id.slice(-6)} | {entry.storeName || 'Store'}</p>)}
+      {completed.data?.length === 0 ? <p>No deliveries completed today.</p> : null}
+    </article>
+    <article className="panel">
     <p>Use the same account and shopping region as the mobile app. Offers, active queue, pickup and drop-off statuses are shared.
       This interface requires an approved company-driver account.</p>
     {error ? <p role="alert">{error}</p> : null}
+    {notice ? <p role="status">{notice}</p> : null}
     {eligibility ? <p role="status">{eligibility}</p> : null}
     <div className="action-row">
-      <button className="ghost-button" disabled={busy} onClick={() => load().catch((failure) => setError(failure.message))}>Refresh deliveries</button>
-      <button className="solid-button" onClick={() => {
-        if (!navigator.geolocation) { setGpsStatus('Geolocation is unavailable. Use HTTPS or localhost with a supported browser.'); return }
-        setSharing(!sharing)
-        if (sharing) { locationRef.current = null; setLocation(null); setRoute(null); setGpsStatus('GPS sharing stopped.') }
-      }}>{sharing ? 'Stop GPS sharing' : 'Enable live GPS'}</button>
+      <button className="ghost-button" disabled={busy || analytics.loading || completed.loading || rides.loading} onClick={() => {
+        Promise.all([load(), analytics.reload(), completed.reload(), rides.reload()])
+          .then(() => setError('')).catch((failure) => setError(failure.message))
+      }}>Refresh Data</button>
+      <button className="solid-button" onClick={() => { setRoute(null); gps.toggle() }}>{sharing ? 'Stop GPS sharing' : 'Enable live GPS'}</button>
     </div>
     <p role="status">{gpsStatus}</p>
-    <h2>Delivery offers</h2>
+    {gps.error ? <p role="alert">GPS: {gps.error}</p> : null}
+    <h2>Unassigned Company Deliveries</h2>
     {offers.length ? offers.map((offer) => <article key={offer._id} className="order-card">
       <h3>{offer.store?.name || 'Store'} - #{offer._id}</h3>
       <p>{offer.store?.address} | {offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
       <p>Drop-off: {addressText(offer.dropoffAddress)}</p>
+      {!offer.dropoffAddress ? <p>Delivery area: {[offer.dropZone?.city, offer.dropZone?.zip].filter(Boolean).join(', ') || 'Address on dispatch'}</p> : null}
+      {offer.customerPhone || offer.customer?.phone || offer.dropoffAddress?.phone ? <p>Customer phone: <a
+        href={`tel:${String(offer.customerPhone || offer.customer?.phone || offer.dropoffAddress?.phone).replace(/[^\d+]/g, '')}`}>
+        {offer.customerPhone || offer.customer?.phone || offer.dropoffAddress?.phone}</a></p> : null}
+      <p>{offer.itemCount ?? offer.items?.length ?? 0} item(s)</p>
+      {(offer.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <DeliveryWindow value={offer} />
       <button disabled={busy} className="solid-button" onClick={() => act(offer._id, 'company-claim')}>Claim delivery</button>
       <button disabled={busy} className="ghost-button" onClick={() => {
@@ -146,7 +183,7 @@ export default function DriverDeliveriesPage() {
         if (window.confirm('Reject this offer for Admin review?')) act(offer._id, 'company-reject')
       }}>Reject for Admin review</button>
     </article>) : <p>No offers. The server controls eligibility, assignment and vehicle compatibility.</p>}
-    <h2>Active pickup & drop-off queue</h2>
+    <h2>Your Route ({queue.length})</h2>
     {queue.length ? queue.map((entry) => <article className="order-card" key={entry.orderId}>
       <h3>{entry.store?.name} - #{entry.orderId}</h3>
       <p>Batch: {entry.queueBatchId || 'Individual'} | Sequence: {entry.queueSequence} | {entry.deliveryStatus}</p>
@@ -154,7 +191,7 @@ export default function DriverDeliveriesPage() {
       <p>Drop-off: {entry.address ? addressText(entry.address) : `${entry.dropZone?.city || 'Delivery area'} (exact address unlocks after pickup)`}</p>
       {entry.customer?.phone ? <p>Recipient: {entry.customer.name} - <a href={`tel:${entry.customer.phone.replace(/[^\d+]/g, '')}`}>{entry.customer.phone}</a></p> : null}
       <DeliveryWindow value={entry} />
-      {entry.items.map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
+      {(entry.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <button className="ghost-button" onClick={() => {
         if (selectedId !== entry.orderId) {
           routeTiming.current.next = Math.min(routeTiming.current.next, Date.now() + 10000)
@@ -168,7 +205,8 @@ export default function DriverDeliveriesPage() {
         }
       }}>{entry.deliveryStatus === 'Picked Up' ? 'Confirm drop-off / delivered' : 'Confirm picked up'}</button>
     </article>) : <p>No active deliveries.</p>}
-    {selected ? <article className="order-card"><h2>{stage === 'Picked Up' ? 'Drop-off' : 'Pickup'} driving route</h2>
+    </article>
+    {selected ? <article className="panel" ref={routePanel}><h2>{stage === 'Picked Up' ? 'Drop-off' : 'Pickup'} driving route</h2>
       <p>Route starts at your live GPS position{freshLocation ? ` (${freshLocation.latitude.toFixed(5)}, ${freshLocation.longitude.toFixed(5)})` : ' (not available)'}.</p>
       <p>Route ends at {stage === 'Picked Up' ? `the recipient: ${addressText(selected.address)}` :
         `the assigned pickup store: ${selected.store?.name} - ${selected.store?.address}`}.</p>

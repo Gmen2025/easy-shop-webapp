@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { API_BASE_URL, apiRequest } from '../../api/client'
 import { classifyAuthResponse } from '../../utils/authFlow'
 import { securityRequest } from '../../api/auth'
+import { companyRoles } from '../../utils/company'
 
 const savedUser = localStorage.getItem('authUser')
 const savedToken = localStorage.getItem('authToken')
@@ -37,6 +38,7 @@ function normalizeProfileFields(profile = {}, fallback = {}) {
       profile.postalCode ?? profile.zip ?? fallback.postalCode ?? fallback.zip ?? '',
     country: profile.country ?? fallback.country ?? '',
     isAdmin: profile.isAdmin ?? fallback.isAdmin ?? false,
+    ...companyRoles(profile, fallback),
   }
 }
 
@@ -284,7 +286,7 @@ export const saveUserProfile = createAsyncThunk(
 
       if (serverUser && typeof serverUser === 'object') {
         return {
-          user: normalizeProfileFields(serverUser, payload),
+          user: normalizeProfileFields(serverUser, { ...state.auth.user, ...payload }),
           syncMode: 'remote',
         }
       }
@@ -429,6 +431,7 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUserProfile.fulfilled, (state, action) => {
         state.loading = false
+        if (!state.token || !state.user) return
         state.user = action.payload.user
         localStorage.setItem('authUser', JSON.stringify(state.user))
       })

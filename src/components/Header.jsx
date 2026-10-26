@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
+import { companyTabs, isCompanyDriver, isCompanyStoreOwner } from '../utils/company'
 import { switchDatabase } from '../features/cart/cartSlice'
 import {
   getSelectedDatabaseName,
@@ -124,7 +125,8 @@ function Header() {
           </NavLink>
           {user ? <>
             <NavLink to="/delivery-checkouts" onClick={closeMenu}>Delivery checkouts</NavLink>
-            <NavLink to="/driver/deliveries" onClick={closeMenu}>Driver deliveries</NavLink>
+            {isCompanyDriver(user) ? <NavLink to="/driver" onClick={closeMenu}>Company Driver</NavLink> : null}
+            {isCompanyStoreOwner(user) ? <NavLink to="/store-owner" onClick={closeMenu}>Store Owner</NavLink> : null}
           </> : null}
           <NavLink to="/cart" onClick={closeMenu}>
             Cart ({cartCount})
@@ -168,14 +170,10 @@ function Header() {
       </div>
     </header>
     <nav className="mobile-tabbar" aria-label="Quick navigation">
-      <NavLink to="/" end onClick={closeMenu}><span aria-hidden="true">⌂</span>Shop</NavLink>
-      <NavLink to="/stores" onClick={closeMenu}><span aria-hidden="true">▦</span>Stores</NavLink>
-      <NavLink to="/cart" onClick={closeMenu}><span aria-hidden="true">🛒</span>Cart</NavLink>
-      {user ? (
-        <NavLink to="/profile" onClick={closeMenu}><span aria-hidden="true">●</span>Account</NavLink>
-      ) : (
-        <NavLink to="/login" onClick={closeMenu}><span aria-hidden="true">●</span>Account</NavLink>
-      )}
+      {companyTabs(user).map(({ to, label, icon, end }) =>
+        <NavLink key={to} to={to} end={end} onClick={closeMenu}>
+          <span aria-hidden="true">{icon === 'home' ? '⌂' : icon === 'store' ? '▦' : icon === 'cart' ? '🛒' : icon === 'driver' ? '🚚' : '●'}</span>{label}
+        </NavLink>)}
     </nav>
     </>
   )

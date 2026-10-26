@@ -695,6 +695,59 @@
 .backup-codes-dialog label { display: flex; align-items: center; gap: .6rem; margin-block: 1rem; }
 .backup-codes-dialog button { width: 100%; }
 .admin-console { color: #111827; min-width: 0; }
+.company-console { --company-accent: #8a6c09; --company-tint: #fff9dc; color: #111827; min-width: 0; }
+.company-store { --company-accent: #2563eb; --company-tint: #eff6ff; }
+.company-console .panel { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.25rem; min-width: 0; overflow-wrap: anywhere; }
+.company-console h1 { margin: .2rem 0; font-size: clamp(1.5rem, 4vw, 2rem); }
+.company-console h2 { font-size: 1.2rem; margin-top: .25rem; }
+.company-console h3 { font-size: 1rem; }
+.company-console .solid-button { background: var(--company-accent); color: white; }
+.company-driver .solid-button { background: #facc00; color: #111827; }
+.company-console button, .company-navigation a { min-height: 44px; cursor: pointer; }
+.company-console button:disabled { cursor: not-allowed; opacity: .55; }
+.company-console label { display: grid; gap: .4rem; margin-block: .75rem; }
+.company-console input, .company-console select, .company-console textarea { min-width: 0; max-width: 100%; }
+.company-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.company-eyebrow { text-transform: uppercase; color: var(--company-accent); letter-spacing: .06em; font-weight: 700; font-size: .8rem; }
+.company-navigation { display: flex; gap: .5rem; overflow-x: auto; padding: .4rem 0 .8rem; min-width: 0; max-width: 100%; }
+.company-navigation a { flex-shrink: 0; padding: .7rem .9rem; background: white; border: 1px solid #e5e7eb; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; color: #374151; }
+.company-navigation a.active { color: white; background: var(--company-accent); border-color: var(--company-accent); }
+.company-periods { display: flex; gap: .4rem; flex-wrap: wrap; margin-block: 1rem; }
+.company-periods button, .company-ride-tabs button { border: 0; padding: .65rem .85rem; border-radius: 8px; color: #4b5563; background: #f3f4f6; font-weight: 700; }
+.company-periods button[aria-pressed="true"], .company-ride-tabs button[aria-pressed="true"] { color: white; background: var(--company-accent); }
+.company-sales { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .8rem; margin-block: 1rem; }
+.company-sales > div { background: var(--company-tint); color: var(--company-accent); border-radius: 12px; padding: 1.25rem; }
+.company-sales > div:nth-child(2) { background: #ecfdf5; color: #059669; }
+.company-sales strong { display: block; font-size: clamp(1.6rem, 5vw, 2rem); margin-top: .5rem; }
+.company-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .8rem; margin-block: 1rem; }
+.company-metrics > div { background: #f8fafc; border-radius: 10px; padding: 1rem; display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: .4rem; }
+.company-metrics dt { font-size: .8rem; color: #6b7280; }
+.company-metrics dd { font-size: 1.25rem; font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+.company-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: .8rem; }
+.company-order-row { display: flex; gap: .8rem; align-items: center; justify-content: space-between; padding-block: 1rem; border-bottom: 1px solid #e5e7eb; text-decoration: none; color: inherit; }
+.company-order-row p { font-size: .85rem; color: #6b7280; }
+.company-order-row > strong { color: #059669; }
+.company-console .company-ride-service { background: #fff9dc; border-color: #f4d34f; }
+.company-console .company-completed { background: #ecfdf5; }
+.company-warning { color: #b45309; }
+.company-online { color: #15803d; }
+.company-ride-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; position: sticky; top: 0; z-index: 5; background: white; padding: .5rem; border-radius: 12px; }
+.company-driver-profile { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.company-driver-profile > div { flex: 1; }
+.company-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.company-avatar-placeholder { display: grid; place-items: center; background: #fef3c7; font-weight: 800; font-size: 1.8rem; }
+.company-console .company-mode { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
+.company-mode input { width: auto; }
+.company-stop { border-left: 3px solid #eab308; padding: .2rem 1rem; margin-block: 1rem; }
+.company-trip-screen .delivery-map { height: 60vh; min-height: 300px; }
+@media (max-width: 640px) {
+  .company-console .panel { padding: 1rem; }
+  .company-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .company-metrics > div { padding: .8rem; }
+  .company-periods { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .4rem; }
+  .company-periods button { flex-shrink: 0; }
+  .company-ride-tabs button { font-size: .75rem; padding-inline: .35rem; }
+}
 .store-logo-field { display: grid; gap: .65rem; margin-block: 1rem; min-width: 0; }
 .store-logo-field label { display: grid; gap: .4rem; }
 .store-logo-field input { max-width: 100%; min-width: 0; }

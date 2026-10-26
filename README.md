@@ -68,6 +68,56 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 	- Low-stock alerts shown after checkout
 	- Best-effort admin low-stock email notification request
 
+## Company store-owner and driver website
+
+The company workflows from the main `easy_shopping` mobile app are available on
+the website using the same account, regional database and backend records:
+
+- `/store-owner`: Company Fulfillment business overview, 24-hour and
+  7/30/90/365-day sales/earnings, reviews, stock, payout balances, active/recent
+  order product details and product ready/reject actions.
+- `/store-owner/manage`: location selection, profile/logo editing, branches,
+  catalog/category selection, per-location prices and physical stock,
+  reservations, low-stock thresholds and listing removal. Stock editing requires
+  the existing Admin inventory migration; this does not create shared catalog
+  products or categories.
+- `/store-owner/assignments`: 15-second refresh, timed accept/reject decisions,
+  and no-expiry fallback claim/reroute/reject decisions. Rejecting a fallback
+  requests Admin review, not a payment cancellation or refund.
+- `/driver` (also `/driver/deliveries`): Delivery Dispatch, rolling income,
+  recent/today completions, offers, claim/reroute/reject, ordered pickup/drop-off
+  queue, recipient contact, live GPS, road routes and delivery confirmations.
+- `/driver/rides`: the mobile-style Home, My Rides, Earnings and Profile
+  sections, expiring offers, passenger trips, service modes, shared intake,
+  Admin-verified vehicle changes, driver-photo refresh, safe booking termination
+  and cash-received confirmation. `/driver/rides/trip` expands the passenger map
+  with start-trip, next-stop confirmation, passenger counts and customer calls.
+
+On phone-sized website screens, **Store Owner replaces Stores only for company
+store owners**. **Company Driver is added only for company drivers**. Dual-role
+accounts see both. Customers keep Stores; partner and Admin accounts are not
+treated as company operators, matching the mobile role rules. Desktop navigation
+also links to eligible company dashboards. Authentication and profile edits
+preserve company-role flags, and saved sessions refresh their server profile on
+startup. Backend authorization remains authoritative for every operation.
+
+This is a website port, not a change to the native apps. Browser GPS needs
+permission and HTTPS (or localhost); background tracking is not guaranteed.
+Enable GPS and keep the relevant work page open. Stop confirmation/termination
+reports a fresh position before submitting. Embedded maps require
+`VITE_GOOGLE_MAPS_BROWSER_KEY`; external Google Maps navigation remains available.
+Passenger road paths use `/rides/me/route`; no straight-line route is invented
+when routing fails. Driver photos use the existing signed Cloudinary upload and
+90-day server policy. A phone browser may open its front camera; desktop browsers
+offer file selection. Calls use the device's `tel:` handler. Availability and
+approval are controlled by Admin, as in the mobile company workflow.
+
+Analytics show server data, not local estimates or fallback zero balances.
+Payout balances do not transfer money. Cash confirmation records receipt only
+after the driver confirms actual payment. Deploy the shared backend endpoints
+before using these pages; Maps, Cloudinary and payment-provider configuration
+still apply. Automated fixtures do not perform real deliveries or payments.
+
 ## Shared mobile/web administration
 
 `/admin` is the mobile-inspired overview. Its sales figures come from the same

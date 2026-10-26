@@ -41,6 +41,14 @@ export function uploadProductImage(file) {
   return uploadImage(file, 'eshop/products')
 }
 
+export function uploadDriverPhoto(file) {
+  if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error('Choose a JPEG, PNG or WebP driver photo.')
+  }
+  if (file.size > 5 * 1024 * 1024) throw new Error('Driver photos must be 5 MB or smaller.')
+  return uploadImage(file, 'driver_profiles')
+}
+
 export async function uploadStoreLogo(file) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     throw new Error('Choose a JPEG, PNG or WebP logo image.')
