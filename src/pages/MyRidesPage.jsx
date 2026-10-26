@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { cancelRide, getRide, getRides } from '../api/rides'
 import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
+import RideCheckout from '../components/RideCheckout'
 
 async function fetchRideData(rideId) {
   const [list, detail] = await Promise.all([
@@ -121,7 +122,11 @@ function MyRidesPage() {
             ))}
           </ol>
           <p>Estimated fare: <strong>{selected.currency?.toUpperCase()} {Number(selected.estimate || 0).toFixed(2)}</strong></p>
-          <p className="section-note">Payment is arranged after the ride is completed. For live driver location, payment, or active trip support, continue in the AdduGenetE Shop mobile app.</p>
+          <p className="section-note">Payment is available after the ride is completed or Admin approves a terminated ride&apos;s fare.</p>
+          {selected.status === 'completed' || (selected.status === 'terminated' && selected.termination?.reviewStatus === 'resolved' && selected.paymentStatus !== 'waived') ?
+            <RideCheckout key={selected._id} ride={selected} onUpdated={(updated) => {
+              setSelected(updated); setRides((current) => current.map((entry) => entry._id === updated._id ? updated : entry))
+            }} /> : null}
           {['waiting', 'offered', 'assigned'].includes(selected.status) ? (
             <button type="button" className="ghost-button danger-button" disabled={busy} onClick={cancelSelectedRide}>
               {busy ? 'Cancelling...' : 'Cancel ride'}

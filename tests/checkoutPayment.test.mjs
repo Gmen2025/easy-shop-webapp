@@ -7,6 +7,7 @@ import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspect
 import { calculateDeliveryPricing } from '../src/utils/delivery.js'
 
 const now = Date.UTC(2026, 9, 25, 12)
+const enabled = { cash: true, bank: true, card: true, telebirr: true }
 const rate = { enabled: true, active: true, birrPerUsd: 150, appliedAt: new Date(now).toISOString(), expiresAt: new Date(now + 86400000).toISOString() }
 const deliveries = [
   { key: 'a', store: { name: 'Store A' }, distanceKm: 2, pricingGroup: { key: 'shared' }, vehicle: 'car', vehicleOptions: [{ type: 'car', fee: 5 }, { type: 'van', fee: 12 }] },
@@ -80,23 +81,23 @@ test('prepared payment recovery uses saved amounts regardless of rate expiry or 
 })
 
 test('methods enforce ETB export bank-only and dedicated USD card policy without cash bypasses', () => {
-  assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', { cardAvailable: true }), ['bank'])
-  assert.deepEqual(paymentMethods({ exchangeRate: rate }, 'E_Shopping', { cardAvailable: false }), ['bank'])
-  assert.deepEqual(paymentMethods({ kind: 'service', exchangeRate: rate }, 'E_Shopping', { cardAvailable: true }), ['bank', 'card'])
-  assert.deepEqual(paymentMethods({}, 'E_Shopping', null), ['bank', 'cash'])
-  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null), ['bank', 'card'])
+  assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', { cardAvailable: true }, enabled), ['bank'])
+  assert.deepEqual(paymentMethods({ exchangeRate: rate }, 'E_Shopping', { cardAvailable: false }, enabled), ['bank'])
+  assert.deepEqual(paymentMethods({ kind: 'service', exchangeRate: rate }, 'E_Shopping', { cardAvailable: true }, enabled), ['bank', 'card'])
+  assert.deepEqual(paymentMethods({}, 'E_Shopping', null, enabled), ['bank', 'cash'])
+  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null, enabled), ['bank', 'card', 'cash'])
 })
 
-test('USA native cash is development-only and never offered for converted, international or service payments', () => {
-  assert.equal(cashOnDeliveryAvailable('E_ShopUSA'), false)
-  assert.equal(cashOnDeliveryAvailable('E_ShopUSA', false), false)
+test('USA native cash is available in all builds but never offered for converted, international or service payments', () => {
+  assert.equal(cashOnDeliveryAvailable('E_ShopUSA'), true)
+  assert.equal(cashOnDeliveryAvailable('E_ShopUSA', false), true)
   assert.equal(cashOnDeliveryAvailable('E_ShopUSA', true), true)
-  assert.equal(cashOnDeliveryAvailable('E_ShopUSA', 'true'), false)
+  assert.equal(cashOnDeliveryAvailable('E_ShopUSA', 'true'), true)
   assert.equal(cashOnDeliveryAvailable('E_Shopping', false), true)
-  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null, true), ['bank', 'card', 'cash'])
-  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null, false), ['bank', 'card'])
+  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null, enabled), ['bank', 'card', 'cash'])
+  assert.deepEqual(paymentMethods({}, 'E_ShopUSA', null, { ...enabled, cash: false }), ['bank', 'card'])
   for (const group of [{ international: {} }, { exchangeRate: rate }, { kind: 'service' }]) {
-    assert.equal(paymentMethods(group, 'E_ShopUSA', { cardAvailable: true }, true).includes('cash'), false)
+    assert.equal(paymentMethods(group, 'E_ShopUSA', { cardAvailable: true }, enabled).includes('cash'), false)
   }
 })
 

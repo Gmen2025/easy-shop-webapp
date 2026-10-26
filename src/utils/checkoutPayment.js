@@ -22,17 +22,17 @@ export function nativeCurrency(database) {
   return /usa/i.test(database) ? 'usd' : 'etb'
 }
 
-export function cashOnDeliveryAvailable(database, development = false) {
-  return !/usa/i.test(database) || development === true
+export function cashOnDeliveryAvailable(database) {
+  return Boolean(database)
 }
 
-export function paymentMethods(group, database, exchange, development = false) {
-  if (group.international) return ['bank']
-  if (group.exchangeRate || group.kind === 'service') return exchange?.cardAvailable ? ['bank', 'card'] : ['bank']
-  return [
+export function paymentMethods(group, database, exchange, settings) {
+  const supported = group.international ? ['bank'] :
+    group.exchangeRate || group.kind === 'service' ? exchange?.cardAvailable ? ['bank', 'card'] : ['bank'] : [
     'bank', ...(/usa/i.test(database) ? ['card'] : []),
-    ...(cashOnDeliveryAvailable(database, development) ? ['cash'] : []),
+    ...(cashOnDeliveryAvailable(database) ? ['cash'] : []),
   ]
+  return supported.filter((key) => settings?.[key] === true)
 }
 
 export function checkoutPreview(group, selections, calculatePricing) {

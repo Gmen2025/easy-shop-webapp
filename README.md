@@ -348,12 +348,26 @@ start the shared backend on that port for local development, or set
   exact cent splitting. Server preparation revalidates and reserves stock
   atomically; the saved reservation total is authoritative.
 - Domestic Ethiopia supports bank transfer and cash; domestic USA supports
-  bank transfer and Stripe card payment. Native USA cash is offered only by
-  Vite development builds (`import.meta.env.DEV`), with the mobile API's
-  `developmentCashOnDelivery: true` preparation marker. It creates real orders;
-  use test inventory. Production builds hide USA cash and block confirmation of
-  development cash reservations. FX, international and service payments never
-  offer cash, even in development.
+  bank transfer, Stripe card and cash in both development and production.
+  Admin > Tools > Payment Methods independently controls cash, bank, card and
+  Telebirr for USA and Ethio on both clients. Absent switches default ON.
+  Clients refresh availability every 30 seconds and on focus; the backend
+  rejects stale/disabled choices. Checkout shows "Payment is temporarily
+  unavailable. Please try again later." when no eligible methods remain.
+  Settings errors block new submissions and are displayed explicitly.
+  FX, international and service payments still do not offer cash.
+  Telebirr is offered in legacy Ethio checkout; grouped checkout and rides
+  retain their existing supported methods/currencies. Enabling a switch does
+  not supply provider credentials or enable unsupported currencies.
+- Deploy the matching backend before either client. Public
+  `GET /settings/payment-methods` and Admin-only partial
+  `PUT /settings/payment-methods` (`{"methods":{"cash":false}}`) use the
+  `x-database-name` region, without changing the Admin's login region.
+  Saved grouped reservations, ride payment methods, existing card intents,
+  receipts, callbacks and refunds can still reconcile after disabling.
+  Legacy order creation is a new submission and is blocked for disabled
+  methods; coordinate maintenance around any already-paid legacy orders.
+  Customer website ride receipts now support bank, USA card and cash payment.
 - Pickup selection ranks all stock/price-eligible stores, including the default
   store, by distance to the verified delivery destination. Whole-cart stock and
   storefront-family rules still apply. Existing orders retain their pickup;

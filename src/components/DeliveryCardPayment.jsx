@@ -31,12 +31,12 @@ function CardForm({ onConfirm, returnUrl }) {
   </form>
 }
 
-export default function DeliveryCardPayment({ clientSecret, publishableKey, onConfirm, id, dedicatedMerchant = false }) {
+export default function DeliveryCardPayment({ clientSecret, publishableKey, onConfirm, id, dedicatedMerchant = false, returnUrl }) {
   const key = publishableKey || (!dedicatedMerchant ? import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY : '')
   const stripe = useMemo(() => key ? loadStripe(key) : null, [key])
   if (!stripe) return <p role="alert">Stripe publishable key is missing. Configure the matching merchant key before paying.
     {dedicatedMerchant ? ' Converted payments require the dedicated Ethiopia USD merchant key saved by the server; the native merchant key cannot be substituted.' : ''}</p>
   return <Elements stripe={stripe} options={{ clientSecret }}>
-    <CardForm onConfirm={onConfirm} returnUrl={`${window.location.origin}/delivery-checkouts/${id}`} />
+    <CardForm onConfirm={onConfirm} returnUrl={returnUrl || `${window.location.origin}/delivery-checkouts/${id}`} />
   </Elements>
 }

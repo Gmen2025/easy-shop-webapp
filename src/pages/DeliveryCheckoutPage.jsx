@@ -14,7 +14,9 @@ import CheckoutHeader from '../components/CheckoutHeader'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import { editAddress } from '../utils/addressAutocomplete'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
-import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive } from '../utils/checkoutPayment'
+import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive } from '../utils/checkoutPayment'
+import usePaymentAvailability from '../features/payment/usePaymentAvailability'
+import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
 
 export default function DeliveryCheckoutPage() {
   const { id } = useParams()
@@ -23,6 +25,7 @@ export default function DeliveryCheckoutPage() {
   const items = useSelector((state) => state.cart.items)
   const user = useSelector((state) => state.auth.user)
   const database = getSelectedDatabaseName()
+  const availability = usePaymentAvailability()
   const navigation = useLocation()
   const draft = navigation.state?.checkoutDraft
   const restoredDraft = draft?.database === database && draft?.userId === (user?._id || user?.id) ? draft : null
@@ -140,9 +143,6 @@ export default function DeliveryCheckoutPage() {
     }
   }
   async function confirm() {
-    if (group?.paymentMethod === 'cash' && !cashOnDeliveryAvailable(database, import.meta.env.DEV)) {
-      throw new Error('USA cash checkout can only be completed in a development build.')
-    }
     const result = await deliveryRequest(`checkouts/${id}/confirm`, {
       method: 'POST', data: { reference, sender }, timeoutMs: 60000,
     })
@@ -176,7 +176,7 @@ export default function DeliveryCheckoutPage() {
   const converted = Boolean(group?.exchangeRate || (!id && paymentCurrency !== nativeCurrency(database)))
   const pricing = group?.status === 'quote' ? calculateDeliveryPricing(group.deliveries, selections) : null
   const preview = group?.status === 'quote' ? checkoutPreview(group, selections, calculateDeliveryPricing) : null
-  const methods = group ? paymentMethods(group, database, exchange, import.meta.env.DEV) : []
+  const methods = group ? paymentMethods(group, database, exchange, availability.methods) : []
   const needsVehicle = group?.deliveries.some((delivery) => !selections[delivery.key])
   const convertedAvailable = !converted || rateIsActive(exchange, now)
   const currencyOptions = <fieldset disabled={busy} className="delivery-fieldset">
@@ -386,6 +386,8 @@ export default function DeliveryCheckoutPage() {
               {!rateIsActive(exchange, now) ? <p role="alert">{exchange?.message || 'Reload to verify the current daily rate before reserving.'}</p> : null}
             </section> : null}
             {step === 3 ? <>
+            {availability.error ? <p role="alert">{availability.error}</p> : availability.loading && !availability.methods ?
+              <p role="status">Loading payment methods...</p> : !methods.length ? <p role="alert">{PAYMENT_UNAVAILABLE}</p> : null}
             <div className="checkout-options" role="radiogroup" aria-label="Payment method">
               {methods.map((value) => <label key={value} className={`checkout-option${method === value ? ' selected' : ''}`}>
                 <input type="radio" name="payment-method" checked={method === value} value={value} onChange={() => setMethod(value)} />
@@ -393,10 +395,7 @@ export default function DeliveryCheckoutPage() {
                   <small>{{ bank: 'Transfer the saved total once; Admin verifies the funds.', card: 'Pay the saved total securely with the matching Stripe merchant.', cash: 'Pay on each delivery. No online payment is taken.' }[value]}</small></span>
               </label>)}
             </div>
-            {/usa/i.test(database) && !converted && !international ? <p role="status">{import.meta.env.DEV ?
-              'Development cash checkout creates real USA orders. Use test products; cash is collected on each delivery.' :
-              'USA cash on delivery is available only during development.'}</p> : null}
-            {method === 'bank' ? <label>Bank account<select value={bankId} onChange={(event) => setBankId(event.target.value)}>
+            {method === 'bank' && methods.includes('bank') ? <label>Bank account<select value={bankId} onChange={(event) => setBankId(event.target.value)}>
               <option value="">Select an active account</option>{banks.map((bank) => <option value={bank._id} key={bank._id}>{bank.bankName} - {bank.accountNumber}</option>)}
             </select></label> : null}
             <button className="solid-button mobile-cart-checkout" disabled={needsVehicle || !methods.includes(method) || (method === 'bank' && !bankId)}
@@ -404,6 +403,7 @@ export default function DeliveryCheckoutPage() {
             </> : null}
             {step === 4 ? <>
             <h2>Review your order</h2>
+            {!methods.includes(method) ? <p role="alert">{availability.error || PAYMENT_UNAVAILABLE}</p> : null}
             <p>Payment method: {method === 'cash' ? 'Cash on delivery' : method === 'card' ? 'Credit / debit card' : 'Bank transfer'}</p>
             {method === 'bank' ? <p>Bank: {banks.find((bank) => bank._id === bankId)?.bankName}</p> : null}
             <div className="action-row">
@@ -411,7 +411,7 @@ export default function DeliveryCheckoutPage() {
               <button className="ghost-button" onClick={() => setStep(3)}>Change payment method</button>
               {!service ? <button className="ghost-button" onClick={() => editCheckout(1)}>Change addresses & quantities</button> : null}
             </div>
-            <button className="solid-button" disabled={Boolean(group.exchangeRate && !rateIsActive(exchange, now)) || (method === 'bank' && !bankId)} onClick={() => run(async () => {
+            <button className="solid-button" disabled={!methods.includes(method) || Boolean(group.exchangeRate && !rateIsActive(exchange, now)) || (method === 'bank' && !bankId)} onClick={() => run(async () => {
               if (group.exchangeRate && !rateIsActive(exchange)) throw new Error('The daily rate expired. Refresh the saved checkout before reserving.')
               if (!service && pending === group._id && !cartMatchesQuote(items, group)) throw new Error('Your cart changed. Cancel this quote and request a fresh one.')
               if (!methods.includes(method)) throw new Error('Select a supported payment method for this checkout.')
@@ -420,7 +420,6 @@ export default function DeliveryCheckoutPage() {
               await showResult(await deliveryRequest(`checkouts/${id}/prepare`, {
                 method: 'POST', timeoutMs: 60000, data: {
                   method, bankAccountId: bankId,
-                  ...(method === 'cash' && /usa/i.test(database) ? { developmentCashOnDelivery: import.meta.env.DEV === true } : {}),
                   selections: group.deliveries.map((delivery) => ({ key: delivery.key, vehicle: selections[delivery.key] })),
                 },
               }))
@@ -450,11 +449,8 @@ export default function DeliveryCheckoutPage() {
                 setClientSecret(payment.clientSecret || '')
               })}>Load secure card payment</button> : null}
               <button className="ghost-button"
-                disabled={group.paymentMethod === 'cash' && !cashOnDeliveryAvailable(database, import.meta.env.DEV)}
                 onClick={() => run(confirm)}>{group.paymentMethod === 'cash' ? 'Confirm cash on delivery order' : 'Check payment status / reconcile'}</button>
-              {group.paymentMethod === 'cash' ? <p>{cashOnDeliveryAvailable(database, import.meta.env.DEV) ?
-                'No online payment is taken. Cash is collected on each delivery.' :
-                'This USA cash reservation was started during development. Cash confirmation is disabled in production; cancel the unpaid reservation or contact support.'}</p> : null}
+              {group.paymentMethod === 'cash' ? <p>No online payment is taken. Cash is collected on each delivery.</p> : null}
               <button className="ghost-button" onClick={() => run(async () => {
                 if (!window.confirm('Cancel only an unpaid reservation. If bank funds were sent, contact support first. Successful card payments are recovered instead of cancelled.')) return
                 await showResult(await deliveryRequest(`checkouts/${id}/cancel`, { method: 'POST' }))

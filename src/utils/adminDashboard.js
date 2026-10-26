@@ -22,6 +22,7 @@ export const ADMIN_TOOLS = [
   ['Service Requests', 'Assign, quote and manage services', '/admin/tools/services', 'sales'],
   ['Notifications', 'Broadcast messages to customers', '/admin/operations/broadcast', 'settings'],
   ['Maintenance', 'Control shopper availability', '/admin/tools/maintenance', 'settings'],
+  ['Payment Methods', 'Enable payments by region', '/admin/tools/payment-methods', 'settings'],
   ['Social Sign-in', 'Google, Apple and Facebook switches', '/admin/tools/social', 'settings'],
 ]
 

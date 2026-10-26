@@ -30,11 +30,11 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import CartContents from '../components/CartContents'
 import AddressAutocomplete from '../components/AddressAutocomplete'
-import { cashOnDeliveryAvailable } from '../utils/checkoutPayment'
+import usePaymentAvailability from '../features/payment/usePaymentAvailability'
+import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
-const isTelebirrEnabled = false
 const countryOptions = countries
   .map((countryItem) => String(countryItem?.name || '').trim())
   .filter(Boolean)
@@ -101,7 +101,10 @@ function LegacyCartPage() {
   const payment = useSelector((state) => state.payment)
   const selectedDb = getSelectedDatabaseName()
   const isEthio = selectedDb === 'E_Shopping'
-  const cashAvailable = cashOnDeliveryAvailable(selectedDb, import.meta.env.DEV)
+  const availability = usePaymentAvailability()
+  const cashAvailable = availability.methods?.cash === true
+  const isTelebirrEnabled = isEthio && availability.methods?.telebirr === true
+  const selectedMethodKey = (value) => ({ cod: 'cash', bank_transfer: 'bank', card: 'card', telebirr: 'telebirr' })[value]
   const [latestOrderPrefill, setLatestOrderPrefill] = useState(null)
 
   const [shippingAddress1, setShippingAddress1] = useState('')
@@ -358,7 +361,6 @@ function LegacyCartPage() {
   }
 
   function getOrderPayload(paymentMeta = null) {
-    if (paymentMethod === 'cod' && !cashAvailable) throw new Error('USA cash on delivery is available only during development.')
     const resolvedPaymentMethod = paymentMethod === 'bank_transfer'
       ? 'Bank Transfer'
       : paymentMethod === 'telebirr'
@@ -384,7 +386,6 @@ function LegacyCartPage() {
       paymentMethod: resolvedPaymentMethod,
       deliveryMode,
       deliveryDistanceKm: deliveryDistanceKm === '' ? 0 : Number(deliveryDistanceKm),
-      ...(paymentMethod === 'cod' && !isEthio ? { developmentCashOnDelivery: import.meta.env.DEV === true } : {}),
     }
 
     if (deliveryMode === 'SCHEDULED' && scheduledFor) {
@@ -438,13 +439,6 @@ function LegacyCartPage() {
 
     let orderPaymentMeta = paymentMeta || bankTransferMeta
 
-    if (paymentMethod === 'telebirr') {
-      const message = 'Telebirr is currently inactive.'
-      setCardError(message)
-      toast.error(message)
-      return
-    }
-
     const action = await dispatch(createOrderWithInventorySync(getOrderPayload(orderPaymentMeta)))
     if (createOrderWithInventorySync.fulfilled.match(action)) {
       notifyLowStockAfterCheckout(action.payload)
@@ -474,12 +468,16 @@ function LegacyCartPage() {
     )
 
     if (createPaymentIntent.rejected.match(stripeAction)) {
-      setCardError('Unable to initialize card payment. Please try again.')
+      setCardError(stripeAction.payload || stripeAction.error?.message || 'Unable to initialize card payment. Please try again.')
     }
   }
 
   async function handleCheckout(event) {
     event.preventDefault()
+    if (!availability.methods?.[selectedMethodKey(paymentMethod)]) {
+      setCardError(availability.error || PAYMENT_UNAVAILABLE)
+      return
+    }
     if (!user) {
       navigate('/login')
       return
@@ -551,7 +549,7 @@ function LegacyCartPage() {
     }
 
     if (paymentMethod === 'telebirr') {
-      const message = 'Telebirr is currently inactive.'
+      const message = 'Use the Telebirr form below to complete payment.'
       setCardError(message)
       toast.error(message)
       return
@@ -643,23 +641,18 @@ function LegacyCartPage() {
                 setCardError('')
               }}
             >
-              {cashAvailable ? <option value="cod">Cash On Delivery{!isEthio ? ' (development only)' : ''}</option> : null}
-              {isEthio ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
-              {isEthio ? (
-                <option value="telebirr" disabled={!isTelebirrEnabled}>
-                  {isTelebirrEnabled ? 'Telebirr' : 'Telebirr (Inactive)'}
-                </option>
-              ) : (
-                <option value="card">Stripe Card</option>
-              )}
+              <option value="">Select a payment method</option>
+              {cashAvailable ? <option value="cod">Cash On Delivery</option> : null}
+              {isEthio && availability.methods?.bank ? <option value="bank_transfer">Bank Transfer (Ethio)</option> : null}
+              {isTelebirrEnabled ? <option value="telebirr">Telebirr</option> : null}
+              {!isEthio && availability.methods?.card ? <option value="card">Stripe Card</option> : null}
             </select>
           </label>
 
-          {isEthio && !isTelebirrEnabled ? (
-            <p className="section-note">
-              Telebirr is currently unavailable because it is not configured on the server.
-            </p>
-          ) : null}
+          {availability.error ? <p role="alert">{availability.error}</p> :
+            !availability.methods ? <p role="status">Loading payment methods...</p> :
+              !cashAvailable && !(isEthio ? availability.methods.bank || isTelebirrEnabled : availability.methods.card) ?
+                <p role="alert">{PAYMENT_UNAVAILABLE}</p> : null}
 
           <AddressAutocomplete
             key={country}
@@ -756,11 +749,11 @@ function LegacyCartPage() {
             />
           ) : null}
 
-          {paymentMethod === 'bank_transfer' ? (
+          {paymentMethod === 'bank_transfer' && availability.methods?.bank ? (
             <BankTransferCheckout
               amount={totals.grandTotal}
               onConfirmed={(paymentMeta) => {
-                placeOrderAfterPayment(paymentMeta)
+                return placeOrderAfterPayment(paymentMeta)
               }}
               onError={(message) => {
                 setCardError(message)
@@ -775,6 +768,7 @@ function LegacyCartPage() {
               creating ||
               payment.creatingIntent ||
               items.length === 0 ||
+              !availability.methods?.[selectedMethodKey(paymentMethod)] ||
               (paymentMethod === 'telebirr' && isEthio) ||
               (paymentMethod === 'bank_transfer' && isEthio) ||
               (paymentMethod === 'card' && !!payment.clientSecret)

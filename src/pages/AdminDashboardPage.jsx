@@ -22,6 +22,7 @@ import {
 } from '../features/maintenance/maintenanceSlice'
 import LoadingState from '../components/LoadingState'
 import SocialLoginSettings from '../components/SocialLoginSettings'
+import PaymentMethodSettings from '../components/PaymentMethodSettings'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
@@ -150,7 +151,7 @@ function AdminDashboardPage() {
   const [orderFilter, setOrderFilter] = useState('')
   const titles = { products: 'Products', categories: 'Categories', orders: 'Orders', inventory: 'Inventory',
     banks: 'Bank Accounts', services: 'Service Requests', delivery: 'Delivery Cost Settings',
-    maintenance: 'Maintenance', social: 'Social Sign-in' }
+    maintenance: 'Maintenance', social: 'Social Sign-in', 'payment-methods': 'Payment Methods' }
   const catalogSection = ['products', 'inventory', 'categories', 'orders', 'banks'].includes(section)
   const dispatch = useDispatch()
   const { categories, products, orders, bankAccounts, loading, saving, error, message } = useSelector(
@@ -610,6 +611,7 @@ function AdminDashboardPage() {
       </section> : null}
 
       {section === 'social' ? <SocialLoginSettings /> : null}
+      {section === 'payment-methods' ? <PaymentMethodSettings /> : null}
 
       {section === 'inventory' ? <section className="panel">
         <div className="panel-header">
