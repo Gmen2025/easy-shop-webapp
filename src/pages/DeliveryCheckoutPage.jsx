@@ -353,7 +353,7 @@ export default function DeliveryCheckoutPage() {
             <p>Billable road distance: {(/usa/i.test(database) ? group.cartRoute.distanceKm / 1.609344 : group.cartRoute.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}.
               One base fee and delivery-speed surcharge for the entire route.</p>
             <p>Driver travel to the first pickup and detours for other customers are not charged. Your reserved fee stays fixed.
-              Each address can be delivered once all its products are collected.</p>
+              All pickups for your complete cart must finish before any drop-off begins.</p>
             <ol>{group.cartRoute.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol>
           </section> : null}
           {service ? <p>Service request #{group.serviceRequest}. Pay the Admin ETB quote in USD; fulfillment remains in Ethiopia.

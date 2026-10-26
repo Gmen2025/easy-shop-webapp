@@ -1,9 +1,9 @@
 import { NavLink, Link } from 'react-router-dom'
 import { COMPANY_PERIODS } from '../utils/company'
 
-export default function CompanyNavigation({ driver = false }) {
-  return <nav className="company-navigation" aria-label={driver ? 'Company driver tools' : 'Store owner tools'}>
-    {(driver ? [['/driver', 'Delivery Dispatch'], ['/driver/rides', 'Ride assignments & route']]
+export default function CompanyNavigation({ driver = false, rides = true }) {
+  return <nav className="company-navigation" aria-label={driver ? 'Driver tools' : 'Store owner tools'}>
+    {(driver ? [['/driver', 'Delivery Dispatch'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
       : [['/store-owner', 'Business overview'], ['/store-owner/manage', 'My store & inventory'], ['/store-owner/assignments', 'Store assignments']])
       .map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}
   </nav>

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../../api/client'
 
-export default function useCompanyResource(path, validate, interval = 0) {
+export default function useCompanyResource(path, validate, interval = 0, enabled = true) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(enabled)
   const generation = useRef(0)
   const pending = useRef(null)
   const reload = useCallback(() => {
+    if (!enabled) return Promise.resolve(null)
     if (pending.current) return pending.current
     const version = generation.current
     setLoading(true)
@@ -25,8 +26,9 @@ export default function useCompanyResource(path, validate, interval = 0) {
     })()
     pending.current = request
     return request
-  }, [path, validate])
+  }, [path, validate, enabled])
   useEffect(() => {
+    if (!enabled) return undefined
     generation.current += 1
     pending.current = null
     // Background failures are displayed in the resource's error state.
@@ -40,12 +42,12 @@ export default function useCompanyResource(path, validate, interval = 0) {
       clearInterval(timer)
       window.removeEventListener('focus', refresh)
     }
-  }, [reload, interval])
+  }, [reload, interval, enabled])
   const refresh = useCallback(async () => {
     if (pending.current) await pending.current
     return reload()
   }, [reload])
-  return { data, error, loading, reload: refresh }
+  return { data: enabled ? data : null, error: enabled ? error : '', loading: enabled && loading, reload: refresh }
 }
 
 export function useCompanyAction() {

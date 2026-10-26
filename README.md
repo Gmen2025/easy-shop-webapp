@@ -14,10 +14,35 @@ the driver combines accepted carts.
 
 Company Driver offers claim every pickup/drop-off in a cart together. All stores
 must accept first. The route panel groups shared-store pickups across accepted
-carts and blocks premature drop-off: all products for that destination must have
-been collected, but unrelated destinations can still have pending pickups.
+carts and blocks every drop-off route and delivery confirmation until all
+pickups for that customer cart finish, across all its addresses. Other accepted
+carts are checked independently.
 Batching requires measured combined cargo within vehicle limits; unknown
 measurements require a manually chosen single-cart vehicle.
+
+The configured default store receives unaccepted fallback requests from all
+storefronts, including unrelated ones. It can claim with matching stock/prices,
+reroute, or reject for Admin review; other fallback stores retain family scope.
+
+The Driver delivery dashboard is available to both company and partner accounts.
+**Available Delivery Assignments** uses the same
+`drivers/me/available-deliveries` list/claim APIs as mobile. Eligible online
+drivers can claim any dispatch-ready unassigned cart or legacy delivery, not
+only a designated offer. Partner drivers retain the 5 km first-pickup radius and
+pre-pickup recipient privacy. The first transactional claim wins the whole cart;
+vehicle/capacity, approval, availability and active-ride exclusions are rechecked
+on claim, without a socket or second acceptance.
+
+When nobody is available, unclaimed requests persist. Company drivers still see
+the backlog on reopening/focus/periodic refresh while offline or full, with Claim
+disabled until eligible. Company drivers can Reroute/Reject any ready unclaimed
+request, including one without a designated offer. Both actions exclude only
+that driver and leave the complete cart available for other eligible company
+or partner drivers; it stays queued if nobody is available. Reject also flags it
+in Admin's rejected delivery review without pausing delivery; Reroute does not
+create a review flag. Neither action cancels the order, reprices delivery or refunds payment.
+Assigned carts cannot be released this way. Partner drivers do not gain these
+company response actions or company-only passenger ride controls.
 
 Deploy the matching backend first. Existing saved quotes/orders remain on their
 legacy rules. The route ordering is a dependency-aware geographic heuristic

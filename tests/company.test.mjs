@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  COMPANY_PERIODS, companyRoles, companyTabs, isCompanyDriver, isCompanyStoreOwner,
+  COMPANY_PERIODS, companyRoles, companyTabs, isCompanyDriver, isDeliveryDriver, isCompanyStoreOwner,
   requireList, validateCompanyDashboard, validateDriverRides, assignmentSeconds, inventoryPayload, driverRideFare,
 } from '../src/utils/company.js'
 
@@ -19,10 +19,105 @@ function storeDashboard() {
     payouts: { paidOut: 10, pending: 0, available: 90 }, orders: { pending: 1 }, activeOrders: [], recentOrders: [] }
 }
 
+test('website gates individual and combined drop-offs per cart while leaving pickups and completed carts available', async () => {
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null } })
+  const { createServer } = await import('vite')
+  const { createElement } = await import('react')
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const { Provider } = await import('react-redux')
+  const { MemoryRouter } = await import('react-router-dom')
+  const { configureStore } = await import('@reduxjs/toolkit')
+  const cacheDir = await mkdtemp(join(tmpdir(), 'cart-pickup-gate-'))
+  const hooksId = '\0virtual:driver-delivery-hooks'
+  const server = await createServer({
+    cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom',
+    optimizeDeps: { noDiscovery: true, include: [] },
+    plugins: [{
+      name: 'driver-delivery-state-fixture', enforce: 'pre',
+      resolveId(id) { if (id === 'virtual:driver-delivery-hooks') return hooksId },
+      load(id) {
+        if (id !== hooksId) return
+        return `import * as React from 'react'
+          export const { useCallback, useEffect, useRef } = React
+          let states = {}, index = 0
+          export function reset(value) { states = value; index = 0 }
+          export function useState(initial) {
+            const current = index++
+            return React.useState(current in states ? states[current] : initial)
+          }`
+      },
+      transform(code, id) {
+        if (id.endsWith('/DriverDeliveriesPage.jsx')) {
+          return code.replace("from 'react'", "from 'virtual:driver-delivery-hooks'")
+        }
+      },
+    }],
+  })
+  try {
+    const { reset } = await server.ssrLoadModule('virtual:driver-delivery-hooks')
+    const { default: Page } = await server.ssrLoadModule('/src/pages/DriverDeliveriesPage.jsx')
+    const store = configureStore({ reducer: { auth: () => ({ user: driver }) } })
+    const queue = [
+      { orderId: 'a', cartRouteVersion: 1, checkoutGroup: 'cart1', deliveryStatus: 'Picked Up',
+        dropoffReady: false, pendingPickupOrderIds: ['b'], address: { address1: 'Home' }, store: { name: 'Store A' } },
+      { orderId: 'b', cartRouteVersion: 1, checkoutGroup: 'cart1', deliveryStatus: 'Driver Assigned',
+        dropoffReady: false, pendingPickupOrderIds: ['b'], store: { name: 'Store B' } },
+      { orderId: 'c', cartRouteVersion: 1, checkoutGroup: 'cart2', deliveryStatus: 'Picked Up',
+        dropoffReady: true, pendingPickupOrderIds: [], address: { address1: 'Other home' }, store: { name: 'Store C' } },
+    ]
+    const routeStops = [
+      { key: 'pickup:b', type: 'pickup', name: 'Store B', orderIds: ['b'], requires: [] },
+      { key: 'dropoff:a', type: 'dropoff', name: 'Home', orderIds: ['a'], requires: ['pickup:b'] },
+      { key: 'dropoff:c', type: 'dropoff', name: 'Other home', orderIds: ['c'], requires: [] },
+    ]
+    const render = (selectedId, offers = []) => {
+      reset({ 1: offers, 2: queue, 3: routeStops, 5: selectedId })
+      return renderToStaticMarkup(createElement(Provider, { store },
+        createElement(MemoryRouter, null, createElement(Page))))
+    }
+    const markup = render('a')
+    const buttons = [...markup.matchAll(/<button\b([^>]*)>(.*?)<\/button>/gs)]
+    const matching = (label) => buttons.filter((match) => match[2] === label).map((match) => /\bdisabled/.test(match[1]))
+    assert.deepEqual(matching('Show this stop'), [false, true, false])
+    assert.deepEqual(matching('Show current leg on Google Maps'), [true, false, false])
+    assert.deepEqual(matching('Confirm drop-off / delivered'), [true, false])
+    assert.deepEqual(matching('Confirm picked up'), [false])
+    assert.match(markup, /Complete all pickups for this customer cart before opening drop-off directions/)
+    assert.doesNotMatch(markup, /delivery-map-panel/)
+    assert.match(render('c'), /delivery-map-panel/, 'A fully collected different cart can open its route')
+    queue[0].dropoffReady = queue[1].dropoffReady = true
+    queue[1].deliveryStatus = 'Picked Up'
+    assert.match(render('a'), /delivery-map-panel/, 'The cart unlocks after its final pickup')
+    const backlog = render('', [
+      { _id: 'offline', store: { name: 'Unclaimed store' }, items: [], deliveryFee: 5,
+        sharedAssignment: true, canClaim: false, canRespond: true },
+      { _id: 'available', store: { name: 'Ready store' }, items: [], deliveryFee: 5,
+        sharedAssignment: true, canClaim: true, canRespond: true },
+    ])
+    assert.match(backlog, /Unclaimed store/)
+    assert.match(backlog, /Queued until you are online/)
+    assert.deepEqual([...backlog.matchAll(/<button\b([^>]*)>Claim delivery<\/button>/g)]
+      .map((match) => /\bdisabled/.test(match[1])), [true, false])
+    for (const label of ['Reroute offer', 'Reject delivery']) {
+      assert.deepEqual([...backlog.matchAll(new RegExp(`<button\\b([^>]*)>${label}</button>`, 'g'))]
+        .map((match) => /\bdisabled/.test(match[1])), [false, false])
+    }
+    assert.match(backlog, /Reject also flags it for Admin review without pausing delivery/)
+    const partnerBacklog = render('', [{ _id: 'partner', items: [], canRespond: false }])
+    assert.doesNotMatch(partnerBacklog, />Reroute offer<|>Reject delivery</)
+  } finally {
+    await server.close()
+    await rm(cacheDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    if (storageDescriptor) Object.defineProperty(globalThis, 'localStorage', storageDescriptor)
+    else delete globalThis.localStorage
+  }
+})
+
 test('company role tabs match mobile eligibility without changing customer or admin navigation', () => {
   assert.equal(isCompanyStoreOwner(owner), true)
   assert.equal(isCompanyDriver(driver), true)
-  for (const user of [null, {}, { isStoreOwner: true }, { isDriver: true }, { ...owner, ...driver, isAdmin: true }]) {
+  for (const user of [null, {}, { isStoreOwner: true }, { ...owner, ...driver, isAdmin: true }]) {
     assert.equal(isCompanyStoreOwner(user), false)
     assert.equal(isCompanyDriver(user), false)
     assert.ok(companyTabs(user).some((tab) => tab.to === '/stores'))
@@ -33,6 +128,10 @@ test('company role tabs match mobile eligibility without changing customer or ad
   assert.deepEqual(companyTabs({ ...owner, ...driver }).map((tab) => tab.to), ['/', '/store-owner', '/cart', '/driver', '/profile'])
   assert.equal(companyTabs(null).at(-1).to, '/login')
   assert.equal(companyTabs(owner)[0].end, true)
+  assert.equal(isCompanyDriver({ isDriver: true }), false)
+  assert.equal(isDeliveryDriver({ isDriver: true }), true)
+  assert.equal(isDeliveryDriver({ isDriver: true, isAdmin: true }), false)
+  assert.deepEqual(companyTabs({ isDriver: true }).map((tab) => tab.label), ['Shop', 'Stores', 'Cart', 'Driver', 'Account'])
   assert.equal(companyTabs(driver).find((tab) => tab.to === '/driver').end, undefined)
   assert.deepEqual(companyRoles({}, owner), { isDriver: false, isCompanyOwnedDriver: false, isStoreOwner: true, isCompanyOwnedStore: true })
   assert.equal(companyRoles({ isCompanyOwnedStore: false }, owner).isCompanyOwnedStore, false)
@@ -155,6 +254,12 @@ test('website routes, responsive role tabs and authentication preserve company r
       assert.match(html, /Company Driver/)
       assert.doesNotMatch(html, /Company account required/)
       assert.match(render(path, owner), /Company account required/)
+      if (path.includes('/rides')) assert.match(render(path, { isDriver: true }), /Company account required/)
+      else {
+        const partnerHtml = render(path, { isDriver: true })
+        assert.doesNotMatch(partnerHtml, /Company account required|Passenger assignments/)
+        assert.match(partnerHtml, /Available Delivery Assignments/)
+      }
     }
     assert.match(render('/driver', driver, true), /maintenance/i)
     assert.match(render('/store-owner', owner, true), /maintenance/i)

@@ -220,10 +220,11 @@ function CompanyOperations({ driver, api, database }) {
         {nearby.items.map((item) => <div key={item._id || item.id}><FulfillmentDetails item={item} driver={driver} /></div>)}
       </article>}
       <h2>Rejected {driver ? 'delivery' : 'product'} requests</h2>
+      {driver && <p>Driver rejections are flagged for Admin review without pausing delivery to other drivers. Reroute-only responses are not review flags. Orders and payments are not automatically cancelled or refunded.</p>}
       {rejections === null ? <p>Rejections not loaded.</p> : rejections.length === 0 ? <p>No rejected requests.</p> : rejections.map((item) =>
         <article className="order-card" key={item._id || item.id}>
           <FulfillmentDetails item={item} driver={driver} />
-          {(item[driver ? 'companyDriverResponses' : 'companyStoreResponses'] || []).filter((entry) => entry.status === 'rejected').map((entry) =>
+          {(item[driver ? 'companyDriverResponses' : 'companyStoreResponses'] || []).filter((entry) => entry.status === 'rejected' && (!driver || entry.action !== 'reroute')).map((entry) =>
             <div key={entry._id || entry.id}><p>Rejected by {entry[driver ? 'driver' : 'store']?.name || 'Company account'}</p>
               <button onClick={() => {
                 if (!window.confirm('Delete this rejection and reopen this request?')) return

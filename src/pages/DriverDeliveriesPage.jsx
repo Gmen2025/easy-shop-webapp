@@ -16,10 +16,12 @@ const dashboardResponse = (data) => validateCompanyDashboard(data, 'driver')
 const completedResponse = (data) => requireList(data?.orders, 'completed deliveries')
 
 export default function DriverDeliveriesPage() {
-  const driverName = useSelector((state) => state.auth.user?.name)
+  const user = useSelector((state) => state.auth.user)
+  const driverName = user?.name
+  const companyDriver = Boolean(user?.isCompanyOwnedDriver)
   const analytics = useCompanyResource('/drivers/me/dashboard', dashboardResponse, 60000)
   const completed = useCompanyResource('/drivers/me/completed-today', completedResponse, 60000)
-  const rides = useCompanyResource('/rides/me/driver', validateDriverRides, 15000)
+  const rides = useCompanyResource('/rides/me/driver', validateDriverRides, 15000, companyDriver)
   const [period, setPeriod] = useState('daily')
   const [offers, setOffers] = useState([])
   const [queue, setQueue] = useState([])
@@ -37,13 +39,14 @@ export default function DriverDeliveriesPage() {
   const routePanel = useRef(null)
   const selected = queue.find((entry) => entry.orderId === selectedId)
   const stage = selected?.deliveryStatus
+  const dropoffBlocked = stage === 'Picked Up' && selected?.dropoffReady === false
   const routeTiming = useRef({ next: 0 })
   useEffect(() => {
     if (selectedId) routePanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [selectedId])
   const load = useCallback(async () => {
     const [offered, active] = await Promise.all([
-      apiRequest('/orders/company/my-deliveries', { timeoutMs: 20000 }), apiRequest('/drivers/me/queue', { timeoutMs: 20000 }),
+      apiRequest('/drivers/me/available-deliveries', { timeoutMs: 20000 }), apiRequest('/drivers/me/queue', { timeoutMs: 20000 }),
     ])
     if (!Array.isArray(offered.orders) || !Array.isArray(active.queue)) throw new Error('The API returned an invalid driver delivery response.')
     setOffers(offered.orders); setQueue(active.queue); setRouteStops(active.routeStops || [])
@@ -61,7 +64,8 @@ export default function DriverDeliveriesPage() {
     }
     refresh()
     const timer = setInterval(refresh, 15000)
-    return () => { current = false; clearInterval(timer) }
+    window.addEventListener('focus', refresh)
+    return () => { current = false; clearInterval(timer); window.removeEventListener('focus', refresh) }
   }, [load])
 
   useEffect(() => {
@@ -69,6 +73,10 @@ export default function DriverDeliveriesPage() {
     let pending = false
     async function fetchRoute() {
       if (!selectedId || !['Driver Assigned', 'Picked Up'].includes(stage)) return
+      if (dropoffBlocked) {
+        if (current) setRouteError('Complete all pickups for this customer cart before starting any drop-off.')
+        return
+      }
       const origin = locationRef.current
       if (!origin || Date.now() - origin.timestamp > 120000) {
         if (current) {
@@ -93,29 +101,31 @@ export default function DriverDeliveriesPage() {
     fetchRoute()
     const timer = setInterval(fetchRoute, 10000)
     return () => { current = false; clearInterval(timer) }
-  }, [selectedId, stage, locationRef])
+  }, [selectedId, stage, dropoffBlocked, locationRef])
 
   async function act(id, action, data) {
     if (actionGuard.current) return
     actionGuard.current = true; setBusy(true); setError(''); setNotice('')
     try {
-      await orderAction(id, action, data)
+      if (action === 'claim') {
+        await apiRequest(`/drivers/me/available-deliveries/${id}/claim`, { method: 'PUT', body: '{}' })
+      } else await orderAction(id, action, data)
       routeTiming.current.next = Math.min(routeTiming.current.next, Date.now() + 10000)
       await load()
       if (!action && data?.deliveryStatus === 'Delivered') await Promise.all([analytics.reload(), completed.reload()])
       setNotice(data?.deliveryStatus === 'Delivered' ? 'Delivery completed. The queue and earnings have been refreshed.' :
-        data?.deliveryStatus === 'Picked Up' ? 'Pickup confirmed. Continue to the recipient delivery leg.' : 'Delivery response saved.')
+        data?.deliveryStatus === 'Picked Up' ? 'Pickup confirmed. Complete all pickups for this cart before starting any drop-off.' : 'Delivery response saved.')
     } catch (failure) { setError(failure.message) }
     finally { actionGuard.current = false; setBusy(false) }
   }
   const freshLocation = sharing ? location : null
-  const shownRoute = freshLocation && route?.orderId === selectedId && route.stage === stage ? route : null
+  const shownRoute = !dropoffBlocked && freshLocation && route?.orderId === selectedId && route.stage === stage ? route : null
   const summary = analytics.data?.periods[period]
   const activeAssignments = new Set(queue.map((entry) =>
     entry.cartRouteVersion === 1 ? entry.checkoutGroup : entry.orderId)).size
   return <section className="page-stack company-console company-driver delivery-page">
-    <CompanyNavigation driver />
-    <article className="panel company-ride-service"><p className="company-eyebrow">Ride service</p><h2>Passenger assignments</h2>
+    <CompanyNavigation driver rides={companyDriver} />
+    {companyDriver ? <article className="panel company-ride-service"><p className="company-eyebrow">Ride service</p><h2>Passenger assignments</h2>
       <p>Separate ride offers, passenger route and service preferences.</p>
       {rides.error ? <p role="alert">{rides.error}</p> : null}
       {rides.data ? <><p>Approval: {rides.data.driver.approvalStatus} | {rides.data.driver.isAvailable ? 'Online' : 'Offline'}
@@ -128,9 +138,9 @@ export default function DriverDeliveriesPage() {
         <p>{rides.data.trip ? 'Active passenger route. ' : ''}{rides.data.offer ? 'A ride offer is waiting. Open assignments to respond.' : 'No current ride offer.'}</p>
       </> : null}
       <Link className="solid-button" to="/driver/rides">Open ride assignments & route</Link>
-    </article>
-    <article className="panel company-heading"><div><p className="company-eyebrow">Company Driver</p><h1>Delivery Dispatch</h1>
-      <h2>{driverName || 'Company Driver'}</h2>
+    </article> : null}
+    <article className="panel company-heading"><div><p className="company-eyebrow">Driver</p><h1>Delivery Dispatch</h1>
+      <h2>{driverName || 'Driver'}</h2>
       <p>{activeAssignments} Active Route(s) | {offers.length} Unassigned</p></div></article>
     <article className="panel"><p className="company-eyebrow">Delivery income</p><h2>Earnings overview</h2>
       <CompanyPeriods value={period} onChange={setPeriod} />
@@ -153,7 +163,7 @@ export default function DriverDeliveriesPage() {
     </article>
     <article className="panel">
     <p>Use the same account and shopping region as the mobile app. Offers, active queue, pickup and drop-off statuses are shared.
-      This interface requires an approved company-driver account.</p>
+      Available assignments are shared with eligible company and partner drivers. The first successful claim gets the complete cart.</p>
     {error ? <p role="alert">{error}</p> : null}
     {notice ? <p role="status">{notice}</p> : null}
     {eligibility ? <p role="status">{eligibility}</p> : null}
@@ -166,7 +176,10 @@ export default function DriverDeliveriesPage() {
     </div>
     <p role="status">{gpsStatus}</p>
     {gps.error ? <p role="alert">GPS: {gps.error}</p> : null}
-    <h2>Unassigned Company Deliveries</h2>
+    <h2>Available Delivery Assignments</h2>
+    <p>Company drivers can still see queued requests while unavailable. Claiming requires an online, eligible driver with enough vehicle capacity.
+      Company drivers can Reject or Reroute unclaimed requests for other drivers. Both actions remove the request from your list
+      without cancelling or refunding it; it stays queued if nobody is available. Reject also flags it for Admin review without pausing delivery.</p>
     {offers.length ? offers.map((offer) => <article key={offer._id} className="order-card">
       <h3>{offer.store?.name || 'Store'} - #{offer._id}</h3>
       <p>{offer.store?.address} | {offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
@@ -180,18 +193,19 @@ export default function DriverDeliveriesPage() {
       <p>{offer.itemCount ?? offer.items?.length ?? 0} item(s)</p>
       {(offer.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <DeliveryWindow value={offer} />
-      <button disabled={busy} className="solid-button" onClick={() => act(offer._id, 'company-claim')}>Claim delivery</button>
-      <button disabled={busy} className="ghost-button" onClick={() => {
-        if (window.confirm('Reroute this offer to another eligible driver?')) act(offer._id, 'company-reroute')
+      {offer.canClaim === false ? <p role="status">Queued until you are online with an eligible vehicle and enough capacity. Refresh after updating your availability.</p> : null}
+      <button disabled={busy || offer.canClaim === false} className="solid-button" onClick={() => act(offer._id, offer.sharedAssignment ? 'claim' : 'company-claim')}>Claim delivery</button>
+      {offer.canRespond !== false ? <><button disabled={busy} className="ghost-button" onClick={() => {
+        if (window.confirm('Return this request for other drivers to claim? It leaves your list and stays queued if nobody is available.')) act(offer._id, 'company-reroute')
       }}>Reroute offer</button>
       <button disabled={busy} className="ghost-button" onClick={() => {
-        if (window.confirm('Reject this offer for Admin review?')) act(offer._id, 'company-reject')
-      }}>Reject for Admin review</button>
+        if (window.confirm('Reject this delivery for yourself and flag it for Admin review without pausing delivery? It remains available to other drivers. The order and payment are not cancelled or refunded.')) act(offer._id, 'company-reject')
+      }}>Reject delivery</button></> : null}
     </article>) : <p>No offers. The server controls eligibility, assignment and vehicle compatibility.</p>}
     <h2>Your Route ({queue.length})</h2>
     {routeStops.length ? <section className="order-card" aria-label="Combined delivery stop plan">
       <h3>Combined accepted cart route</h3>
-      <p>Collect products for each destination before its drop-off. A store visit can collect products for several accepted carts.
+      <p>Complete all pickups for each customer cart before any of its drop-offs. A store visit can collect products for several accepted carts.
         This operational plan does not change customer delivery prices.</p>
       <ol>{routeStops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name} ({stop.orderIds.length} store order(s))
         <button className="ghost-button" disabled={stop.type === 'dropoff' && stop.requires.length > 0}
@@ -205,10 +219,10 @@ export default function DriverDeliveriesPage() {
       <p>Drop-off: {entry.address ? addressText(entry.address) : `${entry.dropZone?.city || 'Delivery area'} (exact address unlocks after pickup)`}</p>
       {entry.customer?.phone ? <p>Recipient: {entry.customer.name} - <a href={`tel:${entry.customer.phone.replace(/[^\d+]/g, '')}`}>{entry.customer.phone}</a></p> : null}
       <DeliveryWindow value={entry} />
-      {entry.cartRouteVersion === 1 && !entry.dropoffReady ? <p>Collect all products for this address first.
+      {entry.cartRouteVersion === 1 && !entry.dropoffReady ? <p>Complete all pickups for this customer cart before any drop-off.
         Remaining pickup orders: {entry.pendingPickupOrderIds?.length || 0}.</p> : null}
       {(entry.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
-      <button className="ghost-button" onClick={() => {
+      <button className="ghost-button" disabled={entry.deliveryStatus === 'Picked Up' && entry.dropoffReady === false} onClick={() => {
         if (selectedId !== entry.orderId) {
           routeTiming.current.next = Math.min(routeTiming.current.next, Date.now() + 10000)
           setSelectedId(entry.orderId)
@@ -229,8 +243,9 @@ export default function DriverDeliveriesPage() {
       <p>Pickup selection is based on eligible stock near the customer's delivery address, not the driver's GPS location. Store ID: {selected.store?.id}</p>
       {routeError ? <p role="alert">{routeError}</p> : null}
       {shownRoute ? <p>{shownRoute.distance.toFixed(2)} km | {Math.ceil(shownRoute.duration)} minutes (Google route estimate)</p> : null}
-      <DeliveryMap pickup={selected.store?.location} dropoff={stage === 'Picked Up' ? { coordinates: selected.address?.coordinates } : null}
-        driver={freshLocation} coordinates={shownRoute?.coordinates} requireDriverOrigin />
+      {dropoffBlocked ? <p role="status">Complete all pickups for this customer cart before opening drop-off directions.</p> :
+        <DeliveryMap pickup={selected.store?.location} dropoff={stage === 'Picked Up' ? { coordinates: selected.address?.coordinates } : null}
+          driver={freshLocation} coordinates={shownRoute?.coordinates} requireDriverOrigin />}
       <p className="section-note">Google road routes refresh at most once per minute. No straight-line route is substituted when Google fails.
         Browser GPS requires permission and HTTPS (or localhost); background tracking is not guaranteed.</p>
     </article> : null}

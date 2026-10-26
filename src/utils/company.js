@@ -10,6 +10,7 @@ export function companyRoles(profile = {}, fallback = {}) {
 
 export const isCompanyDriver = (user) =>
   Boolean(user?.isDriver && user?.isCompanyOwnedDriver && !user?.isAdmin)
+export const isDeliveryDriver = (user) => Boolean(user?.isDriver && !user?.isAdmin)
 export const isCompanyStoreOwner = (user) =>
   Boolean(user?.isStoreOwner && user?.isCompanyOwnedStore && !user?.isAdmin)
 
@@ -19,7 +20,7 @@ export function companyTabs(user) {
     isCompanyStoreOwner(user) ? { to: '/store-owner', label: 'Store Owner', icon: 'store' }
       : { to: '/stores', label: 'Stores', icon: 'store' },
     { to: '/cart', label: 'Cart', icon: 'cart' },
-    ...(isCompanyDriver(user) ? [{ to: '/driver', label: 'Company Driver', icon: 'driver' }] : []),
+    ...(isDeliveryDriver(user) ? [{ to: '/driver', label: isCompanyDriver(user) ? 'Company Driver' : 'Driver', icon: 'driver' }] : []),
     { to: user ? '/profile' : '/login', label: 'Account', icon: 'account' },
   ]
 }
