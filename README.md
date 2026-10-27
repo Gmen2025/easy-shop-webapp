@@ -2,9 +2,66 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
-## Cart-route delivery
+## Per-store delivery and dispatch
 
-New grouped product checkouts share the mobile/backend cart-route behavior in
+New website and mobile product checkouts charge separately per store for the road
+route store -> first drop-off -> additional drop-offs. One configured vehicle base
+fee and speed surcharge apply per store, not per product or destination. Selecting
+a vehicle updates all destinations from that store, not other stores. Destination
+shares conserve the store route fee. Driver travel to pickup and batching detours
+never add customer charges.
+
+Nearest eligible stores receive activated orders. Rejections/timeouts try other
+eligible nearby stores before the default store. Default fallback requests persist
+without expiry even while offline; matching stock at the configured default can be
+quoted when no open store can supply it. It must open to claim. Claiming and
+rerouting need no Admin approval: rerouting offers other eligible stores a timed
+chance to accept; only explicit fallback rejection enters Admin review without
+cancelling payment.
+
+Use **Store assignments** to claim/accept, **Mark package ready**, select ready
+packages from one store with the same vehicle, then **Dispatch selected**. Packages
+from different customer orders may share one batch; single dispatch needs no reason.
+Combined known cargo must fit the vehicle. Unknown measurements require single
+dispatch. A batch stays queued without an online driver. One driver claims the
+entire batch, collects all its packages, then delivers. Other stores in the same
+checkout dispatch independently. Original checkout payments/refunds stay separate
+from operational batches.
+
+Claimed requests can also be rerouted before dispatch. **Admin > Store Requests**
+allows direct claim for the assigned/default eligible store, reroute, preparation
+and dispatch, plus review of rejected requests. Admin rerouting reopens eligible
+store attempts, keeping an offline default queue when no alternative is available.
+Use **Payment, cancellation & refunds** before deleting a rejected paid request:
+cancel through its checkout and reconcile any required refund first. The server
+enforces these safeguards; deletion is not payment cancellation or a refund.
+
+### Driver fallback and Admin override
+
+For new dispatched store batches, nearby available partners are tried first,
+then the nearest available company driver (any distance), then the nearest eligible
+offline company driver. The offline offer persists in that driver's list; normal
+claiming still requires going online and meeting vehicle/capacity checks.
+Company drivers may accept, reroute or reject their offer while it remains queued.
+They may also reroute/reject an accepted batch before any package is picked up.
+Rejection is reviewable by Admin without pausing delivery or altering payment.
+
+The dispatching store's **Reroute to another driver** reoffers the whole batch.
+**Admin > Store Requests** shows company offers, assigned drivers and rejection
+history, and offers **Admin assign / dispatch to driver** using an approved driver
+ID. Admin can override ownership, online status, pickup proximity and prior
+refusals, including claiming/dispatching from closed approved stores. Stock,
+matching prices, vehicle/capacity, payment/refund, scheduling and pickup safeguards
+remain enforced. No actor can reassign a batch after pickup; it requires a future
+physical handover workflow. Existing saved fees are never recalculated.
+
+Deploy the backend first and release both clients together. Existing saved orders
+and quotes keep their legacy rules below; paid fees are not recalculated.
+US exports use per-store pricing only for US pickup-to-hub routes.
+
+### Legacy cart-route delivery
+
+Previously saved grouped product checkouts share the mobile/backend cart-route behavior in
 both USA and Ethio. Checkout shows one route through the customer's pickup stores
 and delivery addresses, one base fee and one speed surcharge. Driver travel to
 the first pickup and other customers' detours are excluded. Changing a vehicle

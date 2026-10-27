@@ -56,6 +56,15 @@ export function cartMatchesQuote(items, quote) {
 }
 
 // Preview matches the mobile deliveryPricing helper; prepare remains authoritative.
+export function selectDeliveryVehicle(deliveries, selections, delivery, vehicle) {
+  return {
+    ...selections,
+    ...Object.fromEntries(deliveries.filter((entry) => delivery.pricingGroup?.kind === 'cart-route' ||
+      (delivery.pricingGroup?.kind === 'store-route' ? entry.pricingGroup?.key === delivery.pricingGroup.key : entry.key === delivery.key))
+      .map((entry) => [entry.key, vehicle])),
+  }
+}
+
 export function calculateDeliveryPricing(deliveries, selections = {}) {
   const groups = new Map()
   for (const delivery of deliveries) {
@@ -64,11 +73,12 @@ export function calculateDeliveryPricing(deliveries, selections = {}) {
       ? delivery.vehicleOptions?.find((entry) => entry.type === vehicle)
       : [...(delivery.vehicleOptions || [])].sort((a, b) => a.fee - b.fee)[0]
     if (vehicle && delivery.vehicleOptions?.length && !option) throw new Error('Choose an offered vehicle.')
-    const route = delivery.pricingGroup?.kind === 'cart-route'
+    const route = ['cart-route', 'store-route'].includes(delivery.pricingGroup?.kind)
     const key = JSON.stringify([delivery.pricingGroup?.key || delivery.key, route ? 'cart' : option?.type || vehicle || ''])
     if (!groups.has(key)) groups.set(key, [])
     if (route && groups.get(key).some((member) => member.vehicle !== (option?.type || vehicle))) {
-      throw new Error('Choose one vehicle for the entire cart route.')
+      throw new Error(delivery.pricingGroup.kind === 'store-route'
+        ? 'Choose one vehicle for the complete route from this store.' : 'Choose one vehicle for the entire cart route.')
     }
     groups.get(key).push({ delivery, fee: option?.fee ?? delivery.deliveryFee, vehicle: option?.type || vehicle })
   }
@@ -82,7 +92,8 @@ export function calculateDeliveryPricing(deliveries, selections = {}) {
     ;[...members].sort((a, b) => a.delivery.key.localeCompare(b.delivery.key)).forEach(({ delivery }, index) => {
       byKey[delivery.key] = {
         deliveryFee: (Math.floor(fee / members.length) + (index < fee % members.length ? 1 : 0)) / 100,
-        storeCount: members.length, storeName: anchor.delivery.store.name, sharedFee: fee / 100,
+        storeCount: new Set(members.map((member) => member.delivery.store._id)).size,
+        destinationCount: members.length, storeName: anchor.delivery.store.name, sharedFee: fee / 100,
       }
     })
   }

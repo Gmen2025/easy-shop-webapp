@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildQuotePayload, calculateDeliveryPricing, cartMatchesQuote, directionsUrl, latLng, validateAddress } from '../src/utils/delivery.js'
+import { buildQuotePayload, calculateDeliveryPricing, selectDeliveryVehicle, cartMatchesQuote, directionsUrl, latLng, validateAddress } from '../src/utils/delivery.js'
 
 const address = { id: 'home', label: 'Home', address1: 'Bole Road', address2: '', city: 'Addis Ababa', zip: '', country: 'Ethiopia', phone: '+251900000000' }
 const items = [{ product: { id: 'product', price: 25, storefrontId: 'store', cartKey: 'store:product' }, quantity: 3 }]
@@ -73,6 +73,22 @@ test('cart routes charge once across stores and addresses, conserve cents, and r
   assert.deepEqual(Object.values(result.byKey).map((line) => line.deliveryFee), [3.34, 3.34, 3.33])
   assert.equal(calculateDeliveryPricing(deliveries, { a: 'van', b: 'van', c: 'van' }).deliveryFee, 20.02)
   assert.throws(() => calculateDeliveryPricing(deliveries, { a: 'van' }), /one vehicle for the entire cart/)
+})
+
+test('store routes charge separately even for nearby stores; vehicle changes update only the same store destinations', () => {
+  const deliveries = ['a', 'b', 'c'].map((key, index) => ({
+    ...delivery(key, 5, 10.01),
+    store: { _id: index < 2 ? 'store1' : 'store2', name: 'Store' },
+    pricingGroup: { kind: 'store-route', key: index < 2 ? 'store-route:1' : 'store-route:2' },
+  }))
+  const result = calculateDeliveryPricing(deliveries)
+  assert.equal(result.deliveryFee, 20.02)
+  assert.deepEqual(Object.values(result.byKey).map((entry) => entry.deliveryFee), [5.01, 5, 10.01])
+  assert.ok(Object.values(result.byKey).every((entry) => entry.storeCount === 1))
+  const selected = selectDeliveryVehicle(deliveries, {}, deliveries[0], 'van')
+  assert.deepEqual(selected, { a: 'van', b: 'van' })
+  assert.equal(calculateDeliveryPricing(deliveries, selected).deliveryFee, 30.03)
+  assert.throws(() => calculateDeliveryPricing(deliveries, { a: 'van' }), /one vehicle/)
 })
 
 test('map coordinates are validated and directions use driving mode', () => {

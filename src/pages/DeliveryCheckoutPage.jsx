@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { completeDeliveryCheckout } from '../features/cart/cartSlice'
-import { ADDRESS_FIELDS, addressText, buildQuotePayload, calculateDeliveryPricing, cartLineKey, cartMatchesQuote } from '../utils/delivery'
+import { ADDRESS_FIELDS, addressText, buildQuotePayload, calculateDeliveryPricing, selectDeliveryVehicle, cartLineKey, cartMatchesQuote } from '../utils/delivery'
 import { formatCurrency } from '../utils/format'
 import DeliveryCardPayment from '../components/DeliveryCardPayment'
 import DeliveryMap from '../components/DeliveryMap'
@@ -348,6 +348,13 @@ export default function DeliveryCheckoutPage() {
         {group ? <>
           <p>Checkout #{group._id} | <strong>{group.status}</strong> | Payment: {group.paymentStatus}</p>
           <DeliveryWindow value={group} />
+          {group.storeRoutes?.map((route) => <section key={route.storeId} className="order-card" aria-label={`Delivery route from ${route.storeName}`}>
+            <h2>Delivery route from {route.storeName}</h2>
+            <p>One base fee and speed surcharge per store, plus its road route through all its drop-offs.
+              Separate stores are charged separately. Driver travel to pickup and batching detours do not add customer charges.</p>
+            <p>Store route: {(/usa/i.test(database) ? route.distanceKm / 1.609344 : route.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p>
+            <ol>{route.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol>
+          </section>)}
           {group.cartRoute ? <section className="order-card" aria-label="Cart delivery route">
             <h2>One delivery route for your complete cart</h2>
             <p>Billable road distance: {(/usa/i.test(database) ? group.cartRoute.distanceKm / 1.609344 : group.cartRoute.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}.
@@ -366,18 +373,18 @@ export default function DeliveryCheckoutPage() {
             {group.deliveries.map((delivery) => <article className="order-card" key={delivery.key}>
               <h2>Pickup: {delivery.store.name}</h2><p>{delivery.store.address}</p>
               <p>{international ? 'US consolidation hub' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
+              {delivery.defaultFallback ? <p>Queued for the default store after purchase, even when offline. It must claim and prepare the package before dispatch.</p> : null}
               {!group.cartRoute ? <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p> : null}
               {delivery.lines.map((line) => <p key={`${line.key}:${line.product}`}>{line.quantity} x {line.name || line.product} at {formatCurrency(line.price)}</p>)}
               <p>Cargo: {delivery.cargo.weightKg ?? 'Unknown'} kg / {delivery.cargo.volumeLiters ?? 'Unknown'} liters</p>
               {delivery.requiresVehicleSelection ? <p role="note">Measurements are incomplete. Choose a vehicle manually; capacity cannot be guaranteed.</p> : null}
               {step === 2 ? <label>Vehicle<select value={selections[delivery.key] || ''} onChange={(event) =>
-                setSelections((previous) => group.cartRoute ?
-                  Object.fromEntries(group.deliveries.map((entry) => [entry.key, event.target.value])) :
-                  ({ ...previous, [delivery.key]: event.target.value }))}>
+                setSelections((previous) => selectDeliveryVehicle(group.deliveries, previous, delivery, event.target.value))}>
                 <option value="">Choose a vehicle</option>
-                {delivery.vehicleOptions.map((option) => <option key={option.type} value={option.type}>{option.type} - {group.cartRoute ? 'entire cart route' : 'unshared route'} {formatCurrency(option.fee)}</option>)}
+                {delivery.vehicleOptions.map((option) => <option key={option.type} value={option.type}>{option.type} - {delivery.pricingGroup?.kind === 'store-route' ? 'complete store route' : group.cartRoute ? 'entire cart route' : 'unshared route'} {formatCurrency(option.fee)}</option>)}
               </select></label> : <p>Vehicle: {selections[delivery.key]}</p>}
-              <p>{group.cartRoute ? 'Allocated cart route fee share (not an additional charge)' : 'Delivery share'}: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
+              <p>{delivery.pricingGroup?.kind === 'store-route' ? "This drop-off's share of the store route" : group.cartRoute ? 'Allocated cart route fee share (not an additional charge)' : 'Delivery share'}: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
+                {delivery.pricingGroup?.kind === 'store-route' ? ` (complete store route: ${formatCurrency(pricing.byKey[delivery.key].sharedFee)})` : ''}
                 {!group.cartRoute && pricing.byKey[delivery.key].storeCount > 1 ? ` (${pricing.byKey[delivery.key].storeCount} nearby stores share this vehicle fee)` : ''}</p>
               {step === 2 ? <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} /> : null}
             </article>)}

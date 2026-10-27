@@ -183,7 +183,8 @@ export default function DriverDeliveriesPage() {
     {offers.length ? offers.map((offer) => <article key={offer._id} className="order-card">
       <h3>{offer.store?.name || 'Store'} - #{offer._id}</h3>
       <p>{offer.store?.address} | {offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
-      {offer.cartRoute ? <><p>Accept this complete customer cart: all pickup stores and drop-off addresses. Fee shown is for the entire cart.</p>
+      {offer.cartRoute ? <><p>{offer.storeDispatchBatch ? 'Accept this store delivery batch: collect every ready package before starting drop-offs. The fee is the sum of saved package fees.' :
+        'Accept this complete customer cart: all pickup stores and drop-off addresses. Fee shown is for the entire cart.'}</p>
         <ol>{offer.cartRoute.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol></> : null}
       <p>Drop-off: {addressText(offer.dropoffAddress)}</p>
       {!offer.dropoffAddress ? <p>Delivery area: {[offer.dropZone?.city, offer.dropZone?.zip].filter(Boolean).join(', ') || 'Address on dispatch'}</p> : null}
@@ -222,6 +223,14 @@ export default function DriverDeliveriesPage() {
       {entry.cartRouteVersion === 1 && !entry.dropoffReady ? <p>Complete all pickups for this customer cart before any drop-off.
         Remaining pickup orders: {entry.pendingPickupOrderIds?.length || 0}.</p> : null}
       {(entry.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
+      {companyDriver && entry.canRerouteBeforePickup ? <div className="action-row">
+        <button className="ghost-button" disabled={busy} onClick={() => {
+          if (window.confirm('Release this entire delivery to another driver before pickup? Payments and fees stay unchanged.')) act(entry.orderId, 'company-reroute')
+        }}>Reroute accepted delivery</button>
+        <button className="danger-button" disabled={busy} onClick={() => {
+          if (window.confirm('Reject this accepted delivery before pickup? The whole batch is released and flagged for Admin review; payment stays unchanged.')) act(entry.orderId, 'company-reject')
+        }}>Reject accepted delivery</button>
+      </div> : null}
       <button className="ghost-button" disabled={entry.deliveryStatus === 'Picked Up' && entry.dropoffReady === false} onClick={() => {
         if (selectedId !== entry.orderId) {
           routeTiming.current.next = Math.min(routeTiming.current.next, Date.now() + 10000)

@@ -8,6 +8,7 @@ export const ADMIN_TOOLS = [
   ['Orders', 'Statuses and customer details', '/admin/tools/orders', 'sales'],
   ['Inventory', 'Low-stock alerts and restocking', '/admin/tools/inventory', 'catalog'],
   ['Delivery', 'Origin, rates and delivery windows', '/admin/tools/delivery', 'fulfillment'],
+  ['Store Requests', 'Claim, reroute and review rejected store orders', '/admin/store-assignments', 'fulfillment'],
   ['Vehicles', 'Capacity, route fees and packaged cargo', '/admin/delivery', 'fulfillment'],
   ['Rides', 'Ride service settings and operations', '/admin/rides', 'fulfillment'],
   ['FX Rate', 'Daily exchange rates and automation', '/admin/international-payments', 'sales'],

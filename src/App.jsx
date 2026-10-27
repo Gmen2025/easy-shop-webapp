@@ -233,6 +233,7 @@ function App() {
             }
           />
           <Route path="admin/tools/:section" element={isAuthenticated && isAdmin ? <AdminDashboardPage key={location.pathname} /> : <Navigate to="/login" replace />} />
+          <Route path="admin/store-assignments" element={isAuthenticated && isAdmin ? <StoreAssignmentsPage admin /> : <Navigate to="/login" replace />} />
           <Route path="admin/operations/:section" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><AdminOperationsPage key={location.pathname} /></section> : <Navigate to="/login" replace />} />
           <Route path="admin/rides" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><RideSettingsPage /></section> : <Navigate to="/login" replace />} />
           <Route path="delivery-checkouts" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutsPage /> : <Navigate to="/login" replace />} />

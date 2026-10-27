@@ -86,6 +86,12 @@ test('website gates individual and combined drop-offs per cart while leaving pic
     assert.match(markup, /Complete all pickups for this customer cart before opening drop-off directions/)
     assert.doesNotMatch(markup, /delivery-map-panel/)
     assert.match(render('c'), /delivery-map-panel/, 'A fully collected different cart can open its route')
+    assert.doesNotMatch(markup, />Reroute accepted delivery<|>Reject accepted delivery</)
+    queue[1].canRerouteBeforePickup = true
+    const releasable = render('')
+    assert.match(releasable, />Reroute accepted delivery</)
+    assert.match(releasable, />Reject accepted delivery</)
+    queue[1].canRerouteBeforePickup = false
     queue[0].dropoffReady = queue[1].dropoffReady = true
     queue[1].deliveryStatus = 'Picked Up'
     assert.match(render('a'), /delivery-map-panel/, 'The cart unlocks after its final pickup')
