@@ -153,6 +153,38 @@ test('website stores prepare, select and dispatch packages through the shared au
       assert.equal(button('Dispatch selected (0)').props.disabled, true)
       assert.equal(nodes(render()).filter((node) => node.type === 'input' && node.props.type === 'checkbox').length, 0)
     }
+    for (const mode of [false, true]) {
+      admin = mode
+      order.storeRouteVersion = undefined
+      order.requiredVehicle = undefined
+      state.reset([order])
+      assert.equal(button('Mark package ready'), undefined)
+      assert.match(text(render()), /older delivery workflow/)
+      assert.equal(button('Enable store preparation').props.disabled, true)
+      nodes(render()).find((node) => node.type === 'select').props.onChange({ target: { value: 'car' } })
+      assert.equal(button('Enable store preparation').props.disabled, false)
+      try {
+        globalThis.window = { confirm: () => false }
+        button('Enable store preparation').props.onClick()
+        assert.equal(state.calls.length, 0)
+        globalThis.window.confirm = () => true
+        button('Enable store preparation').props.onClick()
+        assert.deepEqual(state.calls[0], [`${mode ? 'admin' : 'me'}/assignments/order123456/enable-preparation`,
+          { method: 'POST', data: { vehicle: 'car' } }])
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        order.storeRouteVersion = 1
+        order.requiredVehicle = 'car'
+        assert.ok(button('Mark package ready'))
+        assert.equal(button('Dispatch selected (0)').props.disabled, true)
+        await button('Mark package ready').props.onClick()
+        order.storeReadyAt = new Date().toISOString()
+        assert.equal(button('Dispatch selected (1)').props.disabled, false)
+        order.storeReadyAt = null
+      } finally {
+        if (originalWindow === undefined) delete globalThis.window
+        else globalThis.window = originalWindow
+      }
+    }
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

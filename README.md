@@ -31,6 +31,14 @@ entire batch, collects all its packages, then delivers. Other stores in the same
 checkout dispatch independently. Original checkout payments/refunds stay separate
 from operational batches.
 
+If an accepted older order has no **Mark package ready** button, use **Enable store
+preparation** first (choose a vehicle if none was saved). This is an explicit upgrade,
+not repricing: saved fees, payment records and stock reservations remain unchanged.
+Older cart-wide orders upgrade all active packages together, after every store has
+claimed and before any driver assignment/pickup. Then mark packages ready and
+dispatch normally. Unknown-size packages dispatch singly. Deploy the backend
+upgrade endpoint alongside both clients; there is no automatic migration.
+
 Claimed requests can also be rerouted before dispatch. **Admin > Store Requests**
 allows direct claim for the assigned/default eligible store, reroute, preparation
 and dispatch, plus review of rejected requests. Admin rerouting reopens eligible

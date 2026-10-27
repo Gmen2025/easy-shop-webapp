@@ -19,6 +19,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
   const [now, setNow] = useState(Date.now)
   const [selectedIds, setSelectedIds] = useState([])
   const [driverIds, setDriverIds] = useState({})
+  const [preparationVehicles, setPreparationVehicles] = useState({})
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(clock)
@@ -30,7 +31,8 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
         method: 'POST', ...(decision === 'driver-assign' ? { data: { driverId: driverIds[order._id]?.trim() } } : {}),
       })
     }
-    else await deliveryRequest(`${scope}/assignments/${encodeURIComponent(order._id)}/${decision}`, { method: 'POST' })
+    else await deliveryRequest(`${scope}/assignments/${encodeURIComponent(order._id)}/${decision}`, { method: 'POST',
+      ...(decision === 'enable-preparation' ? { data: { vehicle: preparationVehicles[order._id] } } : {}) })
     setSelectedIds((current) => decision === 'ready'
       ? current.includes(order._id) ? current : [...current, order._id]
       : current.filter((key) => key !== order._id))
@@ -119,6 +121,20 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
               if (window.confirm('Assign this entire delivery to the selected driver, overriding online status and ownership? Vehicle, capacity and pickup safeguards remain enforced.')) respond(order, 'driver-assign')
             }}>Admin assign / dispatch to driver</button>
           </> : null}
+        </div> : null}
+        {!order.storeRouteVersion && !fallback && order.fulfillmentStatus === 'accepted' && active ? <div className="action-row">
+          <p>This order uses the older delivery workflow, which hides preparation controls. Enable store preparation first; saved fees and payments will not change.
+            For an older cart, all active packages must be claimed and free of driver assignments, and upgrade together.</p>
+          {!order.requiredVehicle ? <label>Delivery vehicle for packages without a saved vehicle (unknown-size packages dispatch singly)
+            <select aria-label={`Preparation vehicle for ${order._id}`} value={preparationVehicles[order._id] || ''}
+              onChange={(event) => setPreparationVehicles((current) => ({ ...current, [order._id]: event.target.value }))}>
+              <option value="">Choose vehicle</option>
+              {['motorcycle', 'car', 'van', 'truck'].map((vehicle) => <option key={vehicle} value={vehicle}>{vehicle}</option>)}
+            </select>
+          </label> : null}
+          <button className="solid-button" disabled={action.busy || assignments.loading || !order.requiredVehicle && !preparationVehicles[order._id]} onClick={() => {
+            if (window.confirm('Enable store preparation for all active packages in this older cart? Stores will prepare and dispatch separately. Saved fees, payment records and stock reservations stay unchanged.')) respond(order, 'enable-preparation')
+          }}>Enable store preparation</button>
         </div> : null}
         {order.storeRouteVersion === 1 && !fallback && order.fulfillmentStatus === 'accepted' ? <div className="action-row">
           {order.storeDispatchBatch ? <p>Dispatched batch: {order.storeDispatchBatch} | {order.deliveryStatus}.
