@@ -82,9 +82,10 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
         <StoreLogo name={store?.name} logo={store?.logo} /><h2>Order #{order._id.slice(-6).toUpperCase()}</h2>
         <p>{store?.name} | {store?.address}</p><p>Store ID: {store?.storeId || store?._id}</p>
         {order.checkoutGroup ? <p>Combined checkout: {order.checkoutGroup}</p> : null}
-        {order.requiredVehicle ? <p>Delivery vehicle: {order.requiredVehicle}</p> : null}
+        {order.requiredVehicle ? <p>{order.storeDispatchBatch ? 'Priced vehicle' : 'Delivery vehicle'}: {order.requiredVehicle}</p> : null}
         <p>Deliver to: {[order.shippingAddress1, order.city, order.zip].filter(Boolean).join(', ')}</p>
         <DeliveryWindow value={order} />
+        {order.storeDispatchBatch ? <p>Drivers may claim this batch now, including before its delivery window. The saved delivery schedule and fee stay unchanged.</p> : null}
         {order.driver ? <p>Assigned driver: {String(order.driver)}</p> : order.companyOfferDriver ? <p>Company-driver offer: {String(order.companyOfferDriver)} (persists offline)</p> : null}
         {driverRejections.length ? <p>Driver rejection - Admin review ({driverRejections.length}). Payment is unchanged; rejection does not block delivery.</p> : null}
         {admin ? driverRejections.map((response, index) => <p key={response._id || index}>

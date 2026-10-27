@@ -182,7 +182,8 @@ export default function DriverDeliveriesPage() {
       without cancelling or refunding it; it stays queued if nobody is available. Reject also flags it for Admin review without pausing delivery.</p>
     {offers.length ? offers.map((offer) => <article key={offer._id} className="order-card">
       <h3>{offer.store?.name || 'Store'} - #{offer._id}</h3>
-      <p>{offer.store?.address} | {offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
+      <p>{offer.store?.address} | {offer.storeDispatchBatch ? 'Priced vehicle: ' : ''}{offer.requiredVehicle} | {formatCurrency(offer.deliveryFee)}</p>
+      {offer.storeDispatchBatch ? <p>Your configured vehicle may carry this batch if it fits the combined load. The saved fee does not change.</p> : null}
       {offer.cartRoute ? <><p>{offer.storeDispatchBatch ? 'Accept this store delivery batch: collect every ready package before starting drop-offs. The fee is the sum of saved package fees.' :
         'Accept this complete customer cart: all pickup stores and drop-off addresses. Fee shown is for the entire cart.'}</p>
         <ol>{offer.cartRoute.stops.map((stop) => <li key={stop.key}>{stop.type === 'pickup' ? 'Pickup' : 'Drop-off'}: {stop.name}</li>)}</ol></> : null}
@@ -194,8 +195,11 @@ export default function DriverDeliveriesPage() {
       <p>{offer.itemCount ?? offer.items?.length ?? 0} item(s)</p>
       {(offer.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <DeliveryWindow value={offer} />
-      {offer.upcoming ? <p role="status">Upcoming scheduled delivery. Claiming opens when every package's delivery window starts.</p> :
-        offer.canClaim === false ? <p role="status">Queued until you are online with an eligible vehicle and enough capacity. Refresh after updating your availability.</p> : null}
+      {(offer.packageDeliveryWindows || []).map((entry) => <div key={entry.orderId}>
+        <p>Package #{entry.orderId}</p><DeliveryWindow value={entry} />
+      </div>)}
+      {offer.upcoming ? <p role="status">Upcoming scheduled delivery. You may claim now; the saved delivery windows and fee stay unchanged.</p> : null}
+      {offer.canClaim === false ? <p role="status">Queued until you are online with an eligible vehicle and enough capacity. Refresh after updating your availability.</p> : null}
       <button disabled={busy || offer.canClaim === false} className="solid-button" onClick={() => act(offer._id, offer.sharedAssignment ? 'claim' : 'company-claim')}>Claim delivery</button>
       {offer.canRespond !== false ? <><button disabled={busy} className="ghost-button" onClick={() => {
         if (window.confirm('Return this request for other drivers to claim? It leaves your list and stays queued if nobody is available.')) act(offer._id, 'company-reroute')

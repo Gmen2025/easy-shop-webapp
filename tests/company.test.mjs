@@ -112,10 +112,17 @@ test('website gates individual and combined drop-offs per cart while leaving pic
     assert.match(backlog, /Reject also flags it for Admin review without pausing delivery/)
     const partnerBacklog = render('', [{ _id: 'partner', items: [], canRespond: false }])
     assert.doesNotMatch(partnerBacklog, />Reroute offer<|>Reject delivery</)
-    const upcoming = render('', [{ _id: 'scheduled', items: [], upcoming: true, canClaim: false, canRespond: false }])
+    const upcoming = render('', [{ _id: 'scheduled', items: [], upcoming: true, canClaim: true, canRespond: true,
+      packageDeliveryWindows: [{ orderId: 'package-1', deliveryWindowStart: '2026-10-29T13:00:00Z',
+        deliveryWindowEnd: '2026-10-29T15:00:00Z' }] }])
     assert.match(upcoming, /Upcoming scheduled delivery/)
-    assert.doesNotMatch(upcoming, /Queued until you are online|>Reroute offer<|>Reject delivery</)
-    assert.match(upcoming, /<button\b[^>]*disabled[^>]*>Claim delivery<\/button>/)
+    assert.match(upcoming, /You may claim now/)
+    assert.match(upcoming, /Package #package-1/)
+    assert.ok(upcoming.includes(new Date('2026-10-29T13:00:00Z').toLocaleString()))
+    assert.ok(upcoming.includes(new Date('2026-10-29T15:00:00Z').toLocaleString()))
+    assert.doesNotMatch(upcoming, /Queued until you are online/)
+    assert.match(upcoming, />Reroute offer</)
+    assert.doesNotMatch(upcoming, /<button\b[^>]*disabled[^>]*>Claim delivery<\/button>/)
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })

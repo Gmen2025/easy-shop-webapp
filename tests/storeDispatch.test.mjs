@@ -82,6 +82,12 @@ test('website stores prepare, select and dispatch packages through the shared au
     assert.deepEqual(state.calls[2], ['me/dispatch-batches', { method: 'POST', data: { orderIds: [order._id] } }])
     order.storeDispatchBatch = 'batch1'
     assert.match(text(render()), /Dispatched batch: batch1/)
+    assert.match(text(render()), /Drivers may claim this batch now/)
+    order.deliveryWindowStart = '2026-10-29T13:00:00Z'
+    order.deliveryWindowEnd = '2026-10-29T15:00:00Z'
+    const window = nodes(render()).find((node) => typeof node.type === 'function' && node.type.name === 'DeliveryWindow')
+    assert.equal(window.props.value.deliveryWindowStart, order.deliveryWindowStart)
+    assert.equal(window.props.value.deliveryWindowEnd, order.deliveryWindowEnd)
     assert.equal(nodes(render()).filter((node) => node.type === 'input' && node.props.type === 'checkbox').length, 0)
     admin = true
     order.storeDispatchBatch = null
