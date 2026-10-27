@@ -17,10 +17,11 @@ test('website stores prepare, select and dispatch packages through the shared au
       load(id) {
         if (id !== stateId) return
         return `
-          let cursor = 0, states = [], orders = []
+          let cursor = 0, states = [], orders = [], requestError = null
           export const calls = []
           export const resources = []
-          export function reset(value) { orders = value; states = []; calls.length = 0; resources.length = 0 }
+          export function reset(value) { orders = value; states = []; calls.length = 0; resources.length = 0; requestError = null }
+          export function failRequest(message) { requestError = new Error(message) }
           export function renderStart() { cursor = 0 }
           export function useState(initial) {
             const index = cursor++
@@ -30,7 +31,7 @@ test('website stores prepare, select and dispatch packages through the shared au
           export const useEffect = () => {}
           export const useCompanyResource = (path) => { resources.push(path); return { data: orders, loading: false, reload: async () => {} } }
           export const useCompanyAction = () => ({ busy: false, run: async (action) => action() })
-          export const deliveryRequest = async (...args) => { calls.push(args) }
+          export const deliveryRequest = async (...args) => { calls.push(args); if (requestError) throw requestError }
           export const apiRequest = async (...args) => { calls.push(args) }
         `
       },
@@ -47,7 +48,8 @@ test('website stores prepare, select and dispatch packages through the shared au
   try {
     const state = await server.ssrLoadModule('virtual:store-dispatch-state')
     const { default: Page } = await server.ssrLoadModule('/src/pages/StoreAssignmentsPage.jsx')
-    const order = { _id: 'order123456', storeRouteVersion: 1, fulfillmentStatus: 'accepted', store: 'store1',
+    const order = { _id: 'order123456', storeRouteVersion: 1, fulfillmentStatus: 'unassigned', store: null,
+      fallbackStore: { _id: 'store1', name: 'Store' },
       assignedStoreSnapshot: { name: 'Store', storeId: 'store1' }, orderItems: [], deliveryStatus: 'Pending' }
     state.reset([order])
     const nodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node)
@@ -59,14 +61,25 @@ test('website stores prepare, select and dispatch packages through the shared au
     const button = (label) => nodes(render()).find((node) => node.type === 'button' && text(node) === label)
     assert.equal(button('Dispatch selected (0)').props.disabled, true)
     assert.equal(state.resources.at(-1), '/stores/me/assignments')
+    await button('Claim order').props.onClick()
+    assert.deepEqual(state.calls[0], ['me/assignments/order123456/accept', { method: 'POST' }])
+    order.fulfillmentStatus = 'accepted'
+    order.store = 'store1'
+    order.fallbackStore = null
+    assert.equal(button('Dispatch selected (0)').props.disabled, true)
+    assert.match(text(render()), /Claimed - prepare the package/)
     await button('Mark package ready').props.onClick()
-    assert.deepEqual(state.calls[0], ['me/assignments/order123456/ready', { method: 'POST' }])
+    assert.deepEqual(state.calls[1], ['me/assignments/order123456/ready', { method: 'POST' }])
     order.storeReadyAt = new Date().toISOString()
     const checkbox = nodes(render()).find((node) => node.type === 'input' && node.props.type === 'checkbox')
+    assert.equal(checkbox.props.checked, true)
+    assert.equal(button('Dispatch selected (1)').props.disabled, false)
     checkbox.props.onChange()
+    assert.equal(button('Dispatch selected (0)').props.disabled, true)
+    nodes(render()).find((node) => node.type === 'input' && node.props.type === 'checkbox').props.onChange()
     assert.equal(button('Dispatch selected (1)').props.disabled, false)
     await button('Dispatch selected (1)').props.onClick()
-    assert.deepEqual(state.calls[1], ['me/dispatch-batches', { method: 'POST', data: { orderIds: [order._id] } }])
+    assert.deepEqual(state.calls[2], ['me/dispatch-batches', { method: 'POST', data: { orderIds: [order._id] } }])
     order.storeDispatchBatch = 'batch1'
     assert.match(text(render()), /Dispatched batch: batch1/)
     assert.equal(nodes(render()).filter((node) => node.type === 'input' && node.props.type === 'checkbox').length, 0)
@@ -87,7 +100,8 @@ test('website stores prepare, select and dispatch packages through the shared au
     await button('Mark package ready').props.onClick()
     assert.deepEqual(state.calls[2], ['admin/assignments/order123456/ready', { method: 'POST' }])
     order.storeReadyAt = new Date().toISOString()
-    nodes(render()).find((node) => node.type === 'input' && node.props.type === 'checkbox').props.onChange()
+    assert.equal(nodes(render()).find((node) => node.type === 'input' && node.props.type === 'checkbox').props.checked, true)
+    assert.equal(button('Dispatch selected (1)').props.disabled, false)
     await button('Dispatch selected (1)').props.onClick()
     assert.deepEqual(state.calls[3], ['admin/dispatch-batches', { method: 'POST', data: { orderIds: [order._id] } }])
     order.storeDispatchBatch = 'batch1'
@@ -126,6 +140,18 @@ test('website stores prepare, select and dispatch packages through the shared au
     } finally {
       if (originalWindow === undefined) delete globalThis.window
       else globalThis.window = originalWindow
+    }
+    for (const mode of [false, true]) {
+      admin = mode
+      order.fulfillmentStatus = 'accepted'
+      order.adminReviewRequired = undefined
+      order.storeDispatchBatch = null
+      order.storeReadyAt = null
+      state.reset([order])
+      state.failRequest('Package changed. Refresh assignments.')
+      await assert.rejects(button('Mark package ready').props.onClick(), /Package changed/)
+      assert.equal(button('Dispatch selected (0)').props.disabled, true)
+      assert.equal(nodes(render()).filter((node) => node.type === 'input' && node.props.type === 'checkbox').length, 0)
     }
   } finally {
     await server.close()

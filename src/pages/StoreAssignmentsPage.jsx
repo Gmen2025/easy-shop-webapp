@@ -31,9 +31,12 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
       })
     }
     else await deliveryRequest(`${scope}/assignments/${encodeURIComponent(order._id)}/${decision}`, { method: 'POST' })
-    setSelectedIds((current) => current.filter((key) => key !== order._id))
+    setSelectedIds((current) => decision === 'ready'
+      ? current.includes(order._id) ? current : [...current, order._id]
+      : current.filter((key) => key !== order._id))
     await assignments.reload()
-  }, 'Assignment response saved.')
+  }, decision === 'ready' ? 'Package ready and selected. Use Dispatch selected to send it to drivers.' :
+    decision === 'accept' ? 'Order claimed. Prepare the package, then mark it ready to select it for dispatch.' : 'Assignment response saved.')
   const selectable = (order) => order.storeRouteVersion === 1 && order.fulfillmentStatus === 'accepted' &&
     order.storeReadyAt && !order.storeDispatchBatch && !order.driver
   const selected = (assignments.data || []).filter((order) => selectedIds.includes(order._id))
@@ -45,8 +48,8 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
   return <section className="page-stack company-console company-store">{admin ? <AdminNavigation /> : <CompanyNavigation />}
     <article className="panel"><h1>{admin ? 'Admin store assignments & rejections' : 'Store assignments'}</h1>
       <p>Timed assignments reroute automatically. Default-store fallback requests stay queued even while offline and have no expiry.
-        Open your store and ensure matching stock and prices before claiming. Mark accepted packages ready, then select packages from one store
-        using the same vehicle for batch dispatch. Single-package dispatch is also allowed.
+        Open your store and ensure matching stock and prices before claiming. Claim the order, prepare its package, then mark it ready.
+        Marking ready automatically selects it for dispatch. Dispatch selected sends ready packages from one store using the same vehicle. Single-package dispatch is also allowed.
         Claiming and rerouting need no Admin review. Rerouting offers another eligible store a chance to accept; only rejected fallback requests wait for Admin review.</p>
       <p>Driver routing tries nearby available drivers, then the nearest available company driver, then an eligible offline company driver.
         Dispatched batches stay together. You can reroute a batch to other drivers before any package is picked up.</p>
@@ -55,6 +58,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
       <button className="solid-button" disabled={action.busy || assignments.loading || Boolean(assignments.error) ||
         !selectedIds.length || selected.length !== selectedIds.length || selected.some((order) => !selectable(order))}
         onClick={dispatchSelected}>Dispatch selected ({selectedIds.length})</button>
+      {!selectedIds.length ? <p>Nothing selected. Claim an order, prepare it, then click Mark package ready to select it automatically. Already-ready packages can be selected below.</p> : null}
       <button className="ghost-button" disabled={action.busy || assignments.loading} onClick={() => action.run(assignments.reload)}>Refresh assignments</button>
       {assignments.loading && !assignments.data ? <p role="status">Loading assignments...</p> : null}
       {assignments.error || action.error ? <p role="alert">{assignments.error || action.error}</p> : null}
@@ -89,7 +93,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
         </p>)}
         <p>Products: {Number.isFinite(order.itemsSubtotal) ? formatCurrency(order.itemsSubtotal) : 'Unavailable'}</p>
         <p>{rejected ? `Rejected - Admin review | ${order.fulfillmentStatus}` : fallback ? 'Default-store fallback - awaiting a decision (no expiry)' : order.fulfillmentStatus === 'accepted'
-          ? 'Accepted - prepare for pickup' : order.fulfillmentStatus === 'pending' ? `Respond within ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` :
+          ? order.storeDispatchBatch ? 'Dispatched to drivers' : order.storeReadyAt ? 'Ready for dispatch' : 'Claimed - prepare the package, then click Mark package ready' : order.fulfillmentStatus === 'pending' ? `Respond within ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` :
             `Delivery status: ${order.deliveryStatus} | ${order.fulfillmentStatus || order.status}`}</p>
         {admin ? <div className="action-row">
           {active ? <>
@@ -129,7 +133,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
             if (window.confirm('Release this claimed request to another eligible store? No Admin approval is needed.')) respond(order, 'reroute')
           }}>Reroute</button> : null}
         {!admin && (fallback || order.fulfillmentStatus === 'pending') ? <div className="action-row">
-          <button className="solid-button" disabled={action.busy || assignments.loading || Boolean(assignments.error) || (!fallback && seconds === 0)} onClick={() => respond(order, 'accept')}>{fallback ? 'Claim & prepare' : 'Accept & prepare'}</button>
+          <button className="solid-button" disabled={action.busy || assignments.loading || Boolean(assignments.error) || (!fallback && seconds === 0)} onClick={() => respond(order, 'accept')}>{fallback ? 'Claim order' : 'Accept order'}</button>
           {fallback ? <button className="ghost-button" disabled={action.busy || assignments.loading} onClick={() => {
             if (window.confirm('Reroute this assignment to another eligible store?')) respond(order, 'reroute')
           }}>Reroute</button> : null}

@@ -19,8 +19,11 @@ rerouting need no Admin approval: rerouting offers other eligible stores a timed
 chance to accept; only explicit fallback rejection enters Admin review without
 cancelling payment.
 
-Use **Store assignments** to claim/accept, **Mark package ready**, select ready
-packages from one store with the same vehicle, then **Dispatch selected**. Packages
+Use **Store assignments** to **Claim order** / **Accept order**, prepare the package,
+then **Mark package ready**. Marking ready automatically selects the package and
+increases **Dispatch selected**; claiming alone does not mark goods ready or select
+them. You can deselect packages or select already-ready packages manually. Dispatch
+ready packages from one store with the same vehicle using **Dispatch selected**. Packages
 from different customer orders may share one batch; single dispatch needs no reason.
 Combined known cargo must fit the vehicle. Unknown measurements require single
 dispatch. A batch stays queued without an online driver. One driver claims the
