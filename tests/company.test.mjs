@@ -112,6 +112,10 @@ test('website gates individual and combined drop-offs per cart while leaving pic
     assert.match(backlog, /Reject also flags it for Admin review without pausing delivery/)
     const partnerBacklog = render('', [{ _id: 'partner', items: [], canRespond: false }])
     assert.doesNotMatch(partnerBacklog, />Reroute offer<|>Reject delivery</)
+    const upcoming = render('', [{ _id: 'scheduled', items: [], upcoming: true, canClaim: false, canRespond: false }])
+    assert.match(upcoming, /Upcoming scheduled delivery/)
+    assert.doesNotMatch(upcoming, /Queued until you are online|>Reroute offer<|>Reject delivery</)
+    assert.match(upcoming, /<button\b[^>]*disabled[^>]*>Claim delivery<\/button>/)
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })

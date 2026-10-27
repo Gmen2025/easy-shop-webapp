@@ -194,7 +194,8 @@ export default function DriverDeliveriesPage() {
       <p>{offer.itemCount ?? offer.items?.length ?? 0} item(s)</p>
       {(offer.items || []).map((item, index) => <p key={index}>{item.quantity} x {item.name}</p>)}
       <DeliveryWindow value={offer} />
-      {offer.canClaim === false ? <p role="status">Queued until you are online with an eligible vehicle and enough capacity. Refresh after updating your availability.</p> : null}
+      {offer.upcoming ? <p role="status">Upcoming scheduled delivery. Claiming opens when every package's delivery window starts.</p> :
+        offer.canClaim === false ? <p role="status">Queued until you are online with an eligible vehicle and enough capacity. Refresh after updating your availability.</p> : null}
       <button disabled={busy || offer.canClaim === false} className="solid-button" onClick={() => act(offer._id, offer.sharedAssignment ? 'claim' : 'company-claim')}>Claim delivery</button>
       {offer.canRespond !== false ? <><button disabled={busy} className="ghost-button" onClick={() => {
         if (window.confirm('Return this request for other drivers to claim? It leaves your list and stays queued if nobody is available.')) act(offer._id, 'company-reroute')

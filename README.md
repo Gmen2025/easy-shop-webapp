@@ -56,6 +56,10 @@ claiming still requires going online and meeting vehicle/capacity checks.
 Company drivers may accept, reroute or reject their offer while it remains queued.
 They may also reroute/reject an accepted batch before any package is picked up.
 Rejection is reviewable by Admin without pausing delivery or altering payment.
+Prepared, dispatched scheduled batches appear as **Upcoming scheduled delivery**
+to the designated compatible company driver, even offline. Claim, Reject and
+Reroute remain unavailable until every package's delivery window opens.
+Upcoming visibility does not override the order's required vehicle.
 
 The dispatching store's **Reroute to another driver** reoffers the whole batch.
 **Admin > Store Requests** shows company offers, assigned drivers and rejection
