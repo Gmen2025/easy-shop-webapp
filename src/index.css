@@ -2233,6 +2233,115 @@ textarea {
   text-align: center;
 }
 
+.site-footer {
+  position: relative;
+  margin-top: 2rem;
+  overflow: hidden;
+  border-top: 4px solid var(--brand);
+  background:
+    radial-gradient(520px 260px at 8% 0%, rgba(255, 212, 0, 0.1), transparent 72%),
+    #171c25;
+  color: #f7f8fb;
+}
+
+.site-footer-inner {
+  width: min(1150px, 100%);
+  margin: 0 auto;
+  padding: 3rem 1.5rem 1.2rem;
+}
+
+.site-footer-main {
+  display: grid;
+  grid-template-columns: minmax(230px, 1.5fr) repeat(2, minmax(140px, 0.8fr)) minmax(220px, 1fr);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  padding-bottom: 2.5rem;
+}
+
+.footer-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.footer-brand-link svg {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  stroke: var(--brand);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.footer-brand p,
+.footer-contact p {
+  max-width: 290px;
+  margin: 0.85rem 0 0;
+  color: #b7bfcc;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.footer-link-group,
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.footer-link-group h2,
+.footer-contact h2 {
+  margin: 0 0 0.25rem;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.footer-link-group a {
+  color: #b7bfcc;
+  font-size: 0.9rem;
+  transition: color 140ms ease;
+}
+
+.footer-link-group a:hover,
+.footer-contact > a:hover {
+  color: var(--brand);
+}
+
+.footer-contact p {
+  margin: -0.15rem 0 0.1rem;
+}
+
+.footer-contact > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 750;
+  transition: color 140ms ease;
+}
+
+.site-footer a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+.site-footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: #9da7b5;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 680px) {
   .topbar {
     padding: 0.65rem 1rem;
@@ -2316,5 +2425,43 @@ textarea {
   .menu-item-icon {
     width: 24px;
     height: 24px;
+  }
+
+  .site-footer {
+    margin-top: 1rem;
+  }
+
+  .site-footer-inner {
+    padding: 2.25rem 1.1rem calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .site-footer-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 1.25rem;
+    padding-bottom: 1.8rem;
+  }
+
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+
+  .footer-brand p,
+  .footer-contact p {
+    max-width: 32rem;
+  }
+
+  .site-footer-bottom {
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-footer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer-brand {
+    grid-column: auto;
   }
 }
