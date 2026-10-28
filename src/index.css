@@ -2035,6 +2035,12 @@ textarea {
   color: #161a20;
 }
 
+@media (min-width: 1200px) {
+  .menu-toggle {
+    display: grid;
+  }
+}
+
 .brand-icon {
   width: 2rem;
   height: 2rem;
