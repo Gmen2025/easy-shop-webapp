@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
+import NotificationBell from './NotificationBell'
 import { companyTabs, isCompanyDriver, isCompanyStoreOwner } from '../utils/company'
 import { switchDatabase } from '../features/cart/cartSlice'
 import {
@@ -167,6 +168,7 @@ function Header() {
           <div className="header-auth">
             {user ? (
               <>
+                <NotificationBell key={`${selectedDb}:${user.id || user._id}`} onOpen={closeMenu} />
                 <span className="hello">Hi, {user.name}</span>
                 <button
                   type="button"
