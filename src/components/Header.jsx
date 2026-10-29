@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
 import NotificationBell from './NotificationBell'
+import brandLogo from '../assets/addugenet-header.png'
 import { companyTabs, isCompanyDriver, isCompanyStoreOwner } from '../utils/company'
 import { switchDatabase } from '../features/cart/cartSlice'
 import {
@@ -149,7 +150,7 @@ function Header() {
       <header className="topbar">
         <div className="topbar-main">
           <Link to="/" className="brand topbar-brand" onClick={closeMenu}>
-            <MenuIcon name="bag" className="brand-icon" />
+            <img src={brandLogo} className="brand-icon" alt="" width="40" height="40" />
             <span>Addu Genet Easy Shop</span>
           </Link>
           <button

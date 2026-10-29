@@ -2,6 +2,10 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+The header uses the supplied Addugenet bag icon to the left of the shop name,
+at 40px on desktop and 32px on small screens. It remains part of the home link;
+the adjacent shop name supplies its accessible label.
+
 ## Shared notifications
 
 Signed-in users have a notification bell in the header, with an unread badge,
