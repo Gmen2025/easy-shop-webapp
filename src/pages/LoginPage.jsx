@@ -39,12 +39,14 @@ function LoginPage() {
     let current = true
     if (!callback.current) {
       callback.current = exchangeSocialCallback(location.search)
-        .then((result) => dispatch(finishSocialSignIn(result)).unwrap())
+        .then((result) => result.linked ? result : dispatch(finishSocialSignIn(result)).unwrap())
     }
     // Clear handoff codes from the address bar without interrupting the exchange.
     window.history.replaceState(window.history.state, '', '/login')
     callback.current.then((result) => {
-      if (current && !result.data.requiresTwoFactor) navigate('/', { replace: true })
+      if (!current) return
+      if (result.linked) navigate('/security-settings', { replace: true, state: { googleLinked: true } })
+      else if (!result.data.requiresTwoFactor) navigate('/', { replace: true })
     }).catch((failure) => { if (current) setCallbackError(failure.message) })
       .finally(() => { if (current) setCallbackBusy(false) })
     return () => { current = false }

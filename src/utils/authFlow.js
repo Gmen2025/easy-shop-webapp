@@ -29,7 +29,9 @@ export function socialCallback(search, pending, redirectUri, now = Date.now()) {
     const errors = {
       social_login_disabled: 'This provider was turned off. Please use email sign-in.',
       provider_unavailable: 'This provider is not configured yet. Please use email sign-in.',
-      account_conflict: 'This email already has an account. Use its original sign-in method.',
+      account_conflict: 'This email already has an account. Use its original sign-in method, then open Account > Security Settings > Link Google.',
+      link_email_mismatch: 'Choose the Google account with the same email as your existing account.',
+      link_expired: 'Account security changed. Start Google linking again from Security Settings.',
       email_required: 'The provider must share a verified email address.',
     }
     throw new Error(errors[params.get('error')] || 'Social sign-in was not completed. Please try again.')

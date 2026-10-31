@@ -418,6 +418,17 @@ data; region-specific carts remain separate and the customer can sign in again.
   persisted by the frontend. Save the displayed single-use backup codes before
   closing their modal. Refreshing or browser navigation can lose unsaved codes;
   the page warns on unload and recovery options can generate replacements.
+- Security Settings > Sign-in Providers > **Link Google** safely links a password
+  account through the existing authenticated `social/link/start` and
+  `social/link/exchange` backend endpoints. Confirm the current password and,
+  when enabled, the current second factor or a backup code. Choose the Google
+  account with the same email; accounts are never merged solely by email.
+  Linking preserves the existing session, region, profile, purchases and 2FA.
+  The flow reuses the allowlisted website `/login` callback and per-tab PKCE,
+  then returns to Security Settings. Passwords and factor codes are sent only
+  to the backend, never stored or included in redirect URLs. Deploy the backend
+  linking endpoints before using this control; the Google availability switch
+  must be ON.
 - Password and social sign-in both stop at the server's 2FA challenge until a
   valid verification or backup code is accepted. No access token or user session
   is stored for a challenge. Verification uses the original sign-in database,
@@ -773,7 +784,7 @@ matching mobile update. Existing mobile login screens refresh within 30 seconds
 while open and on focus/foreground; the backend blocks disabled social flows
 for the selected provider at start, callback, handoff exchange, and social-origin 2FA completion. Email
 sign-in and existing sessions remain available. The website currently provides
-email login, not provider sign-in buttons; this panel manages the shared service.
+both email and enabled provider sign-in buttons; this panel manages the shared service.
 Provider credentials and callbacks must still be configured separately.
 Old admin clients can still submit `{ "enabled": true/false }` to set all three
 providers together; update both admin clients to use independent toggles. New

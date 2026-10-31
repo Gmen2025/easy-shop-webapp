@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { securityRequest } from '../api/auth'
+import { Link, useLocation } from 'react-router-dom'
+import { getSocialProviders, securityRequest, startGoogleLink } from '../api/auth'
 import { EmailCodeResend, VerificationCode } from '../components/VerificationCode'
 
 function readSecurity(data) {
@@ -10,7 +10,11 @@ function readSecurity(data) {
 }
 
 export default function SecuritySettingsPage() {
+  const location = useLocation()
   const [security, setSecurity] = useState(null)
+  const [providers, setProviders] = useState(null)
+  const [providerError, setProviderError] = useState('')
+  const [password, setPassword] = useState('')
   const [step, setStep] = useState('settings')
   const [method, setMethod] = useState('authenticator')
   const [setup, setSetup] = useState(null)
@@ -33,6 +37,21 @@ export default function SecuritySettingsPage() {
   }, [])
 
   useEffect(() => {
+    let current = true
+    async function refresh() {
+      try {
+        const result = await getSocialProviders()
+        if (current) { setProviders(result); setProviderError('') }
+      } catch (failure) {
+        if (current) { setProviders(null); setProviderError(failure.message) }
+      }
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => { current = false; window.removeEventListener('focus', refresh) }
+  }, [])
+
+  useEffect(() => {
     if (!codes.length) return undefined
     codesDialog.current?.showModal()
     const warn = (event) => { if (!saved) { event.preventDefault(); event.returnValue = '' } }
@@ -47,7 +66,7 @@ export default function SecuritySettingsPage() {
     finally { guard.current = false; setBusy(false) }
   }
   function back() {
-    setSetup(null); setManagement(null); setCode(''); setBackup(false); setError(''); setStep('settings')
+    setSetup(null); setManagement(null); setCode(''); setBackup(false); setPassword(''); setError(''); setStep('settings')
   }
   function showCodes(result) {
     if (!Array.isArray(result.backupCodes) || !result.backupCodes.length ||
@@ -70,7 +89,7 @@ export default function SecuritySettingsPage() {
   }
   async function startManagement(target) {
     setManagement(null); setCode(''); setBackup(false); setStep(target)
-    if (security.method === 'email') setManagement(await securityRequest('2fa/send-code', {}))
+    if (security.enabled && security.method === 'email') setManagement(await securityRequest('2fa/send-code', {}))
   }
   async function confirm(event) {
     event.preventDefault()
@@ -96,13 +115,27 @@ export default function SecuritySettingsPage() {
     })
   }
 
+  async function linkGoogle(event) {
+    event.preventDefault()
+    await run(async () => {
+      try {
+        await startGoogleLink({ password, ...(security.enabled ? {
+          code: code.trim(), useBackupCode: backup,
+          ...(management?.challengeId ? { challengeId: management.challengeId } : {}),
+        } : {}) })
+      } finally { setPassword('') }
+    })
+  }
+
   return <section className="auth-wrap">
     <div className="panel auth-form mobile-auth-card security-settings">
       {step === 'settings' ? <Link to="/profile">Back to My Account</Link> :
         <button className="ghost-button" type="button" disabled={busy} onClick={back}>Back to Security Settings</button>}
       <div className="auth-security-emblem" aria-hidden="true">&#128737;</div>
       <h1>{step === 'settings' ? 'Security Settings' : step === 'setup' ? 'Two-Factor Authentication' :
-        step === 'confirm' ? 'Verify Your Setup' : step === 'disable' ? 'Disable Two-Factor Authentication' : 'Generate Backup Codes'}</h1>
+        step === 'confirm' ? 'Verify Your Setup' : step === 'disable' ? 'Disable Two-Factor Authentication' :
+          step === 'link' ? 'Link Google' : 'Generate Backup Codes'}</h1>
+      {location.state?.googleLinked ? <p role="status">Google was linked successfully. You can now sign in with Google or your password.</p> : null}
       {step === 'settings' ? <>
         <div className="security-status">
           <strong>Two-Factor Authentication</strong>
@@ -121,11 +154,39 @@ export default function SecuritySettingsPage() {
         <div className="security-status"><strong>Sign-in Providers</strong>
           <p>{security?.providers.length ? security.providers.map((provider) =>
             typeof provider === 'string' ? provider : provider.provider).join(', ') : 'No social provider is linked to this account.'}</p>
+          {security && !security.providers.some((provider) => (typeof provider === 'string' ? provider : provider.provider) === 'google') ?
+            <><p>Safely link Google using your current password and the Google account with the same email. Your account and purchases stay unchanged.</p>
+              <button type="button" className="ghost-button" disabled={busy || !providers?.google}
+                onClick={() => run(() => startManagement('link'))}>Link Google</button>
+              {providers?.google === false ? <p className="section-note">Google linking is currently disabled.</p> : null}
+              {providerError ? <p className="form-error" role="alert">{providerError}</p> : null}
+            </> : null}
         </div>
         <p className="section-note">Keep backup codes somewhere safe. Verification will be required for password and social sign-in when 2FA is enabled.</p>
         {!security ? <button type="button" className="ghost-button" disabled={busy}
           onClick={() => run(async () => setSecurity(readSecurity(await securityRequest('security'))))}>Retry loading security settings</button> : null}
       </> : null}
+      {step === 'link' ? <form className="security-code-form" onSubmit={linkGoogle}>
+        <p>Confirm your current password, then choose the Google account with the same email as this account.</p>
+        <label>Current password
+          <input type="password" autoComplete="current-password" value={password} required maxLength={1024}
+            disabled={busy} onChange={(event) => setPassword(event.target.value)} />
+        </label>
+        {security.enabled ? <>
+          <VerificationCode value={code} onChange={setCode} backup={backup} disabled={busy} />
+          <button type="button" className="ghost-button" disabled={busy}
+            onClick={() => { setBackup(!backup); setCode('') }}>{backup ? 'Use Verification Code' : 'Use Backup Code'}</button>
+          {security.method === 'email' ? <>
+            {!management ? <button type="button" className="ghost-button" disabled={busy}
+              onClick={() => run(() => startManagement('link'))}>Send verification email</button> :
+              <EmailCodeResend key={management.challengeId} challengeId={management.challengeId} disabled={busy} />}
+          </> : null}
+        </> : null}
+        <button className="solid-button" disabled={busy || !password ||
+          (security.enabled && (backup ? !code.trim() : code.length !== 6))}>
+          {busy ? 'Please wait...' : 'Verify and Continue to Google'}
+        </button>
+      </form> : null}
       {step === 'setup' ? <>
         <p>Add an extra layer of security to your account.</p>
         <fieldset disabled={busy} className="security-methods"><legend>Choose verification method</legend>
