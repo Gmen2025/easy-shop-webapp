@@ -50,7 +50,7 @@ export default function CompanyStorePage() {
         <CompanyPeriods value={period} onChange={setPeriod} />
         {summary ? <>
           <div className="company-sales"><div>Gross sales<strong>{money(summary.sales)}</strong></div>
-            <div>Company earnings<strong>{money(summary.earnings)}</strong></div></div>
+            <div>Gross fulfillment sales<strong>{money(summary.earnings)}</strong></div></div>
           <CompanyMetrics items={[
             ['Orders', summary.orders], ['Completed', summary.completedOrders], ['Units sold', summary.unitsSold],
             ['Avg. order', money(summary.averageOrder)], ['Reviews', summary.reviews], ['Avg. rating', summary.averageRating.toFixed(1)],
@@ -63,9 +63,8 @@ export default function CompanyStorePage() {
           ['Units in stock', dashboard.inventory.unitsInStock], ['Low stock', dashboard.inventory.lowStock],
           ['Out of stock', dashboard.inventory.outOfStock], ['Inventory value', money(dashboard.inventory.value)],
         ]} /></article>
-        <article className="panel"><h2>Earnings & operations</h2><CompanyMetrics items={[
-          ['Available balance', money(dashboard.payouts.available)], ['Paid out', money(dashboard.payouts.paidOut)],
-          ['Pending payout', money(dashboard.payouts.pending)], ['Pending orders', dashboard.orders.pending],
+        <article className="panel"><h2>Earnings & operations</h2><Link to="/income/store">Income, platform fees, balances & payouts</Link><CompanyMetrics items={[
+          ['Pending orders', dashboard.orders.pending],
           ['Ready fulfillments', dashboard.products.readyFulfillments],
         ]} /></article>
         <article className="panel"><h2>Active & recent orders</h2>

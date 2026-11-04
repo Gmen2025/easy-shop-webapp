@@ -6,6 +6,45 @@ The header uses the supplied Addugenet bag icon to the left of the shop name,
 at 40px on desktop and 32px on small screens. It remains part of the home link;
 the adjacent shop name supplies its accessible label.
 
+## Ownership reporting, income and payouts
+
+The website uses the same financial API as the mobile app. Admin's sales dashboard
+separates AdduGenet-owned sales/delivery/rides, independent platform fees and
+independent net income, plus service fulfillment paid entirely to AdduGenet.
+ETB and USD remain separate; unassigned income is flagged for accounting review.
+
+Use **Admin > Income & Ownership**, or an account's income link from store/driver
+lists, to open its dashboard without impersonating its user. Set ownership,
+percentage or fixed fees (products, delivery and rides separately), enable payout
+requests, inspect products, and edit shared catalog details or per-store price
+and stock. Product updates notify linked owners in their website inbox and on
+mobile where push tokens are registered. Shared catalog edits do not change
+store-specific prices. New ownership and fees affect future completions only.
+
+Store owners, including independent stores, and drivers have **Income & payouts**
+links in their account/header. They can view period income, transactions, weekly
+and early payout history, and available collected balances. Store owners can
+switch locations. Confirmed non-cash collections fund payouts after fees,
+refunds and already paid/reserved payouts; cash received directly is not paid twice.
+
+No automatic payout provider is connected. Weekly Monday UTC scans (with restart
+recovery) and **Queue weekly payment requests** reserve balances for manual admin
+payment; early requests do the same. Admin transfers funds externally, enters
+the real reference and confirms the manual transfer before marking a payout paid.
+Insufficient-balance requests enter unreserved admin review. Admin can reject
+them or confirm payment after sufficient collected funds become available; they
+cannot overdraw an account. Cash transaction totals are shown for reconciliation
+and are excluded from available funds.
+
+Deploy the matching backend first. Review its initial historical import and
+existing payouts before enabling payout access. Older completed records lack
+ownership/fee snapshots and are initially allocated using saved amounts and
+current policies; subsequent allocations are immutable. API access checks are
+server-side and scoped to the signed-in user and selected database.
+
+Validate with `node --test tests/finance.test.mjs tests/adminOperations.test.mjs`
+and `npm run build`.
+
 ## Shared notifications
 
 Signed-in users have a notification bell in the header, with an unread badge,

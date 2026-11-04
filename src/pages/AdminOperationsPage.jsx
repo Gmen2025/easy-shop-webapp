@@ -45,6 +45,7 @@ function RecordDetails({ item, driver = false, database }) {
   return <>
     {!driver && <StoreLogo name={item.name} logo={item.logo} />}
     <h3>{item.name}</h3><p>{item.email} {item.phone}</p><p>{item.address}</p>
+    <Link to={`/admin/income/${driver ? 'driver' : 'store'}/${item._id || item.id}`}>Open income dashboard, products & payout controls</Link>
     <p>Approval: {item.approvalStatus || 'approved'}{driver && ` · ${item.isAvailable || item.availabilityStatus ? 'Available' : 'Unavailable'}`}</p>
     {driver && <p>Vehicle: {item.vehicle?.type || item.vehicleType || 'Not specified'} {item.vehicle?.year} {item.vehicle?.make} {item.vehicle?.model}</p>}
     {driver && <p>Deposit: {deposit == null ? 'Not reported' : `${deposit} ${currency}`}</p>}
@@ -293,29 +294,30 @@ function PayoutOperations({ api, database }) {
   const [selected, setSelected] = useState(null)
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')
+  const [confirmedTransferred, setConfirmedTransferred] = useState(false)
   const task = useOperationTask()
   const { run } = task
-  const reload = useCallback(async () => { setPayouts(await api.list('/stores/admin/payouts')) }, [api])
+  const reload = useCallback(async () => { setPayouts(await api.list('/finance/admin/payouts')) }, [api])
   useEffect(() => { run(reload) }, [reload, run])
   return <><Feedback task={task} /><fieldset disabled={task.busy}>
     <button onClick={() => task.run(reload)}>Refresh payouts</button>
-    <p>These operations record settlements, not bank transfers. Transfer funds separately and use the real transaction reference. Weekly batch immediately records available balances as paid.</p>
+    <p>No payout provider is connected. Weekly batches reserve collected balances for manual payment, not bank transfers. Transfer funds separately and enter the real transaction reference before confirming payment.</p>
     <button onClick={() => {
-      if (!window.confirm(`Generate weekly settlements for all active stores in ${database} and mark them PAID? Confirm external payment arrangements first.`)) return
+      if (!window.confirm(`Queue weekly manual payment requests for enabled stores and drivers in ${database}? No funds will be transferred.`)) return
       task.run(async () => {
         const result = await api.batch()
         if (!Number.isInteger(result.totalPayouts)) throw new Error('Batch response omitted payout count. Check backend state before retrying.')
         await reload()
-        return `${result.totalPayouts} weekly payouts recorded as paid.`
+        return `${result.totalPayouts} weekly requests queued for manual payment. No money transferred.`
       })
-    }}>Process weekly batch (mark paid)</button>
+    }}>Queue weekly payment requests</button>
     <label>Filter payouts<select value={filter} onChange={(event) => setFilter(event.target.value)}>
       {['all', 'pending', 'paid', 'early', 'weekly'].map((value) => <option key={value}>{value}</option>)}
     </select></label>
-    <p>Pending / processing: {payouts ? filterPayouts(payouts, 'pending').length : 'Not loaded'}</p>
+    <p>Pending / processing / unreserved review: {payouts ? filterPayouts(payouts, 'pending').length : 'Not loaded'}</p>
     {payouts === null ? <p>Payouts not loaded.</p> : filterPayouts(payouts, filter).length === 0 ? <p>No matching payouts.</p>
       : filterPayouts(payouts, filter).map((item) => <article className="order-card" key={`${item.databaseName || database}-${item._id || item.id}`}>
-        <h2>{item.store?.name || 'Unknown store'}</h2><p>{item.store?.phone} {item.store?.email}</p>
+        <h2>{item.driver?.name || item.store?.name || 'Unavailable account'}</h2><p>{item.driver ? 'Driver' : 'Store'} - {(item.driver || item.store)?.phone} {(item.driver || item.store)?.email}</p>
         <p>{item.amount} {item.currency || (/usa/i.test(item.databaseName || database) ? 'USD' : 'ETB')} · {item.status} · {item.payoutType}</p>
         <p>Account: {typeof (item.accountDetails || item.store?.bankAccount) === 'object'
           ? JSON.stringify(item.accountDetails || item.store?.bankAccount) : item.accountDetails || item.store?.bankAccount || item.store?.phone || 'No account details'}</p>
@@ -323,22 +325,24 @@ function PayoutOperations({ api, database }) {
         <p>Requested: {item.dateRequested ? new Date(item.dateRequested).toLocaleString() : 'Not reported'}
           {item.dateProcessed && ` · Processed: ${new Date(item.dateProcessed).toLocaleString()}`}</p>
         {item.reference && <p>Reference: {item.reference}</p>}{item.adminNotes && <p>Admin notes: {item.adminNotes}</p>}
-        {['pending', 'processing'].includes(item.status) && ['paid', 'rejected'].map((status) =>
-          <button key={status} onClick={() => { setSelected({ item, status }); setReference(item.reference || ''); setNotes(item.adminNotes || '') }}>
+        {['pending', 'processing', 'review_required'].includes(item.status) && ['paid', 'rejected'].map((status) =>
+          <button key={status} onClick={() => { setSelected({ item, status }); setReference(item.reference || ''); setNotes(item.adminNotes || ''); setConfirmedTransferred(false) }}>
             {status === 'paid' ? 'Mark paid' : 'Reject'}
           </button>)}
       </article>)}
-    {selected && <article className="order-card"><h2>Mark payout {selected.status}: {selected.item.store?.name}</h2>
+    {selected && <article className="order-card"><h2>Mark payout {selected.status}: {selected.item.driver?.name || selected.item.store?.name}</h2>
       <form className="form-grid" onSubmit={(event) => {
         event.preventDefault()
         if (!window.confirm(`Mark payout ${selected.item._id || selected.item.id} (${selected.item.amount} ${selected.item.currency || ''}) as ${selected.status}?`)) return
         task.run(async () => {
-          await api.payout(selected.item, selected.status, reference, notes)
+          const result = await api.payout(selected.item, selected.status, reference, notes, confirmedTransferred)
           setSelected(null); await reload()
+          if (result.notification?.error) throw new Error(`Payout saved, but notification failed: ${result.notification.error}`)
           return 'Payout updated.'
         })
       }}>
-        <label>Transaction reference<input value={reference} onChange={(event) => setReference(event.target.value)} /></label>
+        <label>Transaction reference<input required={selected.status === 'paid'} value={reference} onChange={(event) => setReference(event.target.value)} /></label>
+        {selected.status === 'paid' && <label><input required type="checkbox" checked={confirmedTransferred} onChange={(event) => setConfirmedTransferred(event.target.checked)} />I transferred the funds manually.</label>}
         <label>Admin notes<textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
         <button className="solid-button">Confirm {selected.status}</button><button type="button" onClick={() => setSelected(null)}>Cancel</button>
       </form>

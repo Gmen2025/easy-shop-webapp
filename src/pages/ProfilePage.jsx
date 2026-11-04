@@ -66,6 +66,8 @@ function ProfilePage() {
     <nav className="account-actions" aria-label="Account actions">
       <Link to="/edit-profile"><ProfileIcon name="edit" />Edit Profile</Link>
       <Link to="/service-requests"><ProfileIcon name="list" />My Service Requests</Link>
+      {user.isStoreOwner && <Link to="/income/store"><ProfileIcon name="card" />Store income & payouts</Link>}
+      {user.isDriver && <Link to="/income/driver"><ProfileIcon name="card" />Driver income & payouts</Link>}
       <button type="button" onClick={() => { dispatch(logout()); navigate('/') }}>
         <ProfileIcon name="exit" />Sign Out
       </button>

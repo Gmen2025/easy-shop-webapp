@@ -90,16 +90,20 @@ test('rejections, role assignments and migration match shared endpoints', async 
   assert.deepEqual(calls[3].data, { defaultStoreId: 's' })
 })
 
-test('payout updates scope to payout region and batch explicitly marks paid', async () => {
+test('payout updates scope to payout region and weekly batches never claim to transfer funds', async () => {
   const { api, calls } = fixture()
   await api.payout({ id: 'p', databaseName: 'E_ShopUSA' }, 'rejected', ' REF ', ' Notes ')
   await api.batch()
-  assert.equal(calls[0].path, '/stores/admin/payouts/p')
-  assert.deepEqual(calls[0].data, { databaseName: 'E_ShopUSA', status: 'rejected', reference: 'REF', adminNotes: 'Notes' })
+  assert.equal(calls[0].path, '/finance/admin/payouts/p')
+  assert.deepEqual(calls[0].data, { databaseName: 'E_ShopUSA', status: 'rejected', reference: 'REF', adminNotes: 'Notes', confirmedTransferred: false })
   assert.equal(calls[0].headers['x-database-name'], 'E_ShopUSA')
-  assert.equal(calls[1].path, '/stores/admin/payouts/batch-weekly')
-  assert.equal(calls[1].data.status, 'paid')
+  assert.equal(calls[1].path, '/finance/admin/payouts/batch-weekly')
+  assert.equal(calls[1].data.status, undefined)
   assert.equal(calls[1].data.databaseName, 'E_Shopping')
+  assert.throws(() => api.payout({ id: 'p' }, 'paid', 'REAL', ''), /Confirm/)
+  assert.throws(() => api.payout({ id: 'p' }, 'paid', '', '', true), /reference/)
+  await api.payout({ id: 'p' }, 'paid', 'REAL', '', true)
+  assert.equal(calls.at(-1).data.confirmedTransferred, true)
 })
 
 test('payout filters include processing and exact payout types', () => {

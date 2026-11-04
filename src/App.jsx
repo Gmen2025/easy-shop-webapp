@@ -44,6 +44,7 @@ import { isCompanyDriver, isDeliveryDriver, isCompanyStoreOwner } from './utils/
 import { fetchCurrentUserProfile } from './features/auth/authSlice'
 import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSettingsPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
+import FinancePage from './pages/FinancePage'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
   '/admin',
@@ -233,6 +234,11 @@ function App() {
             }
           />
           <Route path="admin/tools/:section" element={isAuthenticated && isAdmin ? <AdminDashboardPage key={location.pathname} /> : <Navigate to="/login" replace />} />
+          <Route path="admin/income" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
+          <Route path="admin/income/:kind/:accountId" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
+          <Route path="income/store" element={companyPage(Boolean(user?.isStoreOwner), <FinancePage kind="store" />)} />
+          <Route path="income/store/:accountId" element={companyPage(Boolean(user?.isStoreOwner), <FinancePage kind="store" />)} />
+          <Route path="income/driver" element={companyPage(isDeliveryDriver(user), <FinancePage kind="driver" />)} />
           <Route path="admin/store-assignments" element={isAuthenticated && isAdmin ? <StoreAssignmentsPage admin /> : <Navigate to="/login" replace />} />
           <Route path="admin/operations/:section" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><AdminOperationsPage key={location.pathname} /></section> : <Navigate to="/login" replace />} />
           <Route path="admin/rides" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><RideSettingsPage /></section> : <Navigate to="/login" replace />} />

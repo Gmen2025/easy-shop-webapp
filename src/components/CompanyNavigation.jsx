@@ -3,8 +3,8 @@ import { COMPANY_PERIODS } from '../utils/company'
 
 export default function CompanyNavigation({ driver = false, rides = true }) {
   return <nav className="company-navigation" aria-label={driver ? 'Driver tools' : 'Store owner tools'}>
-    {(driver ? [['/driver', 'Delivery Dispatch'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
-      : [['/store-owner', 'Business overview'], ['/store-owner/manage', 'My store & inventory'], ['/store-owner/assignments', 'Store assignments']])
+    {(driver ? [['/driver', 'Delivery Dispatch'], ['/income/driver', 'Income & payouts'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
+      : [['/store-owner', 'Business overview'], ['/income/store', 'Income & payouts'], ['/store-owner/manage', 'My store & inventory'], ['/store-owner/assignments', 'Store assignments']])
       .map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}
   </nav>
 }

@@ -133,6 +133,8 @@ function Header() {
       ]
     : []
   const businessItems = [
+    ...(user?.isStoreOwner ? [{ to: '/income/store', label: 'Store Income', icon: 'user' }] : []),
+    ...(user?.isDriver ? [{ to: '/income/driver', label: 'Driver Income', icon: 'driver' }] : []),
     ...(isCompanyStoreOwner(user)
       ? [{ to: '/store-owner', label: 'Store Owner', icon: 'user' }]
       : []),

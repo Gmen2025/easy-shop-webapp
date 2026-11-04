@@ -5,7 +5,7 @@ export const OPERATION_SECTIONS = {
   drivers: 'Drivers & onboarding',
   roles: 'Assign roles',
   'store-owners': 'Store owner onboarding',
-  payouts: 'Store payouts',
+  payouts: 'Store & driver payouts',
   broadcast: 'Broadcast notifications',
 }
 
@@ -58,7 +58,7 @@ export function companyPayload(form, { driver = false, editing = false } = {}) {
 }
 
 export function filterPayouts(payouts, filter) {
-  return payouts.filter((item) => filter === 'pending' ? ['pending', 'processing'].includes(item.status)
+  return payouts.filter((item) => filter === 'pending' ? ['pending', 'processing', 'review_required'].includes(item.status)
     : filter === 'paid' ? item.status === 'paid'
       : filter === 'early' ? item.payoutType === 'early_request'
         : filter === 'weekly' ? item.payoutType === 'weekly' : true)
@@ -138,14 +138,15 @@ export function createAdminOperations(request, databaseName) {
       if (!email.trim() || !['driver', 'store_owner'].includes(roleType)) throw new Error('Email and a supported role are required.')
       return mutate('/users/admin/assign-role', 'POST', { email: email.trim().toLowerCase(), roleType, databaseName }, 'user')
     },
-    payout: (record, status, reference, adminNotes) => {
+    payout: (record, status, reference, adminNotes, confirmedTransferred = false) => {
       if (!['paid', 'rejected'].includes(status)) throw new Error('Unsupported payout action.')
+      if (status === 'paid' && (!confirmedTransferred || !reference.trim())) throw new Error('Confirm the manual transfer and enter its real reference.')
       const db = record.databaseName || databaseName
-      return mutate(`/stores/admin/payouts/${id(record)}`, 'PUT',
-        { databaseName: db, status, reference: reference.trim(), adminNotes: adminNotes.trim() }, 'payout', db)
+      return mutate(`/finance/admin/payouts/${id(record)}`, 'PUT',
+        { databaseName: db, status, reference: reference.trim(), adminNotes: adminNotes.trim(), confirmedTransferred }, 'payout', db)
     },
-    batch: () => mutate('/stores/admin/payouts/batch-weekly', 'POST', {
-      databaseName, status: 'paid', adminNotes: `Weekly platform settlement processed on ${new Date().toLocaleDateString()}`,
+    batch: () => mutate('/finance/admin/payouts/batch-weekly', 'POST', {
+      databaseName,
     }),
     broadcast: async (title, body) => {
       if (!title.trim() || !body.trim()) throw new Error('Title and message are required.')

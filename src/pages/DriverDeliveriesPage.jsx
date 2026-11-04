@@ -146,7 +146,7 @@ export default function DriverDeliveriesPage() {
       <CompanyPeriods value={period} onChange={setPeriod} />
       {analytics.error ? <p role="alert">{analytics.error}</p> : null}
       {analytics.loading && !analytics.data ? <p role="status">Loading earnings...</p> : null}
-      {summary ? <><div className="company-sales"><div>Income<strong>{formatCurrency(summary.income)}</strong></div></div>
+      {summary ? <><div className="company-sales"><div>Gross delivery activity<strong>{formatCurrency(summary.income)}</strong></div></div>
         <CompanyMetrics items={[['Deliveries', summary.deliveries], ['Average fee', formatCurrency(summary.averageFee)],
           ['Distance', `${summary.distanceKm.toFixed(1)} km`], ['Active now', activeAssignments]]} />
         <h3>Recent completions</h3>

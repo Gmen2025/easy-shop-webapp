@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { ADMIN_PERIODS, ADMIN_TOOLS, validateDashboard } from '../utils/adminDashboard'
 import AdminNavigation from '../components/AdminNavigation'
+import { OwnershipIncomeReport } from './FinancePage'
 
 function Metrics({ entries }) {
   return <dl className="admin-metrics">{entries.map(([label, value, tone]) =>
@@ -46,6 +47,7 @@ export default function AdminHomePage() {
     <AdminNavigation />
     <div className="admin-periods" role="group" aria-label="Sales period">{ADMIN_PERIODS.map(([key, label]) =>
       <button type="button" key={key} aria-pressed={period === key} onClick={() => setPeriod(key)}>{label}</button>)}</div>
+    <OwnershipIncomeReport period={period} />
     {busy ? <p role="status">Loading business analytics...</p> : null}
     {error ? <div className="status-card error-card" role="alert"><p>{error}</p>
       <button type="button" className="ghost-button" disabled={busy} onClick={refresh}>Retry analytics</button>
