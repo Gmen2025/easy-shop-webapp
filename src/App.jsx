@@ -45,6 +45,7 @@ import { fetchCurrentUserProfile } from './features/auth/authSlice'
 import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSettingsPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 import FinancePage from './pages/FinancePage'
+import AdminAccountPage from './pages/AdminAccountPage'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
   '/admin',
@@ -235,6 +236,7 @@ function App() {
           />
           <Route path="admin/tools/:section" element={isAuthenticated && isAdmin ? <AdminDashboardPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="admin/income" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
+          <Route path="admin/accounts/:kind/:accountId" element={isAuthenticated && isAdmin ? <AdminAccountPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="admin/income/:kind/:accountId" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
           <Route path="income/store" element={companyPage(Boolean(user?.isStoreOwner), <FinancePage kind="store" />)} />
           <Route path="income/store/:accountId" element={companyPage(Boolean(user?.isStoreOwner), <FinancePage kind="store" />)} />

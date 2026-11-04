@@ -45,7 +45,7 @@ function RecordDetails({ item, driver = false, database }) {
   return <>
     {!driver && <StoreLogo name={item.name} logo={item.logo} />}
     <h3>{item.name}</h3><p>{item.email} {item.phone}</p><p>{item.address}</p>
-    <Link to={`/admin/income/${driver ? 'driver' : 'store'}/${item._id || item.id}`}>Open income dashboard, products & payout controls</Link>
+    <Link to={`/admin/accounts/${driver ? 'driver' : 'store'}/${item._id || item.id}`}>Open business dashboard, products, income & notifications</Link>
     <p>Approval: {item.approvalStatus || 'approved'}{driver && ` · ${item.isAvailable || item.availabilityStatus ? 'Available' : 'Unavailable'}`}</p>
     {driver && <p>Vehicle: {item.vehicle?.type || item.vehicleType || 'Not specified'} {item.vehicle?.year} {item.vehicle?.make} {item.vehicle?.model}</p>}
     {driver && <p>Deposit: {deposit == null ? 'Not reported' : `${deposit} ${currency}`}</p>}

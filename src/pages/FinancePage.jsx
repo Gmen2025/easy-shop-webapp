@@ -35,11 +35,11 @@ export function OwnershipIncomeReport({ period }) {
   </section>
 }
 
-export default function FinancePage({ admin = false, kind: selfKind }) {
+export default function FinancePage({ admin = false, kind: selfKind, embedded = false }) {
   const { kind: routeKind, accountId = 'me' } = useParams()
   const kind = routeKind || selfKind
   return <section className="page-stack admin-console">
-    {admin ? <AdminNavigation /> : <Link to="/profile">Back to account</Link>}
+    {!embedded && (admin ? <AdminNavigation /> : <Link to="/profile">Back to account</Link>)}
     {kind ? <AccountIncome key={`${kind}:${accountId}`} kind={kind} accountId={accountId} admin={admin} /> : <IncomeAccounts />}
   </section>
 }
@@ -48,24 +48,29 @@ function IncomeAccounts() {
   const resource = useCompanyResource('/finance/admin/accounts', accountsResponse)
   const action = useCompanyAction()
   const [filter, setFilter] = useState('all')
+  const [kind, setKind] = useState('all')
   const [search, setSearch] = useState('')
-  const accounts = resource.data?.filter((item) => (filter === 'all' ||
+  const accounts = resource.data?.filter((item) => (kind === 'all' || item.kind === kind) && (filter === 'all' ||
     (filter === 'owned' ? item.isCompanyOwned : !item.isCompanyOwned)) &&
-    `${item.name} ${item.kind} ${item.email}`.toLowerCase().includes(search.toLowerCase()))
+    `${item.name} ${item.kind} ${item.email} ${item.owner?.name || ''} ${item.owner?.email || ''}`.toLowerCase().includes(search.toLowerCase()))
   return <>
-    <h1>Store & driver income</h1>
-    <p>Open an account to inspect income, products, balances, ownership and fee settings. You remain signed in as Admin.</p>
+    <h1>Stores, owners & drivers</h1>
+    <p>Open each business dashboard to inspect operations, manage products, review income and send notifications. You remain signed in as Admin.</p>
     <Feedback resource={resource} action={action} />
     <button disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh accounts</button>
     <div className="form-grid">
       <label>Ownership<select value={filter} onChange={(event) => setFilter(event.target.value)}>
         <option value="all">All accounts</option><option value="owned">AdduGenet-owned</option><option value="independent">Independent</option>
       </select></label>
+      <label>Account type<select value={kind} onChange={(event) => setKind(event.target.value)}>
+        <option value="all">All types</option><option value="store">Stores / owners</option><option value="driver">Drivers</option>
+      </select></label>
       <label>Search accounts<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
     </div>
     {!resource.error && accounts?.length === 0 && <p>No matching accounts.</p>}
     {!resource.error && accounts?.map((account) => <article className="order-card" key={`${account.kind}:${account._id}`}>
-      <h2><Link to={`/admin/income/${account.kind}/${account._id}`}>{account.name}</Link></h2>
+      <h2><Link to={`/admin/accounts/${account.kind}/${account._id}`}>{account.name}</Link></h2>
+      <p>Account holder: {account.owner?.name || 'No linked user'} {account.owner?.email}</p>
       <p>{account.kind} - {account.isCompanyOwned ? 'AdduGenet-owned' : 'Independent'} - {account.approvalStatus}</p>
       <p>Payout requests {account.payoutsEnabled ? 'enabled' : 'disabled'}</p>
     </article>)}
@@ -95,6 +100,7 @@ function AccountIncome({ kind, accountId, admin }) {
   return <>
     {admin && <Link to="/admin/income">All income accounts</Link>}
     <h1>{data?.account.name || 'Account income'}: income & payouts</h1>
+    {admin && data && <Link to={`/admin/accounts/${kind}/${data.account._id}`}>Open full business dashboard & notifications</Link>}
     <Feedback resource={resource} action={action} />
     <button disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh income</button>
     {data && !resource.error && <>
@@ -201,7 +207,7 @@ function FinanceSettings({ account, path, reload }) {
   </article>
 }
 
-function ProductEditor({ product, admin, reload }) {
+export function ProductEditor({ product, admin, reload }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: product.name, description: product.description || '', brand: product.brand || '', price: product.price, countInStock: product.countInStock })
   const action = useCompanyAction()

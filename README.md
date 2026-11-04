@@ -21,6 +21,24 @@ and stock. Product updates notify linked owners in their website inbox and on
 mobile where push tokens are registered. Shared catalog edits do not change
 store-specific prices. New ownership and fees affect future completions only.
 
+The account directory filters by ownership and **Stores / owners / Drivers**,
+including search by linked account holder. Click a name to open
+`/admin/accounts/:kind/:accountId`. Store workspaces include business analytics,
+active/recent order details, profile and owner locations, assignments, fulfillment
+products, reviews, products/inventory and income. Driver workspaces include
+analytics, delivery queue/offers/completed deliveries, ride profile/trip/offers/
+passengers/payments, commission wallet and income. Reads reuse the corresponding
+operator business APIs with explicit admin account scope, without impersonation.
+Delivery/ride/fulfillment actions stay with the operator.
+
+Under **Products, income & settings**, Admin can create a store product with an
+uploaded image or add an existing catalog listing to migrated store inventory.
+Product plus initial inventory creation is transactional. Duplicate listings
+must be edited, never overwritten; reservations stay protected. Product additions
+notify the owner automatically. **Send notification** sends a targeted message to
+that account holder's website/app inbox and attempts mobile push; missing linked
+users and delivery failures are visible.
+
 Store owners, including independent stores, and drivers have **Income & payouts**
 links in their account/header. They can view period income, transactions, weekly
 and early payout history, and available collected balances. Store owners can
@@ -42,7 +60,7 @@ ownership/fee snapshots and are initially allocated using saved amounts and
 current policies; subsequent allocations are immutable. API access checks are
 server-side and scoped to the signed-in user and selected database.
 
-Validate with `node --test tests/finance.test.mjs tests/adminOperations.test.mjs`
+Validate with `node --test tests/finance.test.mjs tests/adminOperations.test.mjs tests/operatorWorkspace.test.mjs`
 and `npm run build`.
 
 ## Shared notifications
