@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
 import AdminNavigation from '../components/AdminNavigation'
+import CatalogPricingSettings from '../components/CatalogPricingSettings'
 import {
   clearAdminState,
   createCategoryAdmin,
@@ -459,11 +460,11 @@ function AdminDashboardPage() {
   }
 
   if (loading && catalogSection) {
-    return <section className="page-stack"><AdminNavigation /><LoadingState label="Loading admin tools..." /></section>
+    return <section className="page-stack"><AdminNavigation />{section === 'products' ? <CatalogPricingSettings /> : null}<LoadingState label="Loading admin tools..." /></section>
   }
 
   if (error && catalogSection && !categories.length && !products.length && !orders.length && !bankAccounts.length) {
-    return <section className="page-stack"><AdminNavigation /><ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog(section))} /></section>
+    return <section className="page-stack"><AdminNavigation />{section === 'products' ? <CatalogPricingSettings /> : null}<ErrorState message={error} onRetry={() => dispatch(fetchAdminCatalog(section))} /></section>
   }
 
   function handleOrderStatusChange(orderId, status) {
@@ -559,6 +560,7 @@ function AdminDashboardPage() {
   return (
     <section className="page-stack admin-console">
       <AdminNavigation />
+      {section === 'products' ? <CatalogPricingSettings /> : null}
       {!titles[section] ? <p role="alert">Unknown admin tool. Choose a tool above.</p> : null}
       <section className="panel">
         <div className="panel-header">

@@ -67,6 +67,11 @@ const cartSlice = createSlice({
       const nextQuantity = clampQuantity(quantity, product.countInStock)
 
       if (existing) {
+        if (product.storefrontId) existing.product = {
+          ...existing.product, price: product.price, countInStock: product.countInStock,
+          storefrontName: product.storefrontName || existing.product.storefrontName || '',
+          inventoryManaged: product.inventoryManaged === true,
+        }
         existing.quantity = clampQuantity(
           existing.quantity + nextQuantity,
           existing.product.countInStock,
@@ -78,6 +83,7 @@ const cartSlice = createSlice({
             cartKey,
             storefrontId: product.storefrontId || null,
             storefrontName: product.storefrontName || '',
+            inventoryManaged: product.inventoryManaged === true,
             name: product.name,
             price: product.price,
             image: getPrimaryProductImage(product, ''),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -10,6 +10,9 @@ import { applyInventoryOverrides } from '../utils/inventory'
 import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
+import useCatalogPricing from '../features/products/useCatalogPricing'
+import CatalogPricingNotice from '../components/CatalogPricingNotice'
+import NearestStorePurchase from '../components/NearestStorePurchase'
 
 function normalizeProductsPayload(payload) {
   return Array.isArray(payload)
@@ -30,11 +33,16 @@ function normalizeBrand(brand) {
 function ProductDetailsPage() {
   const { id } = useParams()
   const dispatch = useDispatch()
+  const pricing = useCatalogPricing()
   const { selectedProduct, loading, error } = useSelector((state) => state.products)
+  const userId = useSelector((state) => getEntityId(state.auth.user))
   const [quantity, setQuantity] = useState(1)
   const [selectedImage, setSelectedImage] = useState('')
   const [relatedProducts, setRelatedProducts] = useState([])
   const [relatedLoading, setRelatedLoading] = useState(false)
+  const [addingId, setAddingId] = useState('')
+  const purchaseGeneration = useRef(0)
+  useEffect(() => () => { ++purchaseGeneration.current }, [id])
 
   useEffect(() => {
     dispatch(fetchProductById(id))
@@ -48,7 +56,7 @@ function ProductDetailsPage() {
     let isCancelled = false
 
     async function loadRelatedProducts() {
-      if (!selectedProduct) {
+      if (!selectedProduct || String(getEntityId(selectedProduct)) !== String(id)) {
         setRelatedProducts([])
         return
       }
@@ -182,6 +190,9 @@ function ProductDetailsPage() {
           <p className="eyebrow">{selectedProduct.brand || 'Featured Product'}</p>
           <h2>{selectedProduct.name}</h2>
           <p>{selectedProduct.richDescription || selectedProduct.description}</p>
+          <CatalogPricingNotice />
+          {pricing.status === 'ready' && pricing.enabled ? <NearestStorePurchase key={`${id}:${userId}`} productId={id} /> : null}
+          {pricing.status === 'ready' && !pricing.enabled ? <>
           <p className="price-tag">{formatCurrency(selectedProduct.price)}</p>
 
           <div className="details-actions">
@@ -198,16 +209,25 @@ function ProductDetailsPage() {
             <button
               type="button"
               className="solid-button"
-              disabled={stock < 1}
-              onClick={() => {
-                dispatch(addToCart({ product: selectedProduct, quantity }))
-                toast.success(`${selectedProduct.name} added to cart!`)
+              disabled={stock < 1 || addingId === id}
+              onClick={async () => {
+                const request = ++purchaseGeneration.current
+                setAddingId(id)
+                try {
+                  const latest = await pricing.reload()
+                  if (request !== purchaseGeneration.current) return
+                  if (!latest) { toast.error('Pricing settings could not be verified. Retry before purchasing.'); return }
+                  if (latest.nearestStorePricingEnabled) { toast.error('Choose a customer location to get the nearest store price.'); return }
+                  dispatch(addToCart({ product: selectedProduct, quantity }))
+                  toast.success(`${selectedProduct.name} added to cart!`)
+                } finally { setAddingId((current) => current === id ? '' : current) }
               }}
             >
               Add To Cart
             </button>
           </div>
           <small>{stock > 0 ? `${stock} in stock` : 'Out of stock'}</small>
+          </> : null}
         </div>
       </section>
 

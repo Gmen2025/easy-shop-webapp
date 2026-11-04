@@ -7,6 +7,9 @@ import { fetchProducts } from '../features/products/productsSlice'
 import { fetchCategories } from '../features/categories/categoriesSlice'
 import { getEntityId, getPrimaryProductImage } from '../utils/format'
 import heroGraphic from '../assets/hero.png'
+import useCatalogPricing from '../features/products/useCatalogPricing'
+import CatalogPricingNotice from '../components/CatalogPricingNotice'
+import { selectCatalogProducts } from '../utils/catalogPricing'
 
 const initialFilters = {
   minPrice: '',
@@ -33,6 +36,8 @@ function getCategoryEntityId(category) {
 
 function HomePage() {
   const dispatch = useDispatch()
+  const pricing = useCatalogPricing()
+  const hidePrice = pricing.status !== 'ready' || pricing.enabled
   const [categoryId, setCategoryId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -54,40 +59,12 @@ function HomePage() {
   )
 
   const featuredProducts = useMemo(
-    () => products.filter((product) => Boolean(product?.isFeatured) && Number(product.countInStock || 0) > 0),
-    [products],
+    () => products.filter((product) => Boolean(product?.isFeatured) && (hidePrice || Number(product.countInStock || 0) > 0)),
+    [products, hidePrice],
   )
 
-  const visibleProducts = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    const minPrice = filters.minPrice === '' ? null : Number(filters.minPrice)
-    const maxPrice = filters.maxPrice === '' ? null : Number(filters.maxPrice)
-    const minRating = filters.minRating === 'all' ? null : Number(filters.minRating)
-
-    const result = products.filter((product) => {
-      if (categoryId && getCategoryId(product) !== categoryId) return false
-      if (query) {
-        const searchable = [product.name, product.description, product.richDescription, product.brand]
-          .map((value) => String(value || '').toLowerCase())
-          .join(' ')
-        if (!searchable.includes(query)) return false
-      }
-
-      const price = Number(product.price || 0)
-      if (minPrice !== null && price < minPrice) return false
-      if (maxPrice !== null && price > maxPrice) return false
-      if (filters.brand !== 'all' && product.brand !== filters.brand) return false
-      if (minRating !== null && Number(product.rating || 0) < minRating) return false
-      if (filters.inStockOnly && Number(product.countInStock || 0) <= 0) return false
-      return true
-    })
-
-    if (filters.sortBy === 'priceAsc') result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
-    if (filters.sortBy === 'priceDesc') result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0))
-    if (filters.sortBy === 'ratingDesc') result.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-    if (filters.sortBy === 'nameAsc') result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
-    return result
-  }, [products, categoryId, searchQuery, filters])
+  const visibleProducts = useMemo(() => selectCatalogProducts(products, { categoryId, searchQuery, filters }, hidePrice),
+    [products, categoryId, searchQuery, filters, hidePrice])
 
   function updateFilter(event) {
     const { name, value, type, checked } = event.target
@@ -96,6 +73,7 @@ function HomePage() {
 
   return (
     <section className="page-stack shop-page">
+      <CatalogPricingNotice />
       <section className="panel home-graphic-panel" aria-label="Featured collection">
         <img
           src={homeGraphicSource}
@@ -210,14 +188,14 @@ function HomePage() {
 
         {showFilters ? (
           <div className="advanced-filters" id="advanced-product-filters">
-            <label>
+            {!hidePrice ? <><label>
               Min price
               <input name="minPrice" type="number" min="0" value={filters.minPrice} onChange={updateFilter} />
             </label>
             <label>
               Max price
               <input name="maxPrice" type="number" min="0" value={filters.maxPrice} onChange={updateFilter} />
-            </label>
+            </label></> : null}
             <label>
               Brand
               <select name="brand" value={filters.brand} onChange={updateFilter}>
@@ -234,18 +212,18 @@ function HomePage() {
             </label>
             <label>
               Sort by
-              <select name="sortBy" value={filters.sortBy} onChange={updateFilter}>
+              <select name="sortBy" value={hidePrice && ['priceAsc', 'priceDesc'].includes(filters.sortBy) ? 'relevance' : filters.sortBy} onChange={updateFilter}>
                 <option value="relevance">Relevance</option>
-                <option value="priceAsc">Price: low to high</option>
-                <option value="priceDesc">Price: high to low</option>
+                {!hidePrice ? <><option value="priceAsc">Price: low to high</option>
+                <option value="priceDesc">Price: high to low</option></> : null}
                 <option value="ratingDesc">Top rated</option>
                 <option value="nameAsc">Name: A to Z</option>
               </select>
             </label>
-            <label className="stock-filter">
+            {!hidePrice ? <label className="stock-filter">
               <input name="inStockOnly" type="checkbox" checked={filters.inStockOnly} onChange={updateFilter} />
               In stock only
-            </label>
+            </label> : null}
             <button
               type="button"
               className="text-button"

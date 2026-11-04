@@ -17,8 +17,18 @@ import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutRec
 import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive } from '../utils/checkoutPayment'
 import usePaymentAvailability from '../features/payment/usePaymentAvailability'
 import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
+import CatalogCartGuard from '../components/CatalogCartGuard'
+import CatalogPricingNotice from '../components/CatalogPricingNotice'
+import useCatalogPricing from '../features/products/useCatalogPricing'
+import { unscopedProductQuote, unresolvedCartItems } from '../utils/catalogPricing'
 
 export default function DeliveryCheckoutPage() {
+  const { id } = useParams()
+  return id ? <DeliveryCheckout /> : <CatalogCartGuard><DeliveryCheckout /></CatalogCartGuard>
+}
+
+function DeliveryCheckout() {
+  const catalogPricing = useCatalogPricing()
   const { id } = useParams()
   const navigate = useNavigate()
   const dispatch = useDispatch()
@@ -173,6 +183,19 @@ export default function DeliveryCheckoutPage() {
   const pending = localStorage.getItem(pendingKey)
   const international = Boolean(group?.international || (!id && /usa/i.test(database) && paymentCurrency === 'etb'))
   const service = group?.kind === 'service'
+  if (group?.status === 'quote' && !service &&
+      (catalogPricing.status !== 'ready' || (catalogPricing.enabled && unscopedProductQuote(group)))) {
+    return <section className="panel page-stack">
+      <h1>Review store pricing before checkout</h1>
+      <CatalogPricingNotice />
+      {catalogPricing.status === 'ready' ? <p role="alert">This older quote contains catalog items without a selected store. Discard it, then choose a location on each product’s details and add the resolved store product before checkout.</p> : null}
+      <button className="ghost-button" onClick={() => {
+        if (localStorage.getItem(pendingKey) === id) localStorage.removeItem(pendingKey)
+        navigate('/cart')
+      }}>Discard quote & edit cart</button>
+      <Link to="/delivery-checkouts">View saved payments and order history</Link>
+    </section>
+  }
   const converted = Boolean(group?.exchangeRate || (!id && paymentCurrency !== nativeCurrency(database)))
   const pricing = group?.status === 'quote' ? calculateDeliveryPricing(group.deliveries, selections) : null
   const preview = group?.status === 'quote' ? checkoutPreview(group, selections, calculateDeliveryPricing) : null
@@ -326,6 +349,9 @@ export default function DeliveryCheckoutPage() {
           {international ? <p>Delivery speed covers arrival at the US consolidation hub, not final arrival in Ethiopia.</p> : null}
           {mode === 'SCHEDULED' ? <label>Delivery date & time<input type="datetime-local" value={scheduled} onChange={(event) => setScheduled(event.target.value)} /></label> : null}
           <button className="solid-button mobile-cart-checkout" disabled={!items.length || !convertedAvailable} onClick={() => run(async () => {
+            const latest = await catalogPricing.reload()
+            if (!latest) throw new Error('Pricing settings could not be verified. Retry before checkout.')
+            if (latest.nearestStorePricingEnabled && unresolvedCartItems(items).length) throw new Error('Choose a location and re-add the older catalog items with store pricing before checkout.')
             const previous = await checkPreviousCheckout()
             if (previous?.blocksNewQuote) throw new Error(previous.checkout.status === 'bank_review' ?
               'Your previous bank transfer is awaiting review. Check its status; do not pay again.' :
@@ -429,6 +455,11 @@ export default function DeliveryCheckoutPage() {
               {!service ? <button className="ghost-button" onClick={() => editCheckout(1)}>Change addresses & quantities</button> : null}
             </div>
             <button className="solid-button" disabled={!methods.includes(method) || Boolean(group.exchangeRate && !rateIsActive(exchange, now)) || (method === 'bank' && !bankId)} onClick={() => run(async () => {
+              if (!service) {
+                const latest = await catalogPricing.reload()
+                if (!latest) throw new Error('Pricing settings could not be verified. Retry before reserving stock.')
+                if (latest.nearestStorePricingEnabled && unscopedProductQuote(group)) throw new Error('Discard this older catalog quote and select store prices before reserving stock.')
+              }
               if (group.exchangeRate && !rateIsActive(exchange)) throw new Error('The daily rate expired. Refresh the saved checkout before reserving.')
               if (!service && pending === group._id && !cartMatchesQuote(items, group)) throw new Error('Your cart changed. Cancel this quote and request a fresh one.')
               if (!methods.includes(method)) throw new Error('Select a supported payment method for this checkout.')

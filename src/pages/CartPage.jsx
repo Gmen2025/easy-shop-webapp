@@ -32,6 +32,9 @@ import CartContents from '../components/CartContents'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import usePaymentAvailability from '../features/payment/usePaymentAvailability'
 import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
+import CatalogCartGuard from '../components/CatalogCartGuard'
+import useCatalogPricing from '../features/products/useCatalogPricing'
+import { unresolvedCartItems } from '../utils/catalogPricing'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
@@ -91,8 +94,11 @@ function estimateDeliveryFee(deliveryMode, deliveryDistanceKm, scheduledFor, con
 
 function LegacyCartPage() {
   const dispatch = useDispatch()
+  const catalogPricing = useCatalogPricing()
   const navigate = useNavigate()
   const [cardError, setCardError] = useState('')
+  const [checkingPricing, setCheckingPricing] = useState(false)
+  const pricingGuard = useRef(false)
 
   const user = useSelector((state) => state.auth.user)
   const userId = user?._id || user?.id || null
@@ -423,7 +429,26 @@ function LegacyCartPage() {
     }
   }
 
+  async function verifyCartPricing() {
+    if (pricingGuard.current) return false
+    pricingGuard.current = true
+    setCheckingPricing(true)
+    try {
+      const latest = await catalogPricing.reload()
+      if (!latest) {
+        setCardError('Pricing settings could not be verified. Retry before checkout.')
+        return false
+      }
+      if (latest.nearestStorePricingEnabled && unresolvedCartItems(items).length) {
+        setCardError('Choose a customer location and re-add catalog items with a store price before checkout.')
+        return false
+      }
+      return true
+    } finally { pricingGuard.current = false; setCheckingPricing(false) }
+  }
+
   async function placeOrderAfterPayment(paymentMeta = null) {
+    if (!await verifyCartPricing()) return
     if (paymentMethod === 'bank_transfer' && paymentMeta) {
       setBankTransferMeta(paymentMeta)
     }
@@ -457,6 +482,7 @@ function LegacyCartPage() {
   }
 
   async function initializeCardIntent() {
+    if (!await verifyCartPricing()) return
     setCardError('')
     dispatch(clearPaymentState())
     const stripeAction = await dispatch(
@@ -474,6 +500,7 @@ function LegacyCartPage() {
 
   async function handleCheckout(event) {
     event.preventDefault()
+    if (!await verifyCartPricing()) return
     if (!availability.methods?.[selectedMethodKey(paymentMethod)]) {
       setCardError(availability.error || PAYMENT_UNAVAILABLE)
       return
@@ -567,7 +594,7 @@ function LegacyCartPage() {
   return (
     <section className="page-stack">
       <section className="panel">
-        <CartContents disabled={creating || payment.creatingIntent} />
+        <CartContents disabled={creating || payment.creatingIntent || checkingPricing} />
       </section>
 
       <section className="panel checkout-panel">
@@ -720,6 +747,7 @@ function LegacyCartPage() {
           {successMessage ? <p className="form-success">{successMessage}</p> : null}
           {payment.error ? <p className="form-error">{payment.error}</p> : null}
           {cardError ? <p className="form-error">{cardError}</p> : null}
+          {checkingPricing ? <p role="status">Verifying the latest catalog pricing settings...</p> : null}
           {payment.clientSecret ? (
             <p className="form-success">
               Stripe payment initialized.
@@ -766,6 +794,7 @@ function LegacyCartPage() {
             className="solid-button"
             disabled={
               creating ||
+              checkingPricing ||
               payment.creatingIntent ||
               items.length === 0 ||
               !availability.methods?.[selectedMethodKey(paymentMethod)] ||
@@ -774,7 +803,7 @@ function LegacyCartPage() {
               (paymentMethod === 'card' && !!payment.clientSecret)
             }
           >
-            {creating || payment.creatingIntent
+            {creating || payment.creatingIntent || checkingPricing
               ? 'Processing...'
               : paymentMethod === 'card'
                 ? payment.clientSecret
@@ -792,7 +821,7 @@ function LegacyCartPage() {
   )
 }
 
-function CartPage() {
+function CartCheckout() {
   const user = useSelector((state) => state.auth.user)
   const items = useSelector((state) => state.cart.items)
   const [enabled, setEnabled] = useState(null)
@@ -818,4 +847,6 @@ function CartPage() {
   return enabled ? <DeliveryCheckoutPage /> : <LegacyCartPage />
 }
 
-export default CartPage
+export default function CartPage() {
+  return <CatalogCartGuard><CartCheckout /></CatalogCartGuard>
+}

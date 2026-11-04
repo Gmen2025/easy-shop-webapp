@@ -1,13 +1,18 @@
 import { useDispatch } from 'react-redux'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { addToCart } from '../features/cart/cartSlice'
 import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
+import useCatalogPricing from '../features/products/useCatalogPricing'
 
 function ProductCard({ product, storeInventory = false }) {
   const dispatch = useDispatch()
+  const pricing = useCatalogPricing()
+  const hidePrice = !storeInventory && (pricing.status !== 'ready' || pricing.enabled)
   const productId = getEntityId(product)
   const stock = Number(product.countInStock || 0)
+  const [adding, setAdding] = useState(false)
 
   return (
     <article className="product-card">
@@ -20,9 +25,9 @@ function ProductCard({ product, storeInventory = false }) {
               className="product-image"
               loading="lazy"
             />
-            <span className={`product-stock-badge${stock > 0 ? '' : ' out-of-stock'}`}>
+            {!hidePrice ? <span className={`product-stock-badge${stock > 0 ? '' : ' out-of-stock'}`}>
               {stock > 0 ? `${stock} left` : 'Out of stock'}
-            </span>
+            </span> : null}
           </div>
         </div>
       ) : (
@@ -34,9 +39,9 @@ function ProductCard({ product, storeInventory = false }) {
             className="product-image"
             loading="lazy"
           />
-          <span className={`product-stock-badge${stock > 0 ? '' : ' out-of-stock'}`}>
+          {!hidePrice ? <span className={`product-stock-badge${stock > 0 ? '' : ' out-of-stock'}`}>
             {stock > 0 ? `${stock} left` : 'Out of stock'}
-          </span>
+          </span> : null}
         </div>
         </Link>
       )}
@@ -54,19 +59,27 @@ function ProductCard({ product, storeInventory = false }) {
           </p>
         ) : null}
         <div className="product-meta">
-          <strong>{formatCurrency(product.price)}</strong>
+          {hidePrice ? <Link to={`/products/${productId}`}>Choose location for store price</Link> : <strong>{formatCurrency(product.price)}</strong>}
         </div>
-        <button
+        {!hidePrice ? <button
             type="button"
             className="product-add-button"
-            disabled={stock <= 0}
-            onClick={() => {
-              dispatch(addToCart({ product, quantity: 1 }))
-              toast.success(`${product.name} added to your cart`)
+            disabled={stock <= 0 || adding}
+            onClick={async () => {
+              setAdding(true)
+              try {
+                if (!storeInventory) {
+                  const latest = await pricing.reload()
+                  if (!latest) { toast.error('Pricing settings could not be verified. Retry before adding this product.'); return }
+                  if (latest.nearestStorePricingEnabled) { toast.error('Choose your location on product details to get the store price.'); return }
+                }
+                dispatch(addToCart({ product, quantity: 1 }))
+                toast.success(`${product.name} added to your cart`)
+              } finally { setAdding(false) }
             }}
           >
             {stock > 0 ? 'Add to cart' : 'Unavailable'}
-        </button>
+        </button> : null}
       </div>
     </article>
   )

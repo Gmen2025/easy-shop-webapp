@@ -6,6 +6,7 @@ import useCompanyResource, { useCompanyAction } from '../features/company/useCom
 import { inventoryPayload, requireList } from '../utils/company'
 import { normalizeStoreLogo } from '../utils/storeLogo'
 import { formatCurrency } from '../utils/format'
+import StoreCatalogEditor from '../components/StoreCatalogEditor'
 
 const locationsResponse = (data) => {
   requireList(data?.stores, 'store locations')
@@ -14,19 +15,21 @@ const locationsResponse = (data) => {
 }
 const catalogResponse = (data) => requireList(Array.isArray(data) ? data : data?.products, 'catalog products')
 const inventoryResponse = (data) => requireList(data, 'store inventory')
+const categoriesResponse = (data) => requireList(Array.isArray(data) ? data : data?.categories, 'shared categories')
 const emptyProfile = { name: '', address: '', logo: '', description: '', latitude: '', longitude: '' }
 
 export default function StoreManagementPage() {
   const locations = useCompanyResource('/stores/me/locations', locationsResponse)
   const catalog = useCompanyResource('/products', catalogResponse)
+  const categories = useCompanyResource('/categories', categoriesResponse)
   const action = useCompanyAction()
   const [selectedId, setSelectedId] = useState('')
   const selected = locations.data?.stores.find((store) => store._id === selectedId) || locations.data?.stores[0]
   return <section className="page-stack company-console company-store"><CompanyNavigation />
     <article className="panel"><h1>My store & inventory</h1>
-      <button className="ghost-button" disabled={locations.loading || catalog.loading}
-        onClick={() => action.run(() => Promise.all([locations.reload(), catalog.reload()]))}>Refresh store data</button>
-      {locations.error || catalog.error || action.error ? <p role="alert">{locations.error || catalog.error || action.error}</p> : null}
+      <button className="ghost-button" disabled={locations.loading || catalog.loading || categories.loading}
+        onClick={() => action.run(() => Promise.all([locations.reload(), catalog.reload(), categories.reload()]))}>Refresh store data</button>
+      {locations.error || catalog.error || categories.error || action.error ? <p role="alert">{locations.error || catalog.error || categories.error || action.error}</p> : null}
       {locations.loading && !locations.data ? <p role="status">Loading locations...</p> : null}
       {locations.data?.stores.length === 0 ? <p>No store profile is linked to your account. Contact Admin.</p> : null}
       {locations.data && !locations.data.inventoryEnabled ? <p role="status">Admin must migrate inventory before store stock can be edited.</p> : null}
@@ -36,11 +39,13 @@ export default function StoreManagementPage() {
     </article>
     {selected ? <StoreLocation key={`${selected._id}:${selected.updatedAt || ''}`} store={selected}
       root={locations.data.stores.find((store) => !store.parentStore)} catalog={catalog.data || []}
+      sharedCategories={categories.data || []} catalogUnavailable={catalog.loading || categories.loading || Boolean(catalog.error || categories.error)}
+      onCatalogSaved={() => Promise.all([catalog.reload(), categories.reload()])}
       inventoryEnabled={locations.data.inventoryEnabled} onSaved={async (id) => { await locations.reload(); setSelectedId(id) }} /> : null}
   </section>
 }
 
-function StoreLocation({ store, root, catalog, inventoryEnabled, onSaved }) {
+function StoreLocation({ store, root, catalog, sharedCategories, catalogUnavailable, onCatalogSaved, inventoryEnabled, onSaved }) {
   const inventory = useCompanyResource(`/stores/me/locations/${encodeURIComponent(store._id)}/inventory`, inventoryResponse)
   const action = useCompanyAction()
   const [creatingBranch, setCreatingBranch] = useState(false)
@@ -53,7 +58,7 @@ function StoreLocation({ store, root, catalog, inventoryEnabled, onSaved }) {
   const [category, setCategory] = useState('')
   const [productId, setProductId] = useState('')
   const [stock, setStock] = useState({ price: '', countInStock: '', minStock: '5' })
-  const categories = [...new Map(catalog.filter((item) => item.category?._id).map((item) => [item.category._id, item.category])).values()]
+  const categories = sharedCategories
   const chooseProduct = (id) => {
     setProductId(id)
     const row = inventory.data?.find((entry) => entry.product?._id === id)
@@ -80,6 +85,8 @@ function StoreLocation({ store, root, catalog, inventoryEnabled, onSaved }) {
   }
   const busy = action.busy || logoBusy
   return <>
+    <div className="action-row"><button type="button" className="ghost-button" disabled={busy || inventory.loading}
+      onClick={() => action.run(() => Promise.all([inventory.reload(), onCatalogSaved()]))}>Refresh inventory & catalog</button></div>
     {action.error || inventory.error ? <p className="form-error" role="alert">{action.error || inventory.error}</p> : null}
     {action.notice ? <p role="status">{action.notice}</p> : null}
     <article className="panel"><p>Store ID: {store._id}</p><h2>{creatingBranch ? 'New branch' : 'Store profile'}</h2>
@@ -99,7 +106,7 @@ function StoreLocation({ store, root, catalog, inventoryEnabled, onSaved }) {
       </form>
     </article>
     <article className="panel"><h2>Add or adjust a catalog product</h2>
-      <p>Categories and shared products are managed by Admin. Stock includes reservations.</p>
+      <p>List existing products from any store or company category. Adjust only this location’s price and stock; stock includes reservations. Create and manage your own products below.</p>
       <form className="form-grid" onSubmit={(event) => {
         event.preventDefault()
         action.run(async () => {
@@ -141,5 +148,8 @@ function StoreLocation({ store, root, catalog, inventoryEnabled, onSaved }) {
           }}>Remove from store</button></div>
       </article>)}</div>
     </article>
+    <StoreCatalogEditor store={store} catalog={catalog} categories={sharedCategories} inventory={inventory.data || []}
+      disabled={busy || !inventoryEnabled || catalogUnavailable || inventory.loading || Boolean(inventory.error)}
+      onSaved={() => { setProductId(''); setCategory(''); return Promise.all([onCatalogSaved(), inventory.reload()]) }} />
   </>
 }

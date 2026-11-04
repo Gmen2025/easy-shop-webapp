@@ -43,6 +43,7 @@ const productsSlice = createSlice({
   initialState: {
     items: [],
     selectedProduct: null,
+    selectedRequestId: null,
     loading: false,
     error: null,
   },
@@ -61,15 +62,18 @@ const productsSlice = createSlice({
         state.loading = false
         state.error = action.error.message
       })
-      .addCase(fetchProductById.pending, (state) => {
+      .addCase(fetchProductById.pending, (state, action) => {
         state.loading = true
         state.error = null
+        state.selectedRequestId = action.meta.requestId
       })
       .addCase(fetchProductById.fulfilled, (state, action) => {
+        if (state.selectedRequestId !== action.meta.requestId) return
         state.loading = false
         state.selectedProduct = action.payload
       })
       .addCase(fetchProductById.rejected, (state, action) => {
+        if (state.selectedRequestId !== action.meta.requestId) return
         state.loading = false
         state.error = action.error.message
       })

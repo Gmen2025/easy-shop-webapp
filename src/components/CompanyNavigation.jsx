@@ -1,10 +1,14 @@
 import { NavLink, Link } from 'react-router-dom'
-import { COMPANY_PERIODS } from '../utils/company'
+import { useSelector } from 'react-redux'
+import { COMPANY_PERIODS, isCompanyStoreOwner } from '../utils/company'
 
 export default function CompanyNavigation({ driver = false, rides = true }) {
+  const user = useSelector((state) => state.auth.user)
   return <nav className="company-navigation" aria-label={driver ? 'Driver tools' : 'Store owner tools'}>
     {(driver ? [['/driver', 'Delivery Dispatch'], ['/income/driver', 'Income & payouts'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
-      : [['/store-owner', 'Business overview'], ['/income/store', 'Income & payouts'], ['/store-owner/manage', 'My store & inventory'], ['/store-owner/assignments', 'Store assignments']])
+      : [...(isCompanyStoreOwner(user) ? [['/store-owner', 'Business overview']] : []),
+        ['/income/store', 'Income & payouts'], ['/store-owner/manage', 'My store & inventory'],
+        ...(isCompanyStoreOwner(user) ? [['/store-owner/assignments', 'Store assignments']] : [])])
       .map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}
   </nav>
 }

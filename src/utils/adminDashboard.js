@@ -17,6 +17,7 @@ export const ADMIN_TOOLS = [
   ['Bank Accounts', 'Regional payment account configuration', '/admin/tools/banks', 'sales'],
   ['Payouts', 'Store and driver settlements and paid records', '/admin/operations/payouts', 'sales'],
   ['Income & Ownership', 'Account dashboards, fees and payout access', '/admin/income', 'sales'],
+  ['Revenue & Expense Tracker', 'Private manual personal and business ledgers', '/admin/financial-management', 'sales'],
   ['Drivers', 'Applications and company driver management', '/admin/operations/drivers', 'people'],
   ['Store Owners', 'Review owner applications', '/admin/operations/store-owners', 'people'],
   ['Stores', 'Store details and approvals', '/admin/operations/stores', 'people'],

@@ -1,0 +1,15 @@
+.financial-tracker .tracker-filters { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem; }
+.financial-tracker label { display: flex; flex-direction: column; gap: .35rem; min-width: 10rem; }
+.financial-tracker fieldset { border: 1px solid #aeb8c2; border-radius: .5rem; min-width: 0; }
+.financial-tracker .tracker-form fieldset { border: 0; padding: 0; }
+.financial-tracker .tracker-form button { margin-top: 1rem; }
+.financial-tracker .tracker-pagination { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.financial-tracker .tracker-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.financial-tracker .tracker-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.financial-tracker .tracker-chart { overflow-x: auto; }
+.financial-tracker table { border-collapse: collapse; width: 100%; }
+.financial-tracker th, .financial-tracker td { text-align: left; padding: .6rem; border-bottom: 1px solid #aeb8c2; }
+.financial-tracker .tracker-table { overflow-x: auto; }
+.financial-tracker details { margin: 1rem 0; }
+.financial-tracker summary { cursor: pointer; }
+.financial-tracker input, .financial-tracker select { max-width: 100%; }

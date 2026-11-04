@@ -46,6 +46,8 @@ import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSett
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 import FinancePage from './pages/FinancePage'
 import AdminAccountPage from './pages/AdminAccountPage'
+import FinancialManagementPage from './pages/FinancialManagementPage'
+import { getSelectedDatabaseName } from './api/client'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
   '/admin',
@@ -236,6 +238,7 @@ function App() {
           />
           <Route path="admin/tools/:section" element={isAuthenticated && isAdmin ? <AdminDashboardPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="admin/income" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
+          <Route path="admin/financial-management" element={isAuthenticated && isAdmin ? <FinancialManagementPage key={`${user._id}:${getSelectedDatabaseName()}`} /> : <Navigate to="/login" replace />} />
           <Route path="admin/accounts/:kind/:accountId" element={isAuthenticated && isAdmin ? <AdminAccountPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="admin/income/:kind/:accountId" element={isAuthenticated && isAdmin ? <FinancePage admin /> : <Navigate to="/login" replace />} />
           <Route path="income/store" element={companyPage(Boolean(user?.isStoreOwner), <FinancePage kind="store" />)} />
@@ -248,7 +251,7 @@ function App() {
           <Route path="delivery-checkouts/:id" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutPage key={location.pathname} /> : <Navigate to="/login" replace />} />
           <Route path="store-owner" element={companyPage(isCompanyStoreOwner(user), <CompanyStorePage />)} />
           <Route path="store-owner/orders/:orderId" element={companyPage(isCompanyStoreOwner(user), <CompanyStorePage />)} />
-          <Route path="store-owner/manage" element={companyPage(isCompanyStoreOwner(user), <StoreManagementPage />)} />
+          <Route path="store-owner/manage" element={companyPage(user?.isStoreOwner && !user?.isAdmin, <StoreManagementPage />)} />
           <Route path="store-owner/assignments" element={companyPage(isCompanyStoreOwner(user), <StoreAssignmentsPage />)} />
           <Route path="driver" element={companyPage(isDeliveryDriver(user), <DriverDeliveriesPage />)} />
           <Route path="driver/deliveries" element={companyPage(isDeliveryDriver(user), <DriverDeliveriesPage />)} />

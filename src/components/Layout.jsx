@@ -1,11 +1,12 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Header from './Header'
+import CatalogPricingProvider from './CatalogPricingProvider'
 
 function Layout() {
   const { pathname } = useLocation()
   const company = pathname === '/store-owner' || pathname.startsWith('/store-owner/') || pathname === '/driver' || pathname.startsWith('/driver/')
   return (
-    <div className={`shell${pathname === '/admin' || pathname.startsWith('/admin/') || company ? ' admin-shell' : ''}`}>
+    <CatalogPricingProvider><div className={`shell${pathname === '/admin' || pathname.startsWith('/admin/') || company ? ' admin-shell' : ''}`}>
       <Header />
       <main className="main-content">
         <Outlet />
@@ -55,7 +56,7 @@ function Layout() {
           </div>
         </div>
       </footer>
-    </div>
+    </div></CatalogPricingProvider>
   )
 }
 

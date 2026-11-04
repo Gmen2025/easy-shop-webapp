@@ -6,6 +6,102 @@ The header uses the supplied Addugenet bag icon to the left of the shop name,
 at 40px on desktop and 32px on small screens. It remains part of the home link;
 the adjacent shop name supplies its accessible label.
 
+## Owner publishing and nearest-store catalog pricing
+
+All linked store owners (company and independent) can open **My store & products**
+from the account menu/profile. Select a location under **My store & inventory**,
+upload multiple images with the existing signed uploader, select any shared
+company/store category, and **Publish product now**. Products publish immediately
+with their initial store inventory; Admin retains its existing edit/delete tools.
+Create a category only if missing from the full shared list; the server reuses
+normalized duplicate names. Owners can edit/delete only products and categories
+whose `createdByStore` matches the selected store. Editing a product also updates
+that store's price/stock, protecting reservations. **Remove from store** remains a
+separate inventory-only action for any listed product. API/upload errors and
+server notification delivery warnings are shown, never reported as success.
+
+Deploy the matching backend before this website. In **Admin > Products**,
+**Nearest-store catalog pricing** defaults **OFF**, retaining legacy shopping.
+When enabled, home/search/related cards hide catalog prices, stock shortcuts and
+Add-to-cart; catalog price/stock filters and price sorting are ignored and hidden.
+Product details require a supported saved location with coordinates, explicit
+browser location permission, or manual coordinates. Only
+`GET /products/:id/nearest-store?latitude=&longitude=` can unlock the displayed
+store name, actual price, availability and purchase. No location or failed lookup
+means no price and no purchase; retries are available. Changing the product or
+location invalidates earlier lookup results. Explicit storefront browsing still
+uses that storefront's own prices.
+
+The current saved-address endpoints return address text only, so those entries
+cannot resolve nearest-store pricing automatically. Only saved entries containing
+validated coordinates appear in the location selector; otherwise use explicit
+browser permission or manual coordinates. Multi-delivery checkout separately
+geocodes its delivery-address text on the server.
+
+Resolved cart lines retain `storefrontId` for shared delivery inventory selection;
+re-adding the same store/product refreshes its saved price and stock. While enabled,
+older cart items without a store block new checkout and must be removed and re-added
+from product details; unprepared older product quotes without a store must also be
+discarded. Existing server payments retain their authoritative payment history
+and server-side validation. Catalog settings refresh on navigation, focus
+and every 30 seconds; settings failures explicitly block catalog-price shopping
+and new checkout until retry succeeds rather than assuming OFF. Admin can turn the
+setting OFF to restore the previous catalog UX. Catalog purchase actions and
+checkout quote/reservation actions also recheck the latest setting before sending
+the mutation, so a recently changed toggle cannot silently use a stale OFF value.
+
+Rollout: verify store links, migrate store inventory, test upload permissions,
+owner/Admin inbox notifications, reservation safeguards, saved/GPS/manual location,
+no eligible store, stale location/product changes and checkout in each database
+before enabling the toggle. Notification warnings do not undo a saved product.
+The backend must enforce ownership, atomic product/inventory writes and checkout
+pricing; browser controls are not authorization. Run
+`node --test tests/catalogPricing.test.mjs` and `npm run build`.
+
+## Private manual Revenue & Expense Tracker
+
+Admins open **Admin > Revenue & Expense Tracker** (`/admin/financial-management`).
+Deploy the matching `/api/v1/financial-management` backend first. It creates a
+private Personal ledger for the signed-in admin; additional businesses belong
+only to that same admin. No other admin can read or mutate these ledgers.
+The existing selected database header scopes every request to the current region.
+This module is independent of store/driver earnings, payouts and sales reporting:
+all records are manual, with no sales synchronization or external payment calls.
+
+Choose a ledger and ETB or USD before entering records. Integer minor-unit
+responses are formatted without currency conversion. Combined overview totals
+are **net worth**, separately per currency, never combined revenue. Where supplied
+by the backend, each currency includes Personal/business assets, liabilities and
+net-worth breakdowns alongside the authoritative combined total. Daily, weekly,
+monthly, yearly and custom dates apply to accrual reports; balance-sheet balances
+are as of the selected end date. Monthly charts also have exact accessible tables.
+Invoices recognize full income/expense once; subsequent manual payments settle
+outstanding amounts. Credit purchases recognize expense and card debt once; card
+bills, borrowing and principal repayments belong under **Transfers & Debt**.
+Business salary, draws and business-paid personal purchases create linked records;
+choose the destination's own account/category, never a category from another ledger.
+
+Create asset/liability/equity accounts with opening balances. Audited signed
+asset/liability adjustments post against equity, not income. Savings allocations
+reserve balances already in savings accounts, not expenses or new assets.
+Use **Statements** for balance sheet, income, direct cash flow, trial balance and
+immutable paginated journal. Corrections use dated reversals with required reasons,
+not deletions. Period locks and audit history are under **Settings & Audit**.
+The server validates ownership, balanced postings, locks, available balances and
+allocations. Financial posting retries retain their idempotency request key while
+the workspace is open; retry unchanged entries after network errors rather than
+creating new entries. Browser controls are not authorization.
+
+Rollout checks in each database: admin A creates personal/business ledgers and
+admin B cannot enumerate or open them; changing entity/currency during a pending
+read never shows the previous ledger; retry interrupted posts without duplicates;
+partial/unpaid invoice settlement, card purchase then bill payment, linked salary/
+draw/personal purchase, loan borrowing/repayment, opening balances/adjustments,
+reserved savings, reversals, locked dates and separate ETB/USD statement totals.
+These are manual bookkeeping reports, **not certified tax accounting**.
+Run `node --test tests/financialManagement.test.mjs tests/adminDashboard.test.mjs tests/finance.test.mjs`,
+targeted ESLint on the tracker files, and `npm run build`.
+
 ## Ownership reporting, income and payouts
 
 The website uses the same financial API as the mobile app. Admin's sales dashboard
