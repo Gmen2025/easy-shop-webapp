@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiRequest } from '../../api/client'
-import { createFinancialClient, financialError, workspacePath } from '../../utils/financialManagement'
+import { createFinancialClient, financialError, workspacePath, TRACKER_PREFIX, FINANCIAL_HEALTH_PREFIX } from '../../utils/financialManagement'
 
-export default function useFinancialWorkspace(filters) {
-  const [client] = useState(() => createFinancialClient(apiRequest))
+export default function useFinancialWorkspace(filters, service = false) {
+  const prefix = service ? FINANCIAL_HEALTH_PREFIX : TRACKER_PREFIX
+  const client = useMemo(() => createFinancialClient(apiRequest, undefined, prefix), [prefix])
   const [snapshot, setSnapshot] = useState(null)
   const [failure, setFailure] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -11,7 +12,7 @@ export default function useFinancialWorkspace(filters) {
   const [notice, setNotice] = useState('')
   const generation = useRef(0)
   const saving = useRef(false)
-  const path = workspacePath(filters)
+  const path = workspacePath(filters, prefix)
   const load = useCallback(async () => {
     const version = ++generation.current
     setLoading(true)
@@ -51,6 +52,7 @@ export default function useFinancialWorkspace(filters) {
     } finally { saving.current = false; setBusy(false) }
   }
   return {
+    service,
     data: snapshot?.path === path ? snapshot.data : null,
     error: failure?.path === path ? failure.message : '', loading, busy, notice, reload: load, save,
   }

@@ -58,6 +58,32 @@ The backend must enforce ownership, atomic product/inventory writes and checkout
 pricing; browser controls are not authorization. Run
 `node --test tests/catalogPricing.test.mjs` and `npm run build`.
 
+## Customer Financial Health service
+
+The website dropdown has a **Financial Health > Financial statements & tracker**
+entry when enabled. It opens `/financial-health` for signed-in customers.
+Select **Personal / business** before creating accounts, recording income or
+expenses, or viewing **Statements**. Personal is created automatically;
+additional businesses have separate ledgers. Statements use the selected ledger,
+currency and reporting period, not the admin's accounting records.
+
+Admins open **Admin > Financial Health Service** (`/admin/financial-health`).
+The switch defaults **OFF** and applies to the selected shopping region.
+Disabling hides customer navigation and the mobile home badge, and the backend
+blocks all customer financial reads and writes. Records are preserved for
+re-enabling. Existing `/admin/financial-management` accounting remains available
+and unchanged; the switch does not grant access to customers' private records.
+
+Deploy the matching backend first. Availability uses public, uncached
+`GET /settings/financial-health` and current-admin-only `PUT` with
+`{ enabled: boolean }`. Customer accounting uses `/financial-health/*` and a
+separate regional `CustomerFinancialWorkspace` collection, even for admins using
+the customer service. It reuses the manual accounting contracts below, including
+balanced postings, transactions, transfers and reports, without importing sales
+or changing admin records. MongoDB replica-set transactions are required.
+
+Validation: `node --test tests/financialManagement.test.mjs` and `npm run build`.
+
 ## Private manual Revenue & Expense Tracker
 
 Admins open **Admin > Revenue & Expense Tracker** (`/admin/financial-management`).

@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
 import NotificationBell from './NotificationBell'
+import useFinancialHealth from '../features/financialManagement/useFinancialHealth'
 import brandLogo from '../assets/addugenet-header.png'
 import { companyTabs, isCompanyDriver, isCompanyStoreOwner } from '../utils/company'
 import { switchDatabase } from '../features/cart/cartSlice'
@@ -75,6 +76,7 @@ function MenuSection({ title, icon, items, cartCount, onNavigate }) {
 function Header() {
   const dispatch = useDispatch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const financialHealth = useFinancialHealth(isMenuOpen)
   const headerRef = useRef(null)
   const menuCloseRef = useRef(null)
   const user = useSelector((state) => state.auth.user)
@@ -222,6 +224,9 @@ function Header() {
               <MenuSection title="Shopping" icon="cart" items={shoppingItems} cartCount={cartCount} onNavigate={closeMenu} />
               <MenuSection title="Delivery" icon="driver" items={deliveryItems} cartCount={cartCount} onNavigate={closeMenu} />
               <MenuSection title="Services" icon="wrench" items={serviceItems} cartCount={cartCount} onNavigate={closeMenu} />
+              <MenuSection title="Financial Health" icon="orders" items={financialHealth.enabled === true ?
+                [{ to: '/financial-health', label: 'Financial statements & tracker', icon: 'orders' }] : []} cartCount={cartCount} onNavigate={closeMenu} />
+              {financialHealth.error && <div role="alert">{financialHealth.error} <button onClick={financialHealth.reload}>Retry Financial Health availability</button></div>}
               <MenuSection title="Business" icon="store" items={businessItems} cartCount={cartCount} onNavigate={closeMenu} />
               <MenuSection title="Account" icon="user" items={accountItems} cartCount={cartCount} onNavigate={closeMenu} />
               <div className="header-controls">

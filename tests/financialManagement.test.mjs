@@ -2,8 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rm, readFile } from 'node:fs/promises'
 import {
-  createFinancialClient, decimalAmount, financialError, minorMoney, moneyFields, validateWorkspace, workspacePath,
+  createFinancialClient, decimalAmount, financialError, minorMoney, moneyFields, validateWorkspace, workspacePath, FINANCIAL_HEALTH_PREFIX,
 } from '../src/utils/financialManagement.js'
+import { validateFinancialHealthSettings } from '../src/utils/financialHealth.js'
 
 const totals = Object.fromEntries(['incomeMinor', 'expenseMinor', 'netIncomeMinor', 'cashInMinor', 'cashOutMinor',
   'cashFlowMinor', 'cashMinor', 'savingsMinor', 'receivablesMinor', 'debtMinor', 'assetsMinor', 'liabilitiesMinor', 'netWorthMinor'].map((field) => [field, 12345]))
@@ -72,6 +73,25 @@ test('workspace requires complete owner-scoped snapshots and explicit currency/d
   assert.equal(financialError({ payload: { error: { code: 'LOCKED', message: 'Period locked' } }, message: 'Request failed' }), 'Period locked')
 })
 
+test('customer client keeps all reads and mutations out of admin accounting', async () => {
+  const calls = []
+  const client = createFinancialClient(async (path, options) => {
+    calls.push({ path, options })
+    return options ? { saved: true } : fixture
+  }, () => 'customer-request', FINANCIAL_HEALTH_PREFIX)
+  await client.workspace({ entityId: 'personal', currency: 'ETB' })
+  await assert.rejects(client.workspace({ entityId: 'business', currency: 'ETB' }), /mixed-entity/)
+  for (const path of ['/entities', '/accounts', '/transactions', '/transfers', '/transactions/invoice/payments', '/transactions/invoice/reverse', '/settings']) {
+    await client.save(path, 'POST', { entityId: 'personal', amount: '1.00' }, true)
+  }
+  assert.ok(calls.every(({ path }) => path.startsWith('/financial-health/')))
+  assert.ok(calls.every(({ path }) => !path.includes('/financial-management/')))
+  assert.equal(JSON.parse(calls.at(-1).options.body).requestKey, 'customer-request')
+  assert.deepEqual(validateFinancialHealthSettings({ enabled: false }), { enabled: false })
+  assert.deepEqual(validateFinancialHealthSettings({ enabled: true }), { enabled: true })
+  for (const value of [null, {}, { enabled: 'true' }, { enabled: 1 }]) assert.throws(() => validateFinancialHealthSettings(value), /could not be verified/)
+})
+
 test('manual API flows retain idempotency keys after uncertain failure and reject duplicate concurrent saves', async () => {
   const calls = []
   let fails = true
@@ -125,8 +145,9 @@ test('rendered owner-private workspace covers forms, reports, credit cards, hist
           export function reset(value) { tab=value; index=0 }
           export function useState(initial) { const i=index++; return [i===1 ? tab : typeof initial==='function' ? initial() : initial, () => {}] }`
         if (id === resourceId) return `let state={}
+          export const calls=[]
           export function setup(value) {state=value}
-          export default function resource() {return state}`
+          export default function resource(...args) {calls.push(args);return state}`
       },
       transform(code, id) {
         if (id.endsWith('/FinancialManagementPage.jsx')) return code.replace("from 'react'", "from 'virtual:tracker-hooks'")
@@ -137,10 +158,17 @@ test('rendered owner-private workspace covers forms, reports, credit cards, hist
   try {
     const { default: Page, LedgerForm, AccountForm, TransactionForm, TransferForm } = await server.ssrLoadModule('/src/pages/FinancialManagementPage.jsx')
     const { reset } = await server.ssrLoadModule('virtual:tracker-hooks')
-    const { setup } = await server.ssrLoadModule('virtual:tracker-resource')
+    const { setup, calls: resourceCalls } = await server.ssrLoadModule('virtual:tracker-resource')
     const resource = { data: fixture, busy: false, loading: false, error: '', notice: '', reload: async () => {}, save: async () => true }
     setup(resource)
-    const render = (tab) => { reset(tab); return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Page))) }
+    const render = (tab, service = false) => { reset(tab); return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Page, { service }))) }
+    assert.match(render('Statements', true), /Financial Health/)
+    assert.match(render('Statements', true), /Personal \/ business/)
+    assert.match(render('Statements', true), /separate from the admin tracker/)
+    assert.doesNotMatch(render('Statements', true), /Other admins cannot access/)
+    assert.equal(resourceCalls.at(-1)[1], true)
+    render('Statements')
+    assert.equal(resourceCalls.at(-1)[1], false)
     for (const [tab, text] of [
       ['Overview', /Combined net worth/], ['Businesses', /Create business/], ['Dashboard', /ETB 123.45/],
       ['Accounts', /Opening balance/], ['Categories', /Create category \/ subcategory/],
@@ -268,4 +296,10 @@ test('admin route and navigation remain separate from store/driver finance', asy
   assert.match(app, /path="admin\/income" element=\{isAuthenticated && isAdmin \? <FinancePage admin/)
   const nav = await readFile(new URL('../src/utils/adminDashboard.js', import.meta.url), 'utf8')
   assert.match(nav, /Revenue & Expense Tracker.*\/admin\/financial-management/)
+  assert.match(nav, /Financial Health Service.*\/admin\/financial-health/)
+  assert.match(app, /path="financial-health".*showMaintenancePage.*isAuthenticated/)
+  assert.match(app, /path="admin\/financial-health" element=\{isAuthenticated && isAdmin/)
+  const header = await readFile(new URL('../src/components/Header.jsx', import.meta.url), 'utf8')
+  assert.match(header, /title="Financial Health".*financialHealth\.enabled === true/)
+  assert.match(header, /to: '\/financial-health', label: 'Financial statements & tracker'/)
 })

@@ -8,9 +8,9 @@ import './FinancialManagementPage.css'
 const tabs = ['Overview', 'Businesses', 'Dashboard', 'Income & Expenses', 'Accounts', 'Categories', 'Transfers & Debt', 'Savings Goals', 'Statements', 'Settings & Audit']
 const label = (value) => String(value).replaceAll('_', ' ').toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase())
 
-export default function FinancialManagementPage() {
+export default function FinancialManagementPage({ service = false }) {
   const [filters, setFilters] = useState({ entityId: '', currency: 'ETB', period: 'monthly', page: 1, auditPage: 1, journalPage: 1, combinedNetWorth: true })
-  const resource = useFinancialWorkspace(filters)
+  const resource = useFinancialWorkspace(filters, service)
   const [tab, setTab] = useState('Overview')
   const update = (key, value) => setFilters((current) => {
     const next = { ...current, [key]: value, page: 1, auditPage: 1, journalPage: 1 }
@@ -19,14 +19,14 @@ export default function FinancialManagementPage() {
   })
   const data = resource.data
   return <section className="page-stack admin-console financial-tracker">
-    <AdminNavigation />
-    <h1>Revenue & Expense Tracker</h1>
-    <p>Owner-private workspace · Region: {getSelectedDatabaseName()}. Other admins cannot access your records.</p>
+    {!service && <AdminNavigation />}
+    <h1>{service ? 'Financial Health' : 'Revenue & Expense Tracker'}</h1>
+    <p>Owner-private workspace · Region: {getSelectedDatabaseName()}. {service ? 'Your personal and business records are separate from the admin tracker and private to your account.' : 'Other admins cannot access your records.'}</p>
     <p>Manual accrual accounting only. No store sales sync, driver earnings, payouts, bank connections or payment processing. ETB and USD remain separate; no currency conversion.</p>
     <fieldset disabled={resource.busy} className="tracker-filters">
       <legend>Ledger and reporting scope</legend>
       <label>Personal / business<select aria-label="Personal / business" value={filters.entityId || data?.entity._id || ''} onChange={(event) => update('entityId', event.target.value)}>
-        {!data && <option value={filters.entityId}>Loading workspace</option>}
+        {!data && <option value={filters.entityId}>{resource.loading ? 'Loading workspace' : 'Workspace unavailable'}</option>}
         {data?.entities.map((entity) => <option key={entity._id} value={entity._id}>{entity.name} ({label(entity.ownerType)})</option>)}
       </select></label>
       <label>Currency<select value={filters.currency} onChange={(event) => update('currency', event.target.value)}><option>ETB</option><option>USD</option></select></label>
@@ -255,7 +255,7 @@ export function TransferForm({ data, resource, currency }) {
       <Select name="fromAccountId" title="From account (loan for borrowing)" options={records(data.accounts.filter((account) => account.currency === currency && !account.system &&
         (kind === 'ACCOUNT' ? ['ASSET', 'LIABILITY'].includes(account.type) : ['CASH', 'CHECKING', 'SAVINGS'].includes(account.subtype))))} />
       <Select name="toEntityId" title="Destination ledger" options={records(destinations)} value={toEntityId} onChange={(event) => setToEntityId(event.target.value)} />
-      <DestinationAccounts entityId={toEntityId} current={data} currency={currency} kind={kind} key={`${toEntityId}:${kind}`} />
+      <DestinationAccounts entityId={toEntityId} current={data} currency={currency} kind={kind} service={resource.service} key={`${toEntityId}:${kind}`} />
       {kind === 'SALARY' && <Select name="categoryId" title="Business salary expense category" required={false} options={records(data.categories.filter((category) => category.type === 'EXPENSE'))} />}
       <Field name="amount" title={`Amount (${currency})`} inputMode="decimal" />
       <Field name="date" type="date" defaultValue={localDate()} />
@@ -264,15 +264,15 @@ export function TransferForm({ data, resource, currency }) {
   </>
 }
 
-function DestinationAccounts({ entityId, current, currency, kind }) {
+function DestinationAccounts({ entityId, current, currency, kind, service }) {
   // Loading the destination's owner-private workspace does not merge its ledger.
   return entityId === current.entity._id
     ? <Select name="toAccountId" title="To account (loan / card for repayment)" options={records(current.accounts.filter((account) => account.currency === currency && !account.system && ['ASSET', 'LIABILITY'].includes(account.type)))} />
-    : <RemoteDestinationAccounts entityId={entityId} currency={currency} kind={kind} />
+    : <RemoteDestinationAccounts entityId={entityId} currency={currency} kind={kind} service={service} />
 }
 
-function RemoteDestinationAccounts({ entityId, currency, kind }) {
-  const resource = useFinancialWorkspace({ entityId, currency, period: 'monthly' })
+function RemoteDestinationAccounts({ entityId, currency, kind, service }) {
+  const resource = useFinancialWorkspace({ entityId, currency, period: 'monthly' }, service)
   return <div>{resource.error && <p role="alert">{resource.error}</p>}
     {['BUSINESS_PERSONAL_EXPENSE', 'PERSONAL_BUSINESS_EXPENSE'].includes(kind)
       ? <Select name="categoryId" title={`Destination ${kind === 'PERSONAL_BUSINESS_EXPENSE' ? 'business' : 'personal'} expense category`} options={records((resource.data?.categories || []).filter((category) => category.type === 'EXPENSE'))} />

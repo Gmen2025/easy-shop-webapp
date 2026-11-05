@@ -1,4 +1,5 @@
 export const TRACKER_PREFIX = '/financial-management'
+export const FINANCIAL_HEALTH_PREFIX = '/financial-health'
 export const TRACKER_PERIODS = ['daily', 'weekly', 'monthly', 'yearly', 'custom']
 
 export function minorMoney(value, currency) {
@@ -22,10 +23,10 @@ export function decimalAmount(value, { zero = false, signed = false } = {}) {
   return `${negative ? '-' : ''}${BigInt(whole)}.${fraction.padEnd(2, '0')}`
 }
 
-export function workspacePath(filters) {
+export function workspacePath(filters, prefix = TRACKER_PREFIX) {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(filters)) if (value !== '' && value != null) query.set(key, String(value))
-  return `${TRACKER_PREFIX}/workspace?${query}`
+  return `${prefix}/workspace?${query}`
 }
 
 export function validateWorkspace(data, filters = {}) {
@@ -69,18 +70,18 @@ export function moneyFields(body, fields) {
   return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== ''))
 }
 
-export function createFinancialClient(request, key = () => globalThis.crypto.randomUUID()) {
+export function createFinancialClient(request, key = () => globalThis.crypto.randomUUID(), prefix = TRACKER_PREFIX) {
   const retries = new Map()
   let busy = false
   return {
-    workspace: async (filters) => validateWorkspace(await request(workspacePath(filters)), filters),
+    workspace: async (filters) => validateWorkspace(await request(workspacePath(filters, prefix)), filters),
     async save(path, method, body, idempotent = false) {
       if (busy) throw new Error('An accounting entry is already being saved.')
       busy = true
       const fingerprint = JSON.stringify([path, method, body])
       if (idempotent && !retries.has(fingerprint)) retries.set(fingerprint, key())
       try {
-        const result = await request(`${TRACKER_PREFIX}${path}`, {
+        const result = await request(`${prefix}${path}`, {
           method, body: JSON.stringify(idempotent ? { ...body, requestKey: retries.get(fingerprint) } : body),
         })
         retries.delete(fingerprint)

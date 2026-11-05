@@ -47,6 +47,7 @@ import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 import FinancePage from './pages/FinancePage'
 import AdminAccountPage from './pages/AdminAccountPage'
 import FinancialManagementPage from './pages/FinancialManagementPage'
+import FinancialHealthSettingsPage from './pages/FinancialHealthSettingsPage'
 import { getSelectedDatabaseName } from './api/client'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
@@ -110,6 +111,9 @@ function App() {
       <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<Layout />}>
+          <Route path="financial-health" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ?
+            <FinancialManagementPage service key={`health:${user._id || user.id}:${getSelectedDatabaseName()}`} /> : <Navigate to="/login" replace />} />
+          <Route path="admin/financial-health" element={isAuthenticated && isAdmin ? <FinancialHealthSettingsPage /> : <Navigate to="/login" replace />} />
           <Route
             index
             element={showMaintenancePage ? <MaintenancePage /> : <HomePage />}
