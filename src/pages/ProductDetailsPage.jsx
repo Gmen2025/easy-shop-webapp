@@ -13,6 +13,7 @@ import ErrorState from '../components/ErrorState'
 import useCatalogPricing from '../features/products/useCatalogPricing'
 import CatalogPricingNotice from '../components/CatalogPricingNotice'
 import NearestStorePurchase from '../components/NearestStorePurchase'
+import ReviewPanel from '../components/ReviewPanel'
 
 function normalizeProductsPayload(payload) {
   return Array.isArray(payload)
@@ -231,6 +232,7 @@ function ProductDetailsPage() {
         </div>
       </section>
 
+      <ReviewPanel key={id} product={id} />
       <section className="panel">
         <div className="panel-header">
           <h2>Related Products</h2>

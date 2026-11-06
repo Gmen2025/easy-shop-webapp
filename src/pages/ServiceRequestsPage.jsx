@@ -6,6 +6,7 @@ import ErrorState from '../components/ErrorState'
 import { deliveryRequest } from '../api/delivery'
 import { getSelectedDatabaseName } from '../api/client'
 import { money } from '../utils/checkoutPayment'
+import ReviewPanel from '../components/ReviewPanel'
 
 function formatStatus(status) {
   return String(status || 'new')
@@ -148,6 +149,7 @@ function ServiceRequestsPage() {
               <div className="service-request-card-header">
                 <div>
                   <strong>{request.machineType || 'Machine service'}</strong>
+                  {request.status === 'completed' ? <ReviewPanel kind="service" transaction={request._id || request.id} title="Review service fulfillment" /> : null}
                   <p>{request.country || 'Country unavailable'}</p>
                 </div>
                 <span className={`request-status request-status-${request.status || 'new'}`}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import ProductCard from '../components/ProductCard'
 import LoadingState from '../components/LoadingState'
@@ -10,6 +10,7 @@ import heroGraphic from '../assets/hero.png'
 import useCatalogPricing from '../features/products/useCatalogPricing'
 import CatalogPricingNotice from '../components/CatalogPricingNotice'
 import { selectCatalogProducts } from '../utils/catalogPricing'
+import { ReviewAvailabilityContext } from '../api/reviews'
 
 const initialFilters = {
   minPrice: '',
@@ -37,6 +38,8 @@ function getCategoryEntityId(category) {
 function HomePage() {
   const dispatch = useDispatch()
   const pricing = useCatalogPricing()
+  const { settings: reviewSettings } = useContext(ReviewAvailabilityContext)
+  const hideRatings = reviewSettings?.products !== true
   const hidePrice = pricing.status !== 'ready' || pricing.enabled
   const [categoryId, setCategoryId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,8 +66,9 @@ function HomePage() {
     [products, hidePrice],
   )
 
-  const visibleProducts = useMemo(() => selectCatalogProducts(products, { categoryId, searchQuery, filters }, hidePrice),
-    [products, categoryId, searchQuery, filters, hidePrice])
+  const visibleProducts = useMemo(() => selectCatalogProducts(products, { categoryId, searchQuery,
+    filters: hideRatings ? { ...filters, minRating: 'all', sortBy: filters.sortBy === 'ratingDesc' ? 'nameAsc' : filters.sortBy } : filters }, hidePrice),
+    [products, categoryId, searchQuery, filters, hidePrice, hideRatings])
 
   function updateFilter(event) {
     const { name, value, type, checked } = event.target
@@ -203,20 +207,20 @@ function HomePage() {
                 {brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
               </select>
             </label>
-            <label>
+            {!hideRatings ? <label>
               Minimum rating
               <select name="minRating" value={filters.minRating} onChange={updateFilter}>
                 <option value="all">Any rating</option>
                 {[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating}{rating === 5 ? '' : '+'} stars</option>)}
               </select>
-            </label>
+            </label> : null}
             <label>
               Sort by
-              <select name="sortBy" value={hidePrice && ['priceAsc', 'priceDesc'].includes(filters.sortBy) ? 'relevance' : filters.sortBy} onChange={updateFilter}>
+              <select name="sortBy" value={(hidePrice && ['priceAsc', 'priceDesc'].includes(filters.sortBy)) || (hideRatings && filters.sortBy === 'ratingDesc') ? 'relevance' : filters.sortBy} onChange={updateFilter}>
                 <option value="relevance">Relevance</option>
                 {!hidePrice ? <><option value="priceAsc">Price: low to high</option>
                 <option value="priceDesc">Price: high to low</option></> : null}
-                <option value="ratingDesc">Top rated</option>
+                {!hideRatings ? <option value="ratingDesc">Top rated</option> : null}
                 <option value="nameAsc">Name: A to Z</option>
               </select>
             </label>

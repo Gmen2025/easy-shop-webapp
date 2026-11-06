@@ -5,6 +5,7 @@ import { fetchUserOrders } from '../features/orders/ordersSlice'
 import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
+import ReviewPanel from '../components/ReviewPanel'
 
 const statusSteps = ['Pending', 'Processing', 'Shipped', 'Delivered']
 
@@ -196,6 +197,8 @@ function OrdersPage() {
                         />
                         <div>
                           <small>{product.name || 'Unnamed item'}</small>
+                          {(order.deliveryStatus === 'Delivered' || ['Delivered', '3'].includes(order.status)) && getEntityId(product) ?
+                            <ReviewPanel transaction={getEntityId(order)} product={getEntityId(product)} title={`Review ${product.name || 'product'}`} /> : null}
                           <small>
                             Qty: {quantity} | Price: {formatCurrency(price)} | Subtotal:{' '}
                             {formatCurrency(subtotal)}
@@ -206,6 +209,8 @@ function OrdersPage() {
                   })}
                 </div>
                 <StatusTracker status={order.status} />
+                {(order.deliveryStatus === 'Delivered' || ['Delivered', '3'].includes(order.status)) ?
+                  <ReviewPanel kind="delivery" transaction={getEntityId(order)} title="Review delivery experience" /> : null}
               </article>
             )
           })}

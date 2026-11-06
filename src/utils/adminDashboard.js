@@ -19,6 +19,7 @@ export const ADMIN_TOOLS = [
   ['Income & Ownership', 'Account dashboards, fees and payout access', '/admin/income', 'sales'],
   ['Revenue & Expense Tracker', 'Private manual personal and business ledgers', '/admin/financial-management', 'sales'],
   ['Financial Health Service', 'Enable or disable customer financial tracking', '/admin/financial-health', 'settings'],
+  ['Reviews', 'Product, delivery, ride and service switches', '/admin/reviews', 'settings'],
   ['Drivers', 'Applications and company driver management', '/admin/operations/drivers', 'people'],
   ['Store Owners', 'Review owner applications', '/admin/operations/store-owners', 'people'],
   ['Stores', 'Store details and approvals', '/admin/operations/stores', 'people'],

@@ -1,14 +1,19 @@
 import { useDispatch } from 'react-redux'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { addToCart } from '../features/cart/cartSlice'
 import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/format'
 import useCatalogPricing from '../features/products/useCatalogPricing'
+import { ReviewAvailabilityContext } from '../api/reviews'
+import { productRating, productReviewCount } from '../utils/catalogPricing'
 
 function ProductCard({ product, storeInventory = false }) {
   const dispatch = useDispatch()
   const pricing = useCatalogPricing()
+  const { settings } = useContext(ReviewAvailabilityContext)
+  const rating = productRating(product)
+  const reviewCount = productReviewCount(product)
   const hidePrice = !storeInventory && (pricing.status !== 'ready' || pricing.enabled)
   const productId = getEntityId(product)
   const stock = Number(product.countInStock || 0)
@@ -52,10 +57,10 @@ function ProductCard({ product, storeInventory = false }) {
             <h3>{product.name}</h3>
           </Link>
         )}
-        {Number(product.rating || 0) > 0 ? (
-          <p className="product-rating" aria-label={`${Number(product.rating).toFixed(1)} out of 5 stars`}>
-            <span aria-hidden="true">★</span> {Number(product.rating).toFixed(1)}
-            {Number(product.numReviews || 0) > 0 ? ` (${product.numReviews})` : ''}
+        {settings?.products && rating > 0 ? (
+          <p className="product-rating" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+            <span aria-hidden="true">★</span> {rating.toFixed(1)}
+            {reviewCount > 0 ? ` (${reviewCount})` : ''}
           </p>
         ) : null}
         <div className="product-meta">

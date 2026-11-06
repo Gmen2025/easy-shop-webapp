@@ -5,6 +5,8 @@ import { cancelRide, getRide, getRides } from '../api/rides'
 import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
 import RideCheckout from '../components/RideCheckout'
+import ReviewPanel from '../components/ReviewPanel'
+import RideParticipantProfile from '../components/RideParticipantProfile'
 
 async function fetchRideData(rideId) {
   const [list, detail] = await Promise.all([
@@ -113,6 +115,8 @@ function MyRidesPage() {
             <button type="button" className="ghost-button" disabled={busy} onClick={loadRides}>Refresh</button>
           </div>
           {selected.dispatchMessage ? <p>{selected.dispatchMessage}</p> : null}
+          <RideParticipantProfile profile={selected.assignedDriver} driver />
+          {selected.status === 'completed' ? <ReviewPanel key={selected._id} kind="rideDriver" transaction={selected._id} title="Review your driver" /> : null}
           <ol className="ride-stop-list">
             {(selected.stops || []).map((stop) => (
               <li key={stop.key || `${stop.type}-${rideAddress(stop.address)}`}>

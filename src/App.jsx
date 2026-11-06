@@ -48,6 +48,7 @@ import FinancePage from './pages/FinancePage'
 import AdminAccountPage from './pages/AdminAccountPage'
 import FinancialManagementPage from './pages/FinancialManagementPage'
 import FinancialHealthSettingsPage from './pages/FinancialHealthSettingsPage'
+import ReviewSettingsPage from './pages/ReviewSettingsPage'
 import { getSelectedDatabaseName } from './api/client'
 
 const MAINTENANCE_EXEMPT_PREFIXES = [
@@ -111,6 +112,7 @@ function App() {
       <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<Layout />}>
+          <Route path="admin/reviews" element={isAuthenticated && isAdmin ? <ReviewSettingsPage /> : <Navigate to="/login" replace />} />
           <Route path="financial-health" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ?
             <FinancialManagementPage service key={`health:${user._id || user.id}:${getSelectedDatabaseName()}`} /> : <Navigate to="/login" replace />} />
           <Route path="admin/financial-health" element={isAuthenticated && isAdmin ? <FinancialHealthSettingsPage /> : <Navigate to="/login" replace />} />

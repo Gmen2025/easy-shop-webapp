@@ -78,13 +78,16 @@ export function selectCatalogProducts(products, { categoryId, searchQuery, filte
     if (!hidePrice && minPrice !== null && Number(product.price || 0) < minPrice) return false
     if (!hidePrice && maxPrice !== null && Number(product.price || 0) > maxPrice) return false
     if (filters.brand !== 'all' && product.brand !== filters.brand) return false
-    if (minRating !== null && Number(product.rating || 0) < minRating) return false
+    if (minRating !== null && productRating(product) < minRating) return false
     if (!hidePrice && filters.inStockOnly && Number(product.countInStock || 0) <= 0) return false
     return true
   })
   if (!hidePrice && filters.sortBy === 'priceAsc') result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
   if (!hidePrice && filters.sortBy === 'priceDesc') result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0))
-  if (filters.sortBy === 'ratingDesc') result.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
+  if (filters.sortBy === 'ratingDesc') result.sort((a, b) => productRating(b) - productRating(a))
   if (filters.sortBy === 'nameAsc') result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
   return result
 }
+
+export const productRating = (product) => Number(product.verifiedReviewCount > 0 ? product.verifiedRating : product.rating || 0)
+export const productReviewCount = (product) => Number(product.verifiedReviewCount > 0 ? product.verifiedReviewCount : product.numReviews || 0)

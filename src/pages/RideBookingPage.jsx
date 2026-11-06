@@ -7,6 +7,7 @@ import { getRideConfig, getRideLocation, getRideQuotes, requestRide } from '../a
 import LoadingState from '../components/LoadingState'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import RideMap from '../components/RideMap'
+import RideCustomerPhoto from '../components/RideCustomerPhoto'
 import { addressCountryCode } from '../utils/addressAutocomplete'
 import { addressText, latLng, validateAddress } from '../utils/delivery'
 import {
@@ -206,6 +207,7 @@ function RideBookingPage() {
       <RideMap stops={displayStops} country={country} disabled={busy}
         onSelectLocation={step === 1 ? selectMapLocation : undefined} />
       <section className="panel ride-booking-panel">
+        {step === 0 ? <RideCustomerPhoto /> : null}
         <ol className="ride-steps" aria-label="Booking progress">
           {RIDE_STEPS.map((title, index) => <li key={title} className={index <= step ? 'active' : ''}
             aria-current={step === index ? 'step' : undefined}><span>{index + 1}</span>{title}</li>)}

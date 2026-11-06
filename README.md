@@ -1029,3 +1029,27 @@ The app now supports a maintenance switch controlled from the admin dashboard.
 - Status endpoint (public): `GET /api/v1/settings/maintenance`
 - Toggle endpoint (admin-only): `PUT /api/v1/settings/maintenance` with body `{ "enabled": true|false }`
 - Setting is persisted per selected database through `x-database-name`, so each DB can have its own maintenance state.
+## Verified reviews and ride participant profiles
+
+**Admin > Reviews** has separate regional product, delivery, ride and service
+switches, all off by default. Disabling hides ratings/reviews and blocks new
+submissions while preserving records. Availability refreshes every 30 seconds,
+on browser focus and navigation. Admin can inspect recent reviews by type.
+
+Delivered orders expose **Review product** and **Review delivery experience**.
+Completed ride details expose **Review your driver**; driver completed history
+exposes **Review ride customer**. Completed service history exposes fulfillment
+reviews. Reviews are immutable: one per participant/transaction/product or subject,
+1-5 whole stars, optional text up to 2000 characters. Product details show public
+review text without author names. The first verified product review replaces the
+previous manually entered card rating with the verified aggregate.
+
+Ride booking prompts for an optional photo with camera/file selection or skip.
+Assigned drivers see customer photo, joined date and ride reviews; customers see
+assigned driver photo, joined date, reviews, car make/model/type/color and plate.
+Historical joined dates derive from the profile record's creation timestamp.
+Admins retain operational review access; strangers cannot inspect ride profiles.
+
+Deploy the matching backend first. Its regional partial unique Review index and
+MongoDB replica-set transactions are required before enabling reviews.
+Validation: `node --test tests/reviews.test.mjs tests/rides.test.mjs`; `npm run build`.

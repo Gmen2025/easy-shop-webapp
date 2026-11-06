@@ -8,6 +8,8 @@ import useCompanyResource, { useCompanyAction } from '../features/company/useCom
 import useDriverLocation from '../features/company/useDriverLocation'
 import { driverRideFare, validateDriverRides } from '../utils/company'
 import { addressText, directionsUrl, VEHICLES } from '../utils/delivery'
+import ReviewPanel from '../components/ReviewPanel'
+import RideParticipantProfile from '../components/RideParticipantProfile'
 
 const request = (path, data, method = 'POST') => apiRequest(`/rides/${path}`, {
   method, body: JSON.stringify(data), timeoutMs: 120000,
@@ -61,6 +63,7 @@ export default function DriverRidesPage({ tripOnly = false }) {
     {!collapsed ? <>
       {!tripOnly ? <Link className="ghost-button" to="/driver/rides/trip">Open full-screen ride map</Link> : <Link to="/driver/rides">Service preferences & end booking</Link>}
       <p>Onboard {trip.onboardSeats} / {trip.seatCapacity} passenger seats.</p>
+      {data.riders.map((rider) => <RideParticipantProfile key={rider._id} profile={rider.customerProfile} />)}
       <p>Pickups {trip.stops.filter((stop) => stop.type === 'pickup' && stop.completedAt).length}/{trip.stops.filter((stop) => stop.type === 'pickup').length} confirmed.{' '}
         Drop-offs {trip.stops.filter((stop) => stop.type === 'dropoff' && stop.completedAt).length}/{trip.stops.filter((stop) => stop.type === 'dropoff').length} confirmed.</p>
       {!started ? <button className="solid-button" disabled={busy} onClick={() => act('me/start-trip', { tripId: trip._id })}>Start trip to pickup</button> :
@@ -197,6 +200,7 @@ function RideHistory({ payments, busy, onCash }) {
     <h3>{ride.stops?.[0]?.address?.address1 || 'Pickup'} to {ride.stops?.at(-1)?.address?.address1 || 'Drop-off'}</h3>
     <strong>{driverRideFare(ride)}</strong><p>#{String(ride._id).slice(-6)} | {ride.status} | {ride.paymentMethod || 'Payment method not selected'} | {ride.paymentStatus || 'Payment pending'}</p>
     {ride.status === 'terminated' ? <p>Ended without completion. {ride.paymentStatus === 'review_required' ? 'Payment is on hold for Admin review.' : ''}</p> : null}
+    {ride.status === 'completed' ? <ReviewPanel kind="rideCustomer" transaction={ride._id} title="Review ride customer" /> : null}
     {ride.paymentMethod === 'cash' && ride.paymentStatus !== 'completed' ? <button className="solid-button" disabled={busy} onClick={() => {
       if (window.confirm(`Confirm only after receiving ${driverRideFare(ride)} from this booking's payer.`)) onCash(ride)
     }}>Confirm cash received</button> : null}
