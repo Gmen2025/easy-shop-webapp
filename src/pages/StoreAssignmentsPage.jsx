@@ -9,6 +9,7 @@ import DeliveryWindow from '../components/DeliveryWindow'
 import useCompanyResource, { useCompanyAction } from '../features/company/useCompanyResource'
 import { assignmentSeconds, requireList } from '../utils/company'
 import { formatCurrency } from '../utils/format'
+import PickupConfirmation from '../components/PickupConfirmation'
 
 const assignmentsResponse = (data) => requireList(data, 'store assignments')
 
@@ -39,7 +40,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
     await assignments.reload()
   }, decision === 'ready' ? 'Package ready and selected. Use Dispatch selected to send it to drivers.' :
     decision === 'accept' ? 'Order claimed. Prepare the package, then mark it ready to select it for dispatch.' : 'Assignment response saved.')
-  const selectable = (order) => order.storeRouteVersion === 1 && order.fulfillmentStatus === 'accepted' &&
+  const selectable = (order) => !(order.fulfillmentMethod === 'pickup' && !order.internationalShipping) && order.storeRouteVersion === 1 && order.fulfillmentStatus === 'accepted' &&
     order.storeReadyAt && !order.storeDispatchBatch && !order.driver
   const selected = (assignments.data || []).filter((order) => selectedIds.includes(order._id))
   const dispatchSelected = () => action.run(async () => {
@@ -69,11 +70,12 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
     {assignments.data?.length === 0 ? <p>No active assignments.</p> : null}
     {assignments.data?.map((order) => {
       const fallback = Boolean(order.fallbackStore)
+      const pickup = order.fulfillmentMethod === 'pickup' && !order.internationalShipping
       const store = order.fallbackStore || order.assignedStoreSnapshot
       const seconds = assignmentSeconds(order, now)
       const rejected = order.adminReviewRequired === 'store'
       const driverRejections = (order.companyDriverResponses || []).filter((response) => response.status === 'rejected' && response.action !== 'reroute')
-      const driverManageable = (order.storeDispatchBatch || !order.storeRouteVersion && (!order.inventoryManaged || order.fulfillmentStatus === 'accepted')) &&
+      const driverManageable = !pickup && (order.storeDispatchBatch || !order.storeRouteVersion && (!order.inventoryManaged || order.fulfillmentStatus === 'accepted')) &&
         ['Pending', 'Driver Assigned'].includes(order.deliveryStatus) &&
         !['completed', 'cancelled', 'payment_pending'].includes(order.fulfillmentStatus) && !rejected && !order.fallbackStore
       const active = !['completed', 'cancelled', 'payment_pending'].includes(order.fulfillmentStatus) &&
@@ -81,6 +83,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
       return <article className="panel" key={order._id}>
         <StoreLogo name={store?.name} logo={store?.logo} /><h2>Order #{order._id.slice(-6).toUpperCase()}</h2>
         <p>{store?.name} | {store?.address}</p><p>Store ID: {store?.storeId || store?._id}</p>
+        <PickupConfirmation order={order} party="operator" onSaved={assignments.reload} />
         {order.checkoutGroup ? <p>Combined checkout: {order.checkoutGroup}</p> : null}
         {order.requiredVehicle ? <p>{order.storeDispatchBatch ? 'Priced vehicle' : 'Delivery vehicle'}: {order.requiredVehicle}</p> : null}
         <p>Deliver to: {[order.shippingAddress1, order.city, order.zip].filter(Boolean).join(', ')}</p>
@@ -95,14 +98,14 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
           {line.quantity} x {line.product?.name || 'Product'} - {Number.isFinite(line.unitPrice ?? line.product?.price) ? formatCurrency(line.unitPrice ?? line.product.price) : 'Price unavailable'}
         </p>)}
         <p>Products: {Number.isFinite(order.itemsSubtotal) ? formatCurrency(order.itemsSubtotal) : 'Unavailable'}</p>
-        <p>{rejected ? `Rejected - Admin review | ${order.fulfillmentStatus}` : fallback ? 'Default-store fallback - awaiting a decision (no expiry)' : order.fulfillmentStatus === 'accepted'
+        <p>{pickup ? 'Customer collection - no driver dispatch or response expiry. Prepare for handover at this store.' : rejected ? `Rejected - Admin review | ${order.fulfillmentStatus}` : fallback ? 'Default-store fallback - awaiting a decision (no expiry)' : order.fulfillmentStatus === 'accepted'
           ? order.storeDispatchBatch ? 'Dispatched to drivers' : order.storeReadyAt ? 'Ready for dispatch' : 'Claimed - prepare the package, then click Mark package ready' : order.fulfillmentStatus === 'pending' ? `Respond within ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` :
             `Delivery status: ${order.deliveryStatus} | ${order.fulfillmentStatus || order.status}`}</p>
         {admin ? <div className="action-row">
           {active ? <>
             {order.fulfillmentStatus !== 'accepted' ? <button className="solid-button" disabled={action.busy || assignments.loading}
               onClick={() => respond(order, 'accept')}>Claim for assigned/default store</button> : null}
-            <button className="ghost-button" disabled={action.busy || assignments.loading} onClick={() => respond(order, 'reroute')}>Admin reroute</button>
+            {!pickup ? <button className="ghost-button" disabled={action.busy || assignments.loading} onClick={() => respond(order, 'reroute')}>Admin reroute</button> : null}
           </> : null}
           <button className="danger-button" disabled={action.busy || assignments.loading} onClick={() => {
             if (window.confirm('Delete order? Cancel through its checkout and reconcile any refund first. Paid orders cannot be silently deleted.')) respond(order, 'delete')
@@ -123,7 +126,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
             }}>Admin assign / dispatch to driver</button>
           </> : null}
         </div> : null}
-        {!order.storeRouteVersion && !fallback && order.fulfillmentStatus === 'accepted' && active ? <div className="action-row">
+        {!pickup && !order.storeRouteVersion && !fallback && order.fulfillmentStatus === 'accepted' && active ? <div className="action-row">
           <p>This order uses the older delivery workflow, which hides preparation controls. Enable store preparation first; saved fees and payments will not change.
             For an older cart, all active packages must be claimed and free of driver assignments, and upgrade together.</p>
           {!order.requiredVehicle ? <label>Delivery vehicle for packages without a saved vehicle (unknown-size packages dispatch singly)
@@ -137,7 +140,7 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
             if (window.confirm('Enable store preparation for all active packages in this older cart? Stores will prepare and dispatch separately. Saved fees, payment records and stock reservations stay unchanged.')) respond(order, 'enable-preparation')
           }}>Enable store preparation</button>
         </div> : null}
-        {order.storeRouteVersion === 1 && !fallback && order.fulfillmentStatus === 'accepted' ? <div className="action-row">
+        {!pickup && order.storeRouteVersion === 1 && !fallback && order.fulfillmentStatus === 'accepted' ? <div className="action-row">
           {order.storeDispatchBatch ? <p>Dispatched batch: {order.storeDispatchBatch} | {order.deliveryStatus}.
             {!order.driver ? ' Awaiting a compatible driver; remains queued.' : ''}</p> : order.storeReadyAt ? <label>
             <input type="checkbox" checked={selectedIds.includes(order._id)} disabled={action.busy || assignments.loading}
@@ -145,18 +148,18 @@ export default function StoreAssignmentsPage({ admin = false } = {}) {
             Ready - select for dispatch
           </label> : <button className="solid-button" disabled={action.busy || assignments.loading} onClick={() => respond(order, 'ready')}>Mark package ready</button>}
         </div> : null}
-        {!admin && !fallback && order.fulfillmentStatus === 'accepted' && active ? <button className="ghost-button"
+        {!pickup && !admin && !fallback && order.fulfillmentStatus === 'accepted' && active ? <button className="ghost-button"
           disabled={action.busy || assignments.loading} onClick={() => {
             if (window.confirm('Release this claimed request to another eligible store? No Admin approval is needed.')) respond(order, 'reroute')
           }}>Reroute</button> : null}
         {!admin && (fallback || order.fulfillmentStatus === 'pending') ? <div className="action-row">
-          <button className="solid-button" disabled={action.busy || assignments.loading || Boolean(assignments.error) || (!fallback && seconds === 0)} onClick={() => respond(order, 'accept')}>{fallback ? 'Claim order' : 'Accept order'}</button>
+          <button className="solid-button" disabled={action.busy || assignments.loading || Boolean(assignments.error) || (!pickup && !fallback && seconds === 0)} onClick={() => respond(order, 'accept')}>{fallback ? 'Claim order' : 'Accept order'}</button>
           {fallback ? <button className="ghost-button" disabled={action.busy || assignments.loading} onClick={() => {
             if (window.confirm('Reroute this assignment to another eligible store?')) respond(order, 'reroute')
           }}>Reroute</button> : null}
-          <button className="danger-button" disabled={action.busy || assignments.loading} onClick={() => {
+          {!pickup ? <button className="danger-button" disabled={action.busy || assignments.loading} onClick={() => {
             if (window.confirm(fallback ? 'Reject for Admin review? This does not cancel payment or issue a refund.' : 'Reject assignment? The entire order will move to another eligible store.')) respond(order, 'reject')
-          }}>Reject</button>
+          }}>Reject</button> : null}
         </div> : null}
       </article>
     })}

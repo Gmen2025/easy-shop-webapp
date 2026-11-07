@@ -21,6 +21,7 @@ import CatalogCartGuard from '../components/CatalogCartGuard'
 import CatalogPricingNotice from '../components/CatalogPricingNotice'
 import useCatalogPricing from '../features/products/useCatalogPricing'
 import { unscopedProductQuote, unresolvedCartItems } from '../utils/catalogPricing'
+import PickupConfirmation from '../components/PickupConfirmation'
 
 export default function DeliveryCheckoutPage() {
   const { id } = useParams()
@@ -151,6 +152,9 @@ function DeliveryCheckout() {
       dispatch(completeDeliveryCheckout({ id: result._id, cart: result.cart }))
       localStorage.removeItem(pendingKey)
     }
+    if (result.status === 'placed' && result.deliveries?.some((delivery) => delivery.fulfillmentMethod === 'pickup') && !result.childOrders) {
+      setGroup(await deliveryRequest(`checkouts/${result._id}`))
+    }
   }
   async function confirm() {
     const result = await deliveryRequest(`checkouts/${id}/confirm`, {
@@ -200,7 +204,7 @@ function DeliveryCheckout() {
   const pricing = group?.status === 'quote' ? calculateDeliveryPricing(group.deliveries, selections) : null
   const preview = group?.status === 'quote' ? checkoutPreview(group, selections, calculateDeliveryPricing) : null
   const methods = group ? paymentMethods(group, database, exchange, availability.methods) : []
-  const needsVehicle = group?.deliveries.some((delivery) => !selections[delivery.key])
+  const needsVehicle = group?.deliveries.some((delivery) => (delivery.fulfillmentMethod !== 'pickup' || group.international) && !selections[delivery.key])
   const convertedAvailable = !converted || rateIsActive(exchange, now)
   const currencyOptions = <fieldset disabled={busy} className="delivery-fieldset">
     <label>Payment currency & destination<select value={paymentCurrency} onChange={(event) => {
@@ -228,7 +232,7 @@ function DeliveryCheckout() {
       setNow(Date.now())
     })}>Refresh daily exchange policy</button> : null}
     {international ? <p>Enter Ethiopian recipient addresses. US stores deliver to the consolidation hub.
-      International shipping includes final delivery; import duties and customs are excluded.
+      Shipping applies to pickup and delivery; a separate final-delivery fee applies only to delivery. Import duties and customs are excluded.
       Only ETB bank transfer is supported, verified by Admin before fulfillment.</p> : null}
   </fieldset>
   return <section className="page-stack delivery-page">
@@ -274,7 +278,7 @@ function DeliveryCheckout() {
       <fieldset disabled={busy} className="delivery-fieldset">
         {!id ? <>
           {step === 1 ? <>
-          <p>Allocate every unit to one address. Pickup stores are selected from eligible matching-price stock nearest the delivery address, including the default store.</p>
+          <p>Allocate every unit to a destination. The quote selects supplying stores from matching-price stock. Then choose collection or delivery independently for each supplying store before payment.</p>
           {addresses.map((address, index) => <article className="order-card" key={address.id}>
             <h2>Drop-off {index + 1}</h2>
             <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => field === 'address1' ?
@@ -392,27 +396,53 @@ function DeliveryCheckout() {
           {service ? <p>Service request #{group.serviceRequest}. Pay the Admin ETB quote in USD; fulfillment remains in Ethiopia.
             Submitted or paid service payments require support review and manual refund handling before cancellation.</p> : null}
           <InternationalReceipt group={group} />
+          {group.childOrders?.filter((order) => order.fulfillmentMethod === 'pickup').map((order) =>
+            <PickupConfirmation key={order._id} order={order} party={user?.isAdmin && group.user !== (user._id || user.id) ? 'operator' : 'customer'}
+              onSaved={async () => showResult(await deliveryRequest(`checkouts/${group._id}`))} />)}
           {group.status !== 'quote' ? <ExchangeReceipt value={group} /> : null}
           {group.status === 'quote' ? <>
             <p>Quote expires {new Date(group.expiresAt).toLocaleString()}. Stock is not reserved until you continue.</p>
+            {step === 2 && !service ? <section className="order-card">
+              <h2>Pickup or delivery by store</h2>
+              <p>Pickup has no domestic delivery fee. International pickup retains the US hub route and shipping charges; only Ethiopia final delivery is omitted.</p>
+              {[...new Map(group.deliveries.map((delivery) => [delivery.store._id, delivery])).values()].map((delivery) =>
+                <label key={delivery.store._id}>{delivery.store.name}: fulfillment
+                  <select value={delivery.fulfillmentMethod || 'delivery'} onChange={(event) => run(async () => {
+                    const result = await deliveryRequest(`checkouts/${group._id}/fulfillment`, { method: 'POST', timeoutMs: 120000,
+                      data: { selections: [...new Map(group.deliveries.map((entry) => [entry.store._id, {
+                        storeId: entry.store._id, method: entry.store._id === delivery.store._id ? event.target.value : entry.fulfillmentMethod || 'delivery',
+                      }])).values()] } })
+                    setGroup(result)
+                    setSelections(Object.fromEntries(result.deliveries.map((entry) => [entry.key, entry.vehicle])))
+                  })}>
+                    <option value="delivery">Delivery - delivery charges apply</option>
+                    <option value="pickup" disabled={Boolean(group.international && !group.international.tariff?.ethiopiaPickup)}>
+                      {group.international ? 'Pickup in Ethiopia - shipping charges apply' : 'Pickup from store - no delivery charge'}
+                    </option>
+                  </select>
+                </label>)}
+              {group.international && !group.international.tariff?.ethiopiaPickup ? <p>Admin must configure an Ethiopia collection address to enable international pickup.</p> : null}
+            </section> : null}
             {step === 2 || step === 4 ? <>
             {group.deliveries.map((delivery) => <article className="order-card" key={delivery.key}>
               <h2>Pickup: {delivery.store.name}</h2><p>{delivery.store.address}</p>
-              <p>{international ? 'US consolidation hub' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
-              {delivery.defaultFallback ? <p>Queued for the default store after purchase, even when offline. It must claim and prepare the package before dispatch.</p> : null}
-              {!group.cartRoute ? <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p> : null}
+              {delivery.fulfillmentMethod === 'pickup' ? <p><strong>Customer collection address:</strong> {delivery.pickupAddress?.address || addressText(delivery.pickupAddress)}
+                {delivery.pickupAddress?.phone ? ` | ${delivery.pickupAddress.phone}` : ''}. {international ? 'Shipping charges still apply.' : 'Delivery charge: zero.'}</p> : null}
+              <p>{international ? 'US consolidation hub' : delivery.fulfillmentMethod === 'pickup' ? 'Recipient allocation' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
+              {delivery.defaultFallback ? <p>{delivery.fulfillmentMethod === 'pickup' && !international ? 'Collection stays pinned to this default store, even while offline.' : 'Queued for the default store after purchase, even when offline. It must claim and prepare the package before dispatch.'}</p> : null}
+              {!group.cartRoute && (delivery.fulfillmentMethod !== 'pickup' || international) ? <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p> : null}
               {delivery.lines.map((line) => <p key={`${line.key}:${line.product}`}>{line.quantity} x {line.name || line.product} at {formatCurrency(line.price)}</p>)}
-              <p>Cargo: {delivery.cargo.weightKg ?? 'Unknown'} kg / {delivery.cargo.volumeLiters ?? 'Unknown'} liters</p>
+              {(delivery.fulfillmentMethod !== 'pickup' || international) ? <p>Cargo: {delivery.cargo.weightKg ?? 'Unknown'} kg / {delivery.cargo.volumeLiters ?? 'Unknown'} liters</p> : null}
               {delivery.requiresVehicleSelection ? <p role="note">Measurements are incomplete. Choose a vehicle manually; capacity cannot be guaranteed.</p> : null}
-              {step === 2 ? <label>Vehicle<select value={selections[delivery.key] || ''} onChange={(event) =>
+              {(delivery.fulfillmentMethod !== 'pickup' || international) && (step === 2 ? <label>Vehicle<select value={selections[delivery.key] || ''} onChange={(event) =>
                 setSelections((previous) => selectDeliveryVehicle(group.deliveries, previous, delivery, event.target.value))}>
                 <option value="">Choose a vehicle</option>
                 {delivery.vehicleOptions.map((option) => <option key={option.type} value={option.type}>{option.type} - {delivery.pricingGroup?.kind === 'store-route' ? 'complete store route' : group.cartRoute ? 'entire cart route' : 'unshared route'} {formatCurrency(option.fee)}</option>)}
-              </select></label> : <p>Vehicle: {selections[delivery.key]}</p>}
+              </select></label> : <p>Vehicle: {selections[delivery.key]}</p>)}
               <p>{delivery.pricingGroup?.kind === 'store-route' ? "This drop-off's share of the store route" : group.cartRoute ? 'Allocated cart route fee share (not an additional charge)' : 'Delivery share'}: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
                 {delivery.pricingGroup?.kind === 'store-route' ? ` (complete store route: ${formatCurrency(pricing.byKey[delivery.key].sharedFee)})` : ''}
                 {!group.cartRoute && pricing.byKey[delivery.key].storeCount > 1 ? ` (${pricing.byKey[delivery.key].storeCount} nearby stores share this vehicle fee)` : ''}</p>
-              {step === 2 ? <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} /> : null}
+              {step === 2 && (delivery.fulfillmentMethod !== 'pickup' || international) ? <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} /> : null}
             </article>)}
             {step === 2 ? <div className="action-row">
               <button className="ghost-button" onClick={() => editCheckout(2)}>Change delivery speed / recalculate routes</button>
@@ -421,6 +451,7 @@ function DeliveryCheckout() {
             </> : null}
             <p>{service ? 'Service quote' : 'Products'}: {formatCurrency(group.itemsSubtotal)} | Delivery: {formatCurrency(pricing.deliveryFee)}</p>
             {international ? <p>International shipping: {money(group.international.shippingFee, 'usd')}</p> : null}
+            {international ? <p>Ethiopia final delivery: {money(group.finalDeliveryFee || 0, 'usd')}</p> : null}
             <h2>Estimated total: {formatCurrency(preview.total)}</h2>
             {group.exchangeRate ? <section className="order-card">
               <h3>Payment estimate: {money(preview.payment, group.currency)}</h3>
@@ -435,7 +466,7 @@ function DeliveryCheckout() {
               {methods.map((value) => <label key={value} className={`checkout-option${method === value ? ' selected' : ''}`}>
                 <input type="radio" name="payment-method" checked={method === value} value={value} onChange={() => setMethod(value)} />
                 <span><strong>{{ bank: 'Bank transfer', card: 'Credit / debit card', cash: 'Cash on delivery' }[value]}</strong>
-                  <small>{{ bank: 'Transfer the saved total once; Admin verifies the funds.', card: 'Pay the saved total securely with the matching Stripe merchant.', cash: 'Pay on each delivery. No online payment is taken.' }[value]}</small></span>
+                  <small>{{ bank: 'Transfer the saved total once; Admin verifies the funds.', card: 'Pay the saved total securely with the matching Stripe merchant.', cash: 'Pay on delivery or at store collection, according to each store choice. No online payment is taken.' }[value]}</small></span>
               </label>)}
             </div>
             {method === 'bank' && methods.includes('bank') ? <label>Bank account<select value={bankId} onChange={(event) => setBankId(event.target.value)}>
@@ -463,12 +494,12 @@ function DeliveryCheckout() {
               if (group.exchangeRate && !rateIsActive(exchange)) throw new Error('The daily rate expired. Refresh the saved checkout before reserving.')
               if (!service && pending === group._id && !cartMatchesQuote(items, group)) throw new Error('Your cart changed. Cancel this quote and request a fresh one.')
               if (!methods.includes(method)) throw new Error('Select a supported payment method for this checkout.')
-              if (group.deliveries.some((delivery) => !selections[delivery.key])) throw new Error('Choose a vehicle for every delivery.')
+              if (needsVehicle) throw new Error('Choose a vehicle for every delivery.')
               if (!service && pending === group._id) localStorage.setItem(pendingKey, group._id)
               await showResult(await deliveryRequest(`checkouts/${id}/prepare`, {
                 method: 'POST', timeoutMs: 60000, data: {
                   method, bankAccountId: bankId,
-                  selections: group.deliveries.map((delivery) => ({ key: delivery.key, vehicle: selections[delivery.key] })),
+                  selections: group.deliveries.filter((delivery) => delivery.fulfillmentMethod !== 'pickup' || international).map((delivery) => ({ key: delivery.key, vehicle: selections[delivery.key] })),
                 },
               }))
             })}>{service ? 'Reserve service payment' : 'Reserve stock & continue to payment'}</button>
@@ -498,7 +529,7 @@ function DeliveryCheckout() {
               })}>Load secure card payment</button> : null}
               <button className="ghost-button"
                 onClick={() => run(confirm)}>{group.paymentMethod === 'cash' ? 'Confirm cash on delivery order' : 'Check payment status / reconcile'}</button>
-              {group.paymentMethod === 'cash' ? <p>No online payment is taken. Cash is collected on each delivery.</p> : null}
+              {group.paymentMethod === 'cash' ? <p>No online payment is taken. Cash is collected on delivery or at store collection.</p> : null}
               <button className="ghost-button" onClick={() => run(async () => {
                 if (!window.confirm('Cancel only an unpaid reservation. If bank funds were sent, contact support first. Successful card payments are recovered instead of cancelled.')) return
                 await showResult(await deliveryRequest(`checkouts/${id}/cancel`, { method: 'POST' }))

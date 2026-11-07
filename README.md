@@ -2,6 +2,35 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Customer pickup or delivery
+
+In checkout's **Delivery** step, choose **Pickup from store** or **Delivery**
+independently for every supplying store. Destinations first identify eligible
+stock and store routes; the server then recalculates the quote after each
+fulfillment choice. Domestic pickup removes delivery and speed charges, shows
+the store collection address, and requires no vehicle. Review the revised total
+before reserving stock/payment. Existing orders remain delivery.
+
+Customers confirm actual collection with a handover note in the saved checkout
+or **My delivery checkouts**. Assigned store owners use **Store assignments**;
+Admin can use assignments or the checkout payment manager. Customer and
+operator confirmations are separate and visible to both. Do not confirm before
+handover. Noncash funds must be verified first; domestic stock and cash settle
+only after both confirmations. Pickup cannot be driver-dispatched/rerouted;
+use checkout cancellation/refund before collection confirmation instead.
+
+For USA-to-Ethiopia purchases, collection is at the **Ethiopia collection
+location**, not the USA store. US hub transport and international shipping still
+apply. Admin configures the optional Ethiopia collection address/contact and
+**Ethiopia final delivery per recipient (USD)** in international shipping
+settings. Final delivery defaults to zero and is charged only if at least one
+store's products are delivered to that recipient. International collection
+requires arrival in Ethiopia and both confirmations. Customs/duties are excluded.
+Deploy the matching backend before these clients; saved payments retain their
+quoted charges and collection addresses.
+
+Checks: `node --test tests/checkoutPickup.test.mjs tests/pickupConfirmation.test.mjs tests/checkoutPayment.test.mjs tests/storeDispatch.test.mjs`.
+
 ## Ride and service request availability
 
 Open **Admin > Service Availability** (`/admin/service-availability`). Select
@@ -740,8 +769,8 @@ start the shared backend on that port for local development, or set
   saved birr-per-USD rate.
 - USA-to-Ethiopia checkout accepts Ethiopian recipients, reserves US inventory
   and routes US pickups only to the consolidation hub. Shipping is charged once
-  per recipient using the server's weight/volume tariff, including final
-  Ethiopian delivery but excluding customs/duties. Products, hub route fees and
+  per recipient using the server's weight/volume tariff, with a separate configured
+  Ethiopia final-delivery fee for delivery only, excluding customs/duties. Products, hub route fees and
   shipping remain USD; their combined total is converted to ETB. Payment is
   **ETB bank transfer only** using explicitly ETB-tagged accounts in the USA
   database. Submitted transfers enter `bank_review`, keep stock reserved, and

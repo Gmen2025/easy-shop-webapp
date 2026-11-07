@@ -9,6 +9,7 @@ import DeliveryWindow from '../components/DeliveryWindow'
 import AdminNavigation from '../components/AdminNavigation'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { money, paymentAmount, SHIPMENT_STAGES } from '../utils/checkoutPayment'
+import PickupConfirmation from '../components/PickupConfirmation'
 
 function Tracking({ order }) {
   const [tracking, setTracking] = useState(null)
@@ -142,6 +143,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
         </article> : null
       })}
       {(selected.childOrders || []).map((order) => <article className="order-card" key={order._id}>
+        <PickupConfirmation order={order} party={admin ? 'operator' : 'customer'} onSaved={load} />
         <h3>Delivery #{order._id}</h3>
         <p>Pickup: {order.assignedStoreSnapshot?.name} - {order.assignedStoreSnapshot?.address}</p>
         <p>Drop-off: {[order.shippingAddress1, order.shippingAddress2, order.city, order.zip, order.country].filter(Boolean).join(', ')}</p>
@@ -154,6 +156,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
         {order.internationalShipping ? <div>
           <p>US-to-Ethiopia shipment: {order.internationalShipping.status} | {order.internationalShipping.carrier} {order.internationalShipping.trackingNumber}</p>
           <p>The US delivery status refers to the consolidation hub, not final delivery in Ethiopia.</p>
+          <p>International shipping: {money(order.internationalShippingFee || 0, 'usd')} | Ethiopia final delivery: {money(order.internationalShipping.finalDeliveryFee || 0, 'usd')}</p>
           <p>{order.internationalShipping.customsNotice}</p>
         </div> : null}
         {order.deliveryPricingGroup?.kind === 'store-route' ? <p>This drop-off shows its saved share of the route from {order.deliveryPricingGroup.storeName}.
@@ -163,7 +166,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
           order.deliveryPricingGroup?.storeCount > 1 ? <p>{order.deliveryPricingGroup.storeCount} nearby pickups share a vehicle fee. This delivery shows only its saved share.</p> : null}
         {order.refundStatus ? <p>Refund: {order.refundStatus} {order.refundId || ''}</p> : null}
         {order.refundStatus && order.exchangeRate ? <p>Saved refund amount: {money(paymentAmount(order), order.paymentCurrency || selected.currency)}</p> : null}
-        {order.fulfillmentStatus !== 'cancelled' ? <button className="ghost-button" onClick={() => setTrackId(trackId === order._id ? '' : order._id)}>Toggle live tracking</button> : null}
+        {order.fulfillmentStatus !== 'cancelled' && (order.fulfillmentMethod !== 'pickup' || order.internationalShipping) ? <button className="ghost-button" onClick={() => setTrackId(trackId === order._id ? '' : order._id)}>Toggle live tracking</button> : null}
         {selected.status === 'placed' && !['cancelled', 'completed'].includes(order.fulfillmentStatus) && order.deliveryStatus !== 'Delivered' ? <button disabled={busy} className="ghost-button" onClick={() => {
           if (window.confirm('Cancel this delivery only? Refund availability is checked by the server.')) action(`deliveries/${order._id}/cancel`)
         }}>Cancel this delivery</button> : null}

@@ -64,6 +64,16 @@ test('separate vehicles, destinations and distant stores are not undercharged', 
   assert.equal(calculateDeliveryPricing([unknownCargo]).deliveryFee, 10)
 })
 
+test('domestic pickup is free even with stale selections while international collection keeps hub transport fees', () => {
+  const pickup = { ...delivery('pickup', 1, 10), fulfillmentMethod: 'pickup', vehicleOptions: [], vehicle: undefined }
+  const result = calculateDeliveryPricing([pickup, delivery('dropoff', 2, 7)], { pickup: 'van' })
+  assert.equal(result.deliveryFee, 7)
+  assert.equal(result.byKey.pickup.deliveryFee, 0)
+  assert.equal(result.byKey.dropoff.deliveryFee, 7)
+  assert.equal(calculateDeliveryPricing([pickup]).deliveryFee, 0)
+  assert.equal(calculateDeliveryPricing([{ ...delivery('export', 1, 10), fulfillmentMethod: 'pickup', internationalPickup: true }]).deliveryFee, 10)
+})
+
 test('cart routes charge once across stores and addresses, conserve cents, and require one vehicle', () => {
   const deliveries = ['a', 'b', 'c'].map((key) => ({
     ...delivery(key, 10, 10.01, 'cart-route-v1'), pricingGroup: { key: 'cart-route-v1', kind: 'cart-route' },

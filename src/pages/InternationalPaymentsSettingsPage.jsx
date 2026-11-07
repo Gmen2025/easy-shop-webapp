@@ -10,6 +10,7 @@ const tariffFields = [
   ['baseUsd', 'Base shipping fee (USD)'], ['perKgUsd', 'USD per billable kg'],
   ['minimumUsd', 'Minimum shipment fee (USD)'], ['volumetricDivisor', 'Volumetric divisor (cm3 / kg)'],
   ['maxWeightKg', 'Maximum billable kg per recipient'], ['maxDimensionCm', 'Maximum parcel dimension (cm)'],
+  ['finalDeliveryUsd', 'Ethiopia final delivery per recipient (USD; pickup excludes this fee)'],
 ]
 
 export default function InternationalPaymentsSettingsPage() {
@@ -40,7 +41,7 @@ export default function InternationalPaymentsSettingsPage() {
       Promise.all([deliveryRequest('international-shipping-config'), apiRequest('/products')])
         .then(([config, catalog]) => {
           if (!current) return
-          setShipping({ ...config, hub: config.hub || Object.fromEntries(ADDRESS_FIELDS.map(([field]) => [field, field === 'country' ? 'USA' : ''])) })
+          setShipping({ ...config, finalDeliveryUsd: config.finalDeliveryUsd ?? 0, hub: config.hub || Object.fromEntries(ADDRESS_FIELDS.map(([field]) => [field, field === 'country' ? 'USA' : ''])) })
           setProducts(catalog)
         }).catch((failure) => { if (current) setError(failure.message) })
     }
@@ -61,7 +62,7 @@ export default function InternationalPaymentsSettingsPage() {
     <AdminNavigation />
     <div className="panel-header"><h1>{usa ? 'US exports paid in birr' : 'Ethiopia USD purchases & service payments'}</h1><Link to="/admin/delivery">Delivery settings</Link></div>
     <div className="action-row"><Link to="/admin/tools/banks">Bank account configuration</Link><Link to="/admin/delivery-payments">Payments & shipment tracking</Link></div>
-    <p>{usa ? 'ETB = USD products + US hub route fees + international shipping, multiplied by birr per USD. Product-only; no service or ride birr payments.' :
+    <p>{usa ? 'ETB = USD products + US hub route fees + international shipping + Ethiopia final delivery (if selected), multiplied by birr per USD. Product-only; no service or ride birr payments.' :
       'USD = ETB total divided by birr per USD. Products and Admin-quoted non-ride services stay in Ethiopia.'}</p>
     {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
     <fieldset disabled={busy} className="delivery-fieldset">
@@ -117,6 +118,16 @@ export default function InternationalPaymentsSettingsPage() {
           </label>)}</div>
           <p>Billable kg = greater of total actual kg and packaged volume / divisor, rounded up to 0.001 kg per recipient.
             Shipping USD = max(minimum, base + billable kg x rate). US road delivery is added separately.</p>
+          <label><input type="checkbox" checked={Boolean(shipping.ethiopiaPickup)} onChange={(event) => setShipping({
+            ...shipping, ethiopiaPickup: event.target.checked ? { label: 'Ethiopia collection', country: 'Ethiopia' } : null,
+          })} />Enable customer collection in Ethiopia</label>
+          {shipping.ethiopiaPickup ? <div className="delivery-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>
+            Collection {label}<input value={shipping.ethiopiaPickup[field] || ''} onChange={(event) => setShipping({
+              ...shipping, ethiopiaPickup: { ...shipping.ethiopiaPickup, [field]: event.target.value },
+            })} />
+          </label>)}</div> : null}
+          <p>International pickup retains shipping charges. The existing tariff remains shipping-only; final delivery starts at zero.
+            Configure the Ethiopia collection address and contact before enabling collection. Duties/customs are excluded.</p>
           <button className="solid-button" onClick={() => run(async () => {
             setShipping(await deliveryRequest('international-shipping-config', { method: 'PUT', data: shipping, timeoutMs: 60000 }))
             setMessage('Hub and tariff saved. Unprepared quotes must be recalculated; prepared orders retain their snapshots.')

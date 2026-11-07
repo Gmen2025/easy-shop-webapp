@@ -65,6 +65,14 @@ test('international previews include shipping once per recipient and multiply US
   assert.equal(nativeCurrency('E_ShopUSA'), 'usd')
 })
 
+test('previews include the configured Ethiopia final-delivery fee but never domestic pickup vehicle charges', () => {
+  const group = { itemsSubtotal: 100, deliveries, international: { shippingFee: 25 }, finalDeliveryFee: 8.01,
+    exchangeRate: { ...rate, direction: 'usd-to-etb' }, currency: 'etb' }
+  assert.deepEqual(checkoutPreview(group, {}, calculateDeliveryPricing), { total: 138.01, payment: 20701.5 })
+  const pickups = deliveries.map((delivery) => ({ ...delivery, fulfillmentMethod: 'pickup' }))
+  assert.deepEqual(checkoutPreview({ itemsSubtotal: 100, deliveries: pickups }, {}, calculateDeliveryPricing), { total: 100, payment: 100 })
+})
+
 test('service USD quotes have no cart or delivery costs and use the Admin total', () => {
   const group = { kind: 'service', itemsSubtotal: 1234.5, deliveries: [], exchangeRate: rate }
   assert.deepEqual(checkoutPreview(group, {}, calculateDeliveryPricing), { total: 1234.5, payment: 8.23 })

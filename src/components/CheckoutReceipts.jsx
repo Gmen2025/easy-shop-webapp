@@ -17,7 +17,8 @@ export function InternationalReceipt({ group }) {
   return <section className="order-card">
     <h3>US-to-Ethiopia shipping</h3>
     <p>US consolidation hub: {addressText(group.international.hub)}</p>
-    <p>International shipping: {money(group.international.shippingFee, 'usd')} (once per recipient, including final address delivery)</p>
+    <p>International shipping: {money(group.international.shippingFee, 'usd')} (once per recipient)</p>
+    <p>Ethiopia final delivery: {money(group.finalDeliveryFee || 0, 'usd')}. Collection omits final delivery, not shipping.</p>
     <p>US driver status &quot;Delivered&quot; means arrival at the US hub, not final delivery in Ethiopia.</p>
     <p>{group.international.customsNotice}</p>
     {group.status === 'bank_review' ? <p role="status">Transfer submitted for Admin review. Stock remains reserved.

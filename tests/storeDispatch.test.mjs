@@ -191,6 +191,21 @@ test('website stores prepare, select and dispatch packages through the shared au
         else globalThis.window = originalWindow
       }
     }
+    for (const mode of [false, true]) {
+      admin = mode
+      order.fulfillmentMethod = 'pickup'
+      order.fulfillmentStatus = 'pending'
+      order.fulfillmentDeadline = null
+      order.storeDispatchBatch = null
+      order.storeRouteVersion = undefined
+      order.fallbackStore = null
+      state.reset([order])
+      assert.equal(button(mode ? 'Claim for assigned/default store' : 'Accept order').props.disabled, false)
+      order.fulfillmentStatus = 'accepted'
+      for (const label of ['Reroute', 'Admin reroute', 'Reject', 'Enable store preparation', 'Mark package ready',
+        'Admin assign / dispatch to driver', 'Reroute to another driver']) assert.equal(button(label), undefined, label)
+      assert.match(text(render()), /Customer collection - no driver dispatch/)
+    }
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

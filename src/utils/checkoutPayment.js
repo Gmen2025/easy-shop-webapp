@@ -37,7 +37,7 @@ export function paymentMethods(group, database, exchange, settings) {
 
 export function checkoutPreview(group, selections, calculatePricing) {
   const deliveryFee = calculatePricing(group.deliveries, selections).deliveryFee
-  const total = Math.round((group.itemsSubtotal + deliveryFee + (group.international?.shippingFee || 0)) * 100) / 100
+  const total = Math.round((group.itemsSubtotal + deliveryFee + (group.international?.shippingFee || 0) + (group.finalDeliveryFee || 0)) * 100) / 100
   if (!group.exchangeRate) return { total, payment: total }
   const rate = group.exchangeRate.birrPerUsd
   if (!Number.isFinite(rate) || rate <= 0) throw new Error('The saved exchange rate is invalid. Request a fresh quote.')
