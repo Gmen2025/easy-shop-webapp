@@ -3,6 +3,7 @@ export const ADMIN_PERIODS = [
   ['quarterly', '90 Days'], ['yearly', '365 Days'],
 ]
 export const ADMIN_TOOLS = [
+  ['Service Availability', 'Ride and service request switches by country', '/admin/service-availability', 'settings'],
   ['Products', 'Catalog, images and stock', '/admin/tools/products', 'catalog'],
   ['Categories', 'Organize your catalog', '/admin/tools/categories', 'catalog'],
   ['Orders', 'Statuses and customer details', '/admin/tools/orders', 'sales'],

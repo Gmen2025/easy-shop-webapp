@@ -7,6 +7,7 @@ import { deliveryRequest } from '../api/delivery'
 import { getSelectedDatabaseName } from '../api/client'
 import { money } from '../utils/checkoutPayment'
 import ReviewPanel from '../components/ReviewPanel'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 
 function formatStatus(status) {
   return String(status || 'new')
@@ -32,6 +33,7 @@ function formatDate(value) {
 }
 
 function ServiceRequestsPage() {
+  const availability = useServiceAvailability()
   const navigate = useNavigate()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -133,14 +135,15 @@ function ServiceRequestsPage() {
       </div>
 
       {error ? <p className="form-error">{error}</p> : null}
+      {availability.error && <p role="alert">{availability.error} <button onClick={availability.reload}>Retry service availability</button></p>}
       {loading ? <p className="section-note">Refreshing your requests...</p> : null}
 
       {requests.length === 0 ? (
         <div className="empty-state">
           <p>You have not submitted a service request yet.</p>
-          <Link className="solid-button" to="/service-request">
+          {availability.settings?.services === true && <Link className="solid-button" to="/service-request">
             Request Service
-          </Link>
+          </Link>}
         </div>
       ) : (
         <div className="service-requests-list">

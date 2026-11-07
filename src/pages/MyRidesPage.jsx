@@ -7,6 +7,7 @@ import LoadingState from '../components/LoadingState'
 import RideCheckout from '../components/RideCheckout'
 import ReviewPanel from '../components/ReviewPanel'
 import RideParticipantProfile from '../components/RideParticipantProfile'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 
 async function fetchRideData(rideId) {
   const [list, detail] = await Promise.all([
@@ -32,6 +33,7 @@ function rideAddress(address) {
 }
 
 function MyRidesPage() {
+  const availability = useServiceAvailability()
   const [searchParams] = useSearchParams()
   const rideId = searchParams.get('rideId')
   const [rides, setRides] = useState([])
@@ -102,8 +104,9 @@ function MyRidesPage() {
           <h1>My rides</h1>
           <p>Review current ride status and revisit previous trips.</p>
         </div>
-        <Link className="solid-button" to="/rides">Book a ride</Link>
+        {availability.settings?.rides === true && <Link className="solid-button" to="/rides">Book a ride</Link>}
       </section>
+      {availability.error && <p role="alert">{availability.error} <button onClick={availability.reload}>Retry service availability</button></p>}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {selected ? (
         <section className="panel ride-detail-card">

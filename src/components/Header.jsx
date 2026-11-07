@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
 import NotificationBell from './NotificationBell'
 import useFinancialHealth from '../features/financialManagement/useFinancialHealth'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 import brandLogo from '../assets/addugenet-header.png'
 import { companyTabs, isCompanyDriver, isCompanyStoreOwner } from '../utils/company'
 import { switchDatabase } from '../features/cart/cartSlice'
@@ -77,6 +78,7 @@ function Header() {
   const dispatch = useDispatch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const financialHealth = useFinancialHealth(isMenuOpen)
+  const availability = useServiceAvailability(isMenuOpen)
   const headerRef = useRef(null)
   const menuCloseRef = useRef(null)
   const user = useSelector((state) => state.auth.user)
@@ -123,14 +125,14 @@ function Header() {
   ]
   const deliveryItems = user
     ? [
-        { to: '/rides', label: 'Book a Ride', icon: 'ride' },
+        ...(availability.settings?.rides === true ? [{ to: '/rides', label: 'Book a Ride', icon: 'ride' }] : []),
         { to: '/rides/mine', label: 'My Rides', icon: 'pin' },
         { to: '/delivery-checkouts', label: 'Delivery Checkouts', icon: 'package' },
       ]
     : []
   const serviceItems = user
     ? [
-        { to: '/service-request', label: 'Request Service', icon: 'service' },
+        ...(availability.settings?.services === true ? [{ to: '/service-request', label: 'Request Service', icon: 'service' }] : []),
         { to: '/service-requests', label: 'Service Requests', icon: 'orders' },
       ]
     : []
@@ -227,6 +229,7 @@ function Header() {
               <MenuSection title="Financial Health" icon="orders" items={financialHealth.enabled === true ?
                 [{ to: '/financial-health', label: 'Financial statements & tracker', icon: 'orders' }] : []} cartCount={cartCount} onNavigate={closeMenu} />
               {financialHealth.error && <div role="alert">{financialHealth.error} <button onClick={financialHealth.reload}>Retry Financial Health availability</button></div>}
+              {availability.error && <div role="alert">{availability.error} <button onClick={availability.reload}>Retry service availability</button></div>}
               <MenuSection title="Business" icon="store" items={businessItems} cartCount={cartCount} onNavigate={closeMenu} />
               <MenuSection title="Account" icon="user" items={accountItems} cartCount={cartCount} onNavigate={closeMenu} />
               <div className="header-controls">

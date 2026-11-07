@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../features/auth/authSlice'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 
 const icons = {
   user: 'M20 21v-2a7 7 0 0 0-14 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
@@ -37,6 +38,7 @@ function Tile({ title, subtitle, icon, tone, to, href }) {
 }
 
 function ProfilePage() {
+  const availability = useServiceAvailability()
   const user = useSelector((state) => state.auth.user)
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -124,7 +126,8 @@ function ProfilePage() {
         <Tile title="Telegram" subtitle="Message @BettyT58" icon="send" tone="blue" href="https://t.me/BettyT58" />
       </div>
       <p className="account-support-hours">Support Hours: Mon-Sat, 9 AM - 6 PM</p>
-      <Link className="account-service-link" to="/service-request">Request Service</Link>
+      {availability.settings?.services === true && <Link className="account-service-link" to="/service-request">Request Service</Link>}
+      {availability.error && <p role="alert">{availability.error} <button onClick={availability.reload}>Retry service availability</button></p>}
     </section>
   </section>
 }

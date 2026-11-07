@@ -2,6 +2,23 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Ride and service request availability
+
+Open **Admin > Service Availability** (`/admin/service-availability`). Select
+USA or Ethiopia and toggle **Ride service** / **Service requests** independently.
+These switches default ON and supplement, rather than replace, country
+maintenance mode and ride fare configuration. Saving applies immediately to
+both clients via the matching backend's `/settings/service-availability`.
+
+OFF hides new-booking navigation and blocks booking forms and server submissions,
+including already-open forms. **My Rides** and **Service Requests** history,
+payments and admin/driver operations remain accessible. Nothing is deleted.
+Availability refreshes on page/menu entry, focus and every 30 seconds; errors
+hide new-booking entry points and show a retry action. Deploy the backend first.
+
+Checks: `node --test tests/serviceAvailability.test.mjs tests/rides.test.mjs`
+and `npm run build`.
+
 The header uses the supplied Addugenet bag icon to the left of the shop name,
 at 40px on desktop and 32px on small screens. It remains part of the home link;
 the adjacent shop name supplies its accessible label.

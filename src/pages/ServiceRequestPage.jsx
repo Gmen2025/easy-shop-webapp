@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
 import { getSelectedDatabaseName } from '../api/client'
 import { createServiceRequest } from '../api/serviceRequests'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 
 const getCountryFromDatabase = (databaseName) => {
   return databaseName === 'E_ShopUSA' ? 'USA' : 'Ethiopia'
@@ -26,6 +27,7 @@ const initialForm = {
 }
 
 function ServiceRequestPage() {
+  const availability = useServiceAvailability()
   const user = useSelector((state) => state.auth.user)
   const navigate = useNavigate()
   const selectedDatabase = getSelectedDatabaseName()
@@ -38,6 +40,12 @@ function ServiceRequestPage() {
   if (!user) {
     return <Navigate to="/login" replace />
   }
+  if (availability.settings?.services !== true) return <section className="panel">
+    <h1>{availability.settings ? 'New service requests are disabled in this region.' : 'Checking service availability...'}</h1>
+    {availability.error && <p role="alert">{availability.error}</p>}
+    <button onClick={availability.reload}>Refresh availability</button>
+    <Link to="/service-requests">Existing service requests</Link>
+  </section>
 
   function updateField(event) {
     const { name, value } = event.target

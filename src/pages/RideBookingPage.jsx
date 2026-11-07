@@ -8,6 +8,7 @@ import LoadingState from '../components/LoadingState'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import RideMap from '../components/RideMap'
 import RideCustomerPhoto from '../components/RideCustomerPhoto'
+import useServiceAvailability from '../features/serviceAvailability/useServiceAvailability'
 import { addressCountryCode } from '../utils/addressAutocomplete'
 import { addressText, latLng, validateAddress } from '../utils/delivery'
 import {
@@ -16,6 +17,7 @@ import {
 } from '../utils/rides'
 
 function RideBookingPage() {
+  const availability = useServiceAvailability()
   const navigate = useNavigate()
   const [database] = useState(getSelectedDatabaseName)
   const country = database === 'E_ShopUSA' ? 'USA' : 'Ethiopia'
@@ -200,9 +202,11 @@ function RideBookingPage() {
       <button className="solid-button" onClick={() => {
         setError(''); setLoading(true); setReload((previous) => previous + 1)
       }}>Retry loading</button>
-    </section> : !config.enabled ? <section className="panel empty-state">
+    </section> : !config.enabled || availability.settings?.rides !== true ? <section className="panel empty-state">
       <h2>Ride service is not available in this region yet.</h2>
-      <p>Switch your region or check again later.</p>
+      <p>New bookings are unavailable. Existing rides and payments remain accessible.</p>
+      {availability.error && <p role="alert">{availability.error}</p>}
+      <button onClick={availability.reload}>Refresh availability</button>
     </section> : <div className="ride-booking-layout">
       <RideMap stops={displayStops} country={country} disabled={busy}
         onSelectLocation={step === 1 ? selectMapLocation : undefined} />
