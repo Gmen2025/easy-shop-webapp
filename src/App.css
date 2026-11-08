@@ -750,6 +750,89 @@
 .company-mode input { width: auto; }
 .company-stop { border-left: 3px solid #eab308; padding: .2rem 1rem; margin-block: 1rem; }
 .company-trip-screen .delivery-map { height: 60vh; min-height: 300px; }
+.store-income-page { color: #131e3a; }
+.store-income-page .panel { border-radius: 20px; border-color: #dfe5ef; }
+.store-income-page .income-page-heading h1 { margin: .25rem 0; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+.store-income-page .income-page-heading > p:last-child { font-size: 1.1rem; font-weight: 700; margin-bottom: 0; }
+.income-eyebrow { color: #52617b; font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.store-income-page .solid-button { background: #ffd400; color: #131e3a; min-height: 48px; border-radius: 16px; }
+.store-income-page .income-refresh { justify-self: start; }
+.income-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem; background: #eef1f6; border-radius: 16px; }
+.income-controls > label { display: grid; gap: .5rem; font-size: .85rem; color: #52617b; font-weight: 700; min-width: 100px; }
+.income-controls .company-periods { flex: 1; min-width: 0; margin: 0; flex-wrap: wrap; }
+.income-controls .company-periods button { min-height: 44px; border-radius: 14px; }
+.income-controls .company-periods button[aria-pressed="true"] { background: #ffd400; color: #131e3a; }
+.income-icon { width: 24px; height: 24px; flex-shrink: 0; }
+.income-section-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.income-section-heading h2 { margin: 0; font-size: 1.2rem; }
+.income-dark-heading { background: #182033; color: white; padding: 1rem; border-radius: 14px; }
+.income-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 1rem; margin: 0 0 1rem; }
+.income-summary > div { background: #f5f7fb; border: 1px solid #e8ecf3; border-radius: 14px; padding: 1rem; min-width: 0; }
+.income-summary dt { display: flex; align-items: center; gap: .6rem; color: #52617b; font-size: .9rem; }
+.income-summary dd { margin: .8rem 0 0; font-size: clamp(1.25rem, 3vw, 1.8rem); font-weight: 800; overflow-wrap: anywhere; }
+.store-income-page .income-balance .admin-data-rows > div { padding-block: .85rem; gap: 1rem; }
+.store-income-page .income-balance dt { display: flex; align-items: center; gap: .75rem; color: #26344f; }
+.store-income-page .income-balance dd { color: #173c90; font-weight: 800; text-align: right; overflow-wrap: anywhere; }
+.store-income-page .order-card { border-radius: 14px; border-color: #dfe5ef; background: #f8fafc; }
+.income-payout-heading { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.income-payout-heading > strong { font-size: 1.3rem; }
+.income-payout-heading > p { flex-basis: 100%; margin: 0; color: #52617b; }
+.income-status { display: inline-block; background: #eef1f6; color: #26344f; border: 1px solid #dfe5ef; border-radius: 10px; padding: .35rem .65rem; font-size: .85rem; font-weight: 700; }
+@media (max-width: 480px) {
+  .store-income-page .income-balance .admin-data-rows > div { display: flex; flex-wrap: wrap; }
+  .store-income-page .income-balance dd { margin-left: auto; }
+  .income-controls .company-periods { flex-basis: 100%; }
+}
+.admin-store-account { color: #131e3a; }
+.admin-store-account .account-page-heading h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.2rem); }
+.admin-store-account .account-page-heading p { margin-bottom: 0; font-size: 1.1rem; font-weight: 700; }
+.admin-store-account .company-navigation { flex-wrap: wrap; overflow: visible; }
+.admin-store-account .company-navigation button { min-height: 48px; border-radius: 16px; background: #eef1f6; color: #26344f; }
+.admin-store-account .company-navigation button[aria-pressed="true"],
+.admin-store-account .company-navigation .account-income-link,
+.admin-store-account .account-refresh .solid-button { background: #ffd400; color: #131e3a; }
+.admin-store-account .company-periods { margin: 0; }
+.admin-store-account .company-periods button { min-height: 44px; border-radius: 14px; }
+.admin-store-account .company-periods button[aria-pressed="true"] { background: #ffd400; color: #131e3a; }
+.admin-store-account .panel { border-radius: 20px; border-color: #dfe5ef; }
+.account-refresh { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.account-refresh > div { flex: 1 1 160px; }
+.account-refresh p { margin: .35rem 0 0; color: #52617b; }
+.account-metric-icon { width: 26px; height: 26px; flex-shrink: 0; }
+.account-card-title { display: flex; align-items: center; gap: .8rem; }
+.account-card-title h2 { font-size: 1.25rem; margin: 0; }
+.account-performance .account-card-title > svg { width: 52px; height: 52px; }
+.account-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.25rem 0 0; }
+.account-summary > div { border-left: 1px solid #dfe5ef; padding-left: 1rem; min-width: 0; }
+.account-summary dt { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; color: #26344f; }
+.account-summary dd { margin: .5rem 0 0; font-size: clamp(1.3rem, 4vw, 2rem); font-weight: 800; overflow-wrap: anywhere; }
+.admin-store-account .account-gross { padding: 0; overflow: hidden; }
+.account-gross-heading { display: flex; align-items: center; gap: .8rem; background: #182033; color: white; padding: 1rem 1.25rem; }
+.account-gross-heading h2 { margin: 0; font-size: 1.3rem; }
+.account-gross-body { padding: 1rem 1.25rem; }
+.account-gross-body > p { color: #52617b; margin: 0 0 .8rem; }
+.account-activity, .account-dates { margin: 0; }
+.account-activity > div, .account-dates > div { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .6rem 0; min-height: 44px; }
+.account-activity dt, .account-dates dt { display: flex; align-items: center; gap: 1rem; }
+.account-activity dd { margin: 0; color: #173c90; font-size: 1.15rem; font-weight: 800; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.account-dates { border-top: 1px solid #dfe5ef; margin-top: .5rem; color: #52617b; font-size: .9rem; }
+.account-dates dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.account-inventory { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.account-inventory dt { flex-direction: column; text-align: center; }
+.account-inventory dd { text-align: center; font-size: 1.5rem; }
+@media (max-width: 480px) {
+  .account-summary { gap: .5rem; }
+  .account-summary > div { padding-left: .5rem; }
+  .account-summary dt { font-size: .85rem; }
+  .account-inventory { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .account-dates > div { align-items: flex-start; flex-wrap: wrap; }
+  .account-dates dd { margin-left: auto; }
+}
+@media (max-width: 360px) {
+  .account-performance .account-summary { grid-template-columns: 1fr; }
+  .account-performance .account-summary > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+  .account-performance .account-summary dd { margin: 0; font-size: 1.25rem; }
+}
 @media (max-width: 640px) {
   .company-console .panel { padding: 1rem; }
   .company-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }

@@ -38,7 +38,7 @@ export function OwnershipIncomeReport({ period }) {
 export default function FinancePage({ admin = false, kind: selfKind, embedded = false }) {
   const { kind: routeKind, accountId = 'me' } = useParams()
   const kind = routeKind || selfKind
-  return <section className="page-stack admin-console">
+  return <section className={`page-stack admin-console${kind === 'store' ? ' store-income-page' : ''}`}>
     {!embedded && (admin ? <AdminNavigation /> : <Link to="/profile">Back to account</Link>)}
     {kind ? <AccountIncome key={`${kind}:${accountId}`} kind={kind} accountId={accountId} admin={admin} /> : <IncomeAccounts />}
   </section>
@@ -99,37 +99,48 @@ function AccountIncome({ kind, accountId, admin }) {
   const summary = data?.periods[period][currency]
   return <>
     {admin && <Link to="/admin/income">All income accounts</Link>}
-    <h1>{data?.account.name || 'Account income'}: income & payouts</h1>
+    {kind === 'store' ? <header className="income-page-heading"><p className="income-eyebrow">Store finances</p>
+      <h1>Store Income & Payouts</h1><p>{data?.account.name || 'Account income'}</p></header> :
+      <h1>{data?.account.name || 'Account income'}: income & payouts</h1>}
     {admin && data && <Link to={`/admin/accounts/${kind}/${data.account._id}`}>Open full business dashboard & notifications</Link>}
     <Feedback resource={resource} action={action} />
-    <button disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh income</button>
+    <button className={kind === 'store' ? 'solid-button income-refresh' : undefined} disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh income</button>
     {data && !resource.error && <>
       <p>{data.account.isCompanyOwned ? 'AdduGenet-owned: income belongs to AdduGenet.' : 'Independent: income after platform fees.'}</p>
       {data.locations.length > 1 && <label>Store location<select value={data.account._id} disabled={action.busy}
         onChange={(event) => navigate(`/income/store/${event.target.value}`)}>
         {data.locations.map((location) => <option key={location._id} value={location._id}>{location.name}</option>)}
       </select></label>}
+      <div className={kind === 'store' ? 'income-controls' : undefined}>
       <label>Currency<select value={currency} onChange={(event) => setCurrency(event.target.value)}>
         <option>ETB</option><option>USD</option>
       </select></label>
       <CompanyPeriods value={period} onChange={setPeriod} />
-      <article className="panel"><h2>Selected period</h2>
-        <p>Gross completed income: {financeMoney(summary.gross, currency)}</p>
-        <p>AdduGenet allocation: {financeMoney(summary.adduGenetIncome, currency)}</p>
-        <p>Independent net income: {financeMoney(summary.independentIncome, currency)}</p>
+      </div>
+      <article className="panel"><IncomeHeading store={kind === 'store'} title="Selected period" />
+        {kind === 'store' ? <dl className="income-summary">
+          {[['Gross completed income', summary.gross, '#059669'], ['AdduGenet allocation', summary.adduGenetIncome, '#2563eb'],
+            ['Independent net income', summary.independentIncome, '#9333ea']].map(([label, value, color]) =>
+            <div key={label}><dt><IncomeIcon color={color} />{label}</dt><dd>{financeMoney(value, currency)}</dd></div>)}
+        </dl> : <>
+          <p>Gross completed income: {financeMoney(summary.gross, currency)}</p>
+          <p>AdduGenet allocation: {financeMoney(summary.adduGenetIncome, currency)}</p>
+          <p>Independent net income: {financeMoney(summary.independentIncome, currency)}</p>
+        </>}
         {Object.entries(summary.categories).map(([category, values]) => <p key={category}>
           {category}: gross {financeMoney(values.gross, currency)} / net {financeMoney(values.independentIncome, currency)}
         </p>)}
       </article>
-      <article className="panel"><h2>Lifetime collected balance</h2>
+      <article className="panel income-balance"><IncomeHeading store={kind === 'store'} title="Lifetime collected balance" dark />
         <dl className="admin-data-rows">{[
           ['Net earned', balance.totalEarned], ['Collected for payout', balance.collected],
           ['Paid out', balance.paidOut], ['Reserved payouts', balance.pending], ['Available to request', balance.available],
           ['Cash collections (manual reconciliation; excluded)', balance.cashReceived],
-        ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{financeMoney(value, currency)}</dd></div>)}</dl>
+        ].map(([label, value], index) => <div key={label}><dt>{kind === 'store' && <IncomeIcon color={['#059669', '#2563eb', '#9333ea', '#d97706', '#15803d', '#52617b'][index]} />}{label}</dt><dd>{financeMoney(value, currency)}</dd></div>)}</dl>
         {balance.shortfall > 0 && <p role="alert">Refund/adjustment shortfall: {financeMoney(balance.shortfall, currency)}. Admin review required.</p>}
         <p>{data.schedule}</p><p>Only completed, confirmed collected non-cash income is payable, after fees, refunds and paid/reserved payouts. Cash requires manual reconciliation. Requests above available funds enter unreserved admin review.</p>
         <p>Payout requests {data.account.payoutsEnabled ? 'enabled' : 'disabled by admin'}.</p>
+        {kind === 'store' && <h3>Request a manual payout</h3>}
         <form onSubmit={(event) => {
           event.preventDefault()
           if (!window.confirm(`Request ${currency} ${amount} for manual admin payment? Above-balance requests enter unreserved admin review. No automatic transfer will occur.`)) return
@@ -150,19 +161,21 @@ function AccountIncome({ kind, accountId, admin }) {
       </article>
       {admin && <FinanceSettings key={`${data.account._id}:${data.account.isCompanyOwned}:${data.account.payoutsEnabled}:${JSON.stringify(data.account.financeFees)}`}
         account={data.account} path={path} reload={resource.reload} />}
-      {kind === 'store' && <article className="panel"><h2>Products & inventory</h2>
+      {kind === 'store' && <article className="panel"><IncomeHeading store title="Products & inventory" />
         {!data.products.length && !data.inventory.length && <p>No products for this store.</p>}
         {data.products.map((product) => <ProductEditor key={product._id} product={product} admin={admin} reload={resource.reload} />)}
         {data.inventory.map((stock) => <InventoryEditor key={`${stock._id}:${stock.price}:${stock.countInStock}:${stock.minStock}`} stock={stock} admin={admin} storeId={data.account._id} reload={resource.reload} />)}
       </article>}
-      <article className="panel"><h2>Recent payouts</h2>
+      <article className="panel"><IncomeHeading store={kind === 'store'} title="Recent payouts" />
         {data.payouts.filter((payout) => payout.currency === currency).map((payout) => <div className="order-card" key={payout._id}>
-          <p>{payout.payoutType}: {financeMoney(payout.amount, currency)} - {payout.status}</p>
+          {kind === 'store' ? <div className="income-payout-heading"><strong>{financeMoney(payout.amount, currency)}</strong>
+            <span className="income-status">{payout.status}</span><p>{payout.payoutType}</p></div> :
+            <p>{payout.payoutType}: {financeMoney(payout.amount, currency)} - {payout.status}</p>}
           <p>{new Date(payout.dateRequested).toLocaleString()} {payout.reference}</p>
           {payout.adminNotes && <p>{payout.adminNotes}</p>}
         </div>)}
       </article>
-      <article className="panel"><h2>Recent completed transactions</h2>
+      <article className="panel"><IncomeHeading store={kind === 'store'} title="Recent completed transactions" />
         {data.entries.filter((entry) => entry.currency === currency).map((entry) => <div className="order-card" key={entry._id}>
           <h3>{entry.category} #{String(entry.sourceId).slice(-6)} - {entry.ownership}</h3>
           <p>Gross {financeMoney(entry.grossMinor / 100, currency)} / AdduGenet {financeMoney(entry.platformMinor / 100, currency)} / Net {financeMoney(entry.netMinor / 100, currency)}</p>
@@ -171,6 +184,18 @@ function AccountIncome({ kind, accountId, admin }) {
       </article>
     </>}
   </>
+}
+
+function IncomeIcon({ color = '#d97706' }) {
+  return <svg className="income-icon" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 20V12h3v8 M10 20V8h3v12 M16 20V4h3v16" />
+  </svg>
+}
+
+function IncomeHeading({ title, store = false, dark = false }) {
+  return store ? <div className={`income-section-heading${dark ? ' income-dark-heading' : ''}`}>
+    <IncomeIcon color={dark ? '#ffd400' : '#d97706'} /><h2>{title}</h2>
+  </div> : <h2>{title}</h2>
 }
 
 function FinanceSettings({ account, path, reload }) {

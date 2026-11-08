@@ -1102,6 +1102,18 @@ Validation: `node --test tests/reviews.test.mjs tests/rides.test.mjs`; `npm run 
 
 ## Visual design direction
 
+Store Income & Payouts uses matching yellow actions, navy balance headings,
+currency/period controls, income summary cards, colored balance rows, and payout
+history cards. This is UI-only: ETB/USD separation, manual payment confirmation,
+request validation, payout access, and admin product/settings tools are unchanged.
+
+Admin individual-store accounts use the reference dashboard arrangement:
+section and period controls, last successful refresh, Business Performance,
+colored Gross Activity rows, Products & Inventory, then stock and recent activity.
+This is presentation-only; account-scoped requests, permissions, calculations,
+and product/income/notification workflows are unchanged. Gross totals do not
+invent a payout currency; use Income & settings for currency-specific balances.
+
 The shared website palette and store business dashboard follow the mobile
 reference: yellow primary and selected actions, navy headings, light backgrounds,
 rounded cards, and distinct metric colors. For new and updated screens, reuse

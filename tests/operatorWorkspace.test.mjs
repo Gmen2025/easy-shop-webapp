@@ -79,7 +79,8 @@ test('admin workspaces render every operator section without self-service operat
     const { reset } = await server.ssrLoadModule('virtual:operator-workspace-hooks')
     const { setup } = await server.ssrLoadModule('virtual:operator-workspace-resource')
     const periods = Object.fromEntries(['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].map((period) =>
-      [period, { sales: 30, earnings: 30, orders: 1, completedOrders: 1, unitsSold: 3, averageOrder: 30, reviews: 0, averageRating: 0 }]))
+      [period, { sales: 30, earnings: 30, orders: 1, completedOrders: 1, unitsSold: 3, averageOrder: 30, reviews: 0, averageRating: 0,
+        start: '2026-11-01T06:39:25.021Z', end: '2026-11-08T06:39:25.021Z' }]))
     const profile = { account: { _id: 'store1', name: 'Scoped market', isCompanyOwned: false }, owner: { name: 'Scoped owner' }, locations: [], inventoryEnabled: true }
     setup({
       '/stores/admin/store1/dashboard': { success: true, store: { name: 'Scoped market' }, periods,
@@ -106,7 +107,15 @@ test('admin workspaces render every operator section without self-service operat
       return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] },
         createElement(Routes, null, createElement(Route, { path: '/admin/accounts/:kind/:accountId', element: createElement(Page) }))))
     }
-    assert.match(render('store', 'dashboard'), /Scoped apples/)
+    const storeDashboard = render('store', 'dashboard')
+    assert.match(storeDashboard, /Scoped apples/)
+    for (const title of ['Account Business Dashboard', 'Business Performance', 'Total sales', 'Total orders',
+      'Total earnings', 'Gross Activity', 'Products &amp; Inventory', 'Ready fulfillments', 'Last updated']) {
+      assert.ok(storeDashboard.includes(title), `Missing dashboard section: ${title}`)
+    }
+    assert.match(storeDashboard, /aria-pressed="true"[^>]*>7 Days/)
+    assert.match(storeDashboard, /<dd>30<\/dd>/)
+    assert.ok(!storeDashboard.includes('$'), 'Gross analytics must not invent a payout currency')
     assert.match(render('store', 'profile'), /Scoped owner/)
     assert.match(render('store', 'assignments'), /accepted/)
     assert.match(render('store', 'fulfillment'), /Scoped apples/)
