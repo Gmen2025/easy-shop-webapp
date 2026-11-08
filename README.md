@@ -1099,3 +1099,13 @@ Admins retain operational review access; strangers cannot inspect ride profiles.
 Deploy the matching backend first. Its regional partial unique Review index and
 MongoDB replica-set transactions are required before enabling reviews.
 Validation: `node --test tests/reviews.test.mjs tests/rides.test.mjs`; `npm run build`.
+
+## Visual design direction
+
+The shared website palette and store business dashboard follow the mobile
+reference: yellow primary and selected actions, navy headings, light backgrounds,
+rounded cards, and distinct metric colors. For new and updated screens, reuse
+the shared palette and panel styles, retain text labels alongside color, provide
+visible keyboard focus, and verify responsive layouts and loading and error
+states. Existing page-specific styles still need individual review when
+bringing every screen into alignment.

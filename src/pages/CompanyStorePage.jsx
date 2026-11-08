@@ -32,9 +32,9 @@ export default function CompanyStorePage() {
   return <section className="page-stack company-console company-store">
     <CompanyNavigation />
     <header className="panel company-heading"><div><p className="company-eyebrow">Company Fulfillment</p>
-      <h1>{orderId ? 'Order products' : 'Business overview'}</h1>
+      <h1>{orderId ? 'Order products' : 'Account Business Dashboard'}</h1>
       <p>{dashboard?.store?.name || 'Store Owner'}</p></div>
-      <button className="ghost-button" disabled={analytics.loading || products.loading || action.busy}
+      <button className="solid-button" disabled={analytics.loading || products.loading || action.busy}
         onClick={() => action.run(() => Promise.all([analytics.reload(), products.reload()]))}>Refresh data</button>
     </header>
     {[analytics.error, products.error, action.error].filter(Boolean).map((error, index) => <p className="form-error" role="alert" key={index}>{error}</p>)}

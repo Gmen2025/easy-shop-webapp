@@ -696,7 +696,7 @@
 .backup-codes-dialog button { width: 100%; }
 .admin-console { color: #111827; min-width: 0; }
 .company-console { --company-accent: #8a6c09; --company-tint: #fff9dc; color: #111827; min-width: 0; }
-.company-store { --company-accent: #2563eb; --company-tint: #eff6ff; }
+.company-store { --company-accent: #735b00; --company-tint: #fff7ce; }
 .company-console .panel { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.25rem; min-width: 0; overflow-wrap: anywhere; }
 .company-console h1 { margin: .2rem 0; font-size: clamp(1.5rem, 4vw, 2rem); }
 .company-console h2 { font-size: 1.2rem; margin-top: .25rem; }
@@ -723,6 +723,16 @@
 .company-metrics > div { background: #f8fafc; border-radius: 10px; padding: 1rem; display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: .4rem; }
 .company-metrics dt { font-size: .8rem; color: #6b7280; }
 .company-metrics dd { font-size: 1.25rem; font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+.company-store .panel { border-color: #dfe5ef; box-shadow: 0 8px 24px rgba(19, 30, 58, .08); }
+.company-store .company-heading { border-top: 5px solid #ffd400; }
+.company-store .company-heading .solid-button { background: #ffd400; color: #131e3a; }
+.company-store .company-navigation a { background: #eef1f6; color: #131e3a; border-radius: 14px; font-weight: 700; }
+.company-store .company-navigation a.active { background: #ffd400; color: #131e3a; border-color: #ffd400; }
+.company-store .company-periods button { border-radius: 14px; color: #26344f; background: #eef1f6; }
+.company-store .company-periods button[aria-pressed="true"] { color: #131e3a; background: #ffd400; }
+.company-store .company-metrics > div { background: #f5f7fb; border: 1px solid #e8ecf3; border-radius: 14px; }
+.company-store .company-metrics dd { color: #173c90; }
+.company-store .company-sales > div:first-child { color: #493b00; }
 .company-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: .8rem; }
 .company-order-row { display: flex; gap: .8rem; align-items: center; justify-content: space-between; padding-block: 1rem; border-bottom: 1px solid #e5e7eb; text-decoration: none; color: inherit; }
 .company-order-row p { font-size: .85rem; color: #6b7280; }
