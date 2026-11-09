@@ -2,6 +2,30 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Account deletion
+
+Customer, driver, and store-owner accounts can use **Profile > Edit Profile >
+Delete account**. Confirmation explains permanent deletion, transaction
+anonymization, retained financial records, and active-work/payment restrictions.
+The website calls the shared backend's `DELETE /users/:id` for the signed-in
+account only. It requires `success: true`; HTTP, network, timeout, and invalid
+response failures are shown without claiming deletion or locally signing out
+(expired sessions still follow the API client's normal 401 handling).
+
+Successful deletion removes browser sign-in credentials and the current tab's
+pending social sign-in, clears loaded Redux account records, and returns home.
+Cart data and browser preferences may remain. Public policies are served at
+`/privacy.html` and `/account-deletion.html`.
+
+Deploy the matching backend account-deletion update before this website.
+Verify disposable accounts for each role, active-work/payout conflicts,
+supported Cloudinary media removal, completed-record anonymization, and rejection
+of old access tokens. Confirm legally required financial retention with the
+business owner before publishing these policies.
+
+Checks: `node --test tests/accountDeletion.test.mjs tests/authFlow.test.mjs`,
+`npm run lint`, and `npm run build`.
+
 ## Customer pickup or delivery
 
 In checkout's **Delivery** step, choose **Pickup from store** or **Delivery**

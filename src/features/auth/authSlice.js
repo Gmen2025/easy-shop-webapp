@@ -316,25 +316,25 @@ export const removeUserAccount = createAsyncThunk(
   'auth/removeUserAccount',
   async (_, { getState, rejectWithValue }) => {
     const state = getState()
-    const userId = state.auth.user?._id
+    const userId = state.auth.user?._id || state.auth.user?.id
 
     try {
-      await attemptProfileMutation(buildProfileMutationCandidates(userId), {
+      if (!isObjectIdLike(userId) || !state.auth.token) {
+        throw new Error('Sign in to your account before requesting deletion.')
+      }
+      const response = await apiRequest(`/users/${userId}`, {
         method: 'DELETE',
       })
-
+      if (response?.success !== true) {
+        throw new Error(response?.message || 'The server did not confirm account deletion.')
+      }
       return { syncMode: 'remote' }
     } catch (error) {
-      const fallbackMessage = error?.status
-        ? null
-        : error?.message || 'Unable to delete account remotely.'
-
-      if (fallbackMessage && !/timed out|network|fetch/i.test(fallbackMessage)) {
-        return rejectWithValue(fallbackMessage)
-      }
-
-      return { syncMode: 'local-fallback' }
+      return rejectWithValue(error?.message || 'Unable to delete account. Please try again.')
     }
+  },
+  {
+    condition: (_, { getState }) => !getState().auth.deletingAccount,
   },
 )
 
@@ -344,6 +344,7 @@ const authSlice = createSlice({
     user: savedUser ? normalizeProfileFields(JSON.parse(savedUser)) : null,
     token: savedToken || null,
     loading: false,
+    deletingAccount: false,
     error: null,
     loginDebug: null,
     registerMessage: null,
@@ -367,12 +368,6 @@ const authSlice = createSlice({
 
       state.user = normalizeProfileFields(action.payload, state.user)
       localStorage.setItem('authUser', JSON.stringify(state.user))
-    },
-    deleteAccountLocally(state) {
-      state.user = null
-      state.token = null
-      localStorage.removeItem('authUser')
-      localStorage.removeItem('authToken')
     },
     logout(state) {
       state.challenge = null
@@ -445,6 +440,7 @@ const authSlice = createSlice({
       })
       .addCase(saveUserProfile.fulfilled, (state, action) => {
         state.loading = false
+        if (!state.token || !state.user) return
         state.user = action.payload.user
         localStorage.setItem('authUser', JSON.stringify(state.user))
       })
@@ -453,18 +449,24 @@ const authSlice = createSlice({
         state.error = action.payload || action.error.message
       })
       .addCase(removeUserAccount.pending, (state) => {
-        state.loading = true
+        state.deletingAccount = true
         state.error = null
       })
       .addCase(removeUserAccount.fulfilled, (state) => {
         state.loading = false
+        state.deletingAccount = false
+        state.challenge = null
+        state.challengeDatabase = null
+        state.loginDebug = null
+        state.registerMessage = null
         state.user = null
         state.token = null
         localStorage.removeItem('authUser')
         localStorage.removeItem('authToken')
+        sessionStorage.removeItem('socialSignIn')
       })
       .addCase(removeUserAccount.rejected, (state, action) => {
-        state.loading = false
+        state.deletingAccount = false
         state.error = action.payload || action.error.message
       })
     for (const thunk of [verifyTwoFactor, finishSocialSignIn]) {
@@ -478,7 +480,6 @@ const authSlice = createSlice({
 export const {
   cancelSignIn,
   clearAuthError,
-  deleteAccountLocally,
   logout,
   updateProfile,
 } = authSlice.actions

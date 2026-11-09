@@ -59,6 +59,8 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
   '/reset-password',
   '/verify-email',
   '/security-settings',
+  '/profile',
+  '/edit-profile',
 ]
 const MAINTENANCE_SYNC_INTERVAL_MS = 30 * 60 * 1000
 

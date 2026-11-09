@@ -24,6 +24,8 @@ function EditProfilePage() {
   const user = useSelector((state) => state.auth.user)
   const userId = user?._id || user?.id || null
   const profileLoading = useSelector((state) => state.auth.loading)
+  const deletingAccount = useSelector((state) => state.auth.deletingAccount)
+  const [deletionError, setDeletionError] = useState(null)
   const [latestOrderPrefill, setLatestOrderPrefill] = useState(null)
 
   function readNonEmpty(source, keys) {
@@ -146,6 +148,7 @@ function EditProfilePage() {
 
   function handleSubmit(event) {
     event.preventDefault()
+    if (deletingAccount) return
     dispatch(
       saveUserProfile({
         name: formData.name.trim(),
@@ -176,26 +179,26 @@ function EditProfilePage() {
   }
 
   function handleDeleteAccount() {
+    if (deletingAccount || profileLoading) return
     const confirmed = window.confirm(
-      'Delete your account? This removes your local sign-in information.',
+      'Permanently delete your account? This cannot be undone. Your account and associated personal data will be removed or anonymized. Minimal financial records may be retained where required. Active orders, rides, service requests, store assignments, unpaid balances, and pending payouts must be resolved first.',
     )
 
     if (!confirmed) {
       return
     }
 
+    setDeletionError(null)
     dispatch(removeUserAccount()).then((action) => {
       if (removeUserAccount.rejected.match(action)) {
-        toast.error(action.payload || action.error.message || 'Account deletion failed')
+        const message = action.payload || action.error.message || 'Account deletion failed'
+        setDeletionError(message)
+        toast.error(message)
         return
       }
 
-      toast.success(
-        action.payload?.syncMode === 'remote'
-          ? 'Account deleted on the server'
-          : 'Account deleted locally',
-      )
-      navigate('/register', { replace: true })
+      toast.success('Account deleted. You have been signed out.')
+      navigate('/', { replace: true })
     })
   }
 
@@ -325,7 +328,7 @@ function EditProfilePage() {
           </select></label>
 
           <div className="action-row">
-            <button type="submit" className="solid-button">
+            <button type="submit" className="solid-button" disabled={deletingAccount || profileLoading}>
               Save Changes
             </button>
             <Link className="ghost-button" to="/profile">
@@ -340,10 +343,20 @@ function EditProfilePage() {
             <h2>Remove this account</h2>
           </div>
           <p className="section-note">
-            Deleting the account clears the saved sign-in data from this browser.
+            This permanently deletes your customer, driver, or store-owner account
+            and removes or anonymizes associated personal data. Supported uploaded media
+            is deleted. Minimal financial records may be retained where required.
           </p>
-          <button type="button" className="danger-button" onClick={handleDeleteAccount}>
-            Delete account
+          <p className="section-note">
+            Complete or cancel active orders, rides, service requests, and store assignments,
+            and resolve unpaid balances and pending payouts first. Deletion signs you out
+            and prevents old access tokens from accessing authenticated API routes.
+          </p>
+          <p><a href="/account-deletion.html">Account deletion details</a> | <a href="/privacy.html">Privacy Policy</a></p>
+          {deletionError && <p role="alert">{deletionError}</p>}
+          <button type="button" className="danger-button" onClick={handleDeleteAccount}
+            disabled={deletingAccount || profileLoading} aria-busy={deletingAccount}>
+            {deletingAccount ? 'Deleting account...' : 'Delete account'}
           </button>
         </article>
       </section>
