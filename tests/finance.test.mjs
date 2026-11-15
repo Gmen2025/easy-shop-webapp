@@ -3,11 +3,14 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { accountPath, financeMoney, payoutAmount, validateFinanceAccount, validateFinanceReport } from '../src/utils/finance.js'
+import { accountPath, financeMoney, payoutAmount, validateFinanceAccount, validateFinanceReport, validateDepositWallet } from '../src/utils/finance.js'
 
 const summary = { gross: 0, categories: Object.fromEntries(['products', 'delivery', 'rides', 'services'].map((category) =>
   [category, { gross: 0, adduGenetIncome: 0, independentIncome: 0 }])),
 adduGenetIncome: 0, ownedIncome: 0, platformFees: 0, serviceIncome: 0, independentIncome: 0, unallocatedIncome: 0 }
+const depositPolicy = { enabled: true, lowBalance: 50, minimumBalance: 0 }
+const wallet = { enabled: true, currency: 'ETB', balance: 0, state: 'blocked', transactions: [], legacyTransactions: [],
+  bankAccounts: [], methods: { bank: true, card: false, telebirr: false } }
 
 test('account paths encode IDs and only accept supported operator types', () => {
   assert.equal(accountPath('store', 'me'), '/finance/accounts/store/me')
@@ -26,13 +29,21 @@ test('payout inputs reject zero, negative, missing, nonfinite and sub-cent amoun
 })
 
 test('income response validation requires per-currency balances and all account surfaces', () => {
-  const data = { account: { _id: 'store' }, entries: [], payouts: [], products: [], inventory: [], locations: [],
+  const data = { account: { _id: 'store', depositPolicy }, wallet, entries: [], payouts: [], products: [], inventory: [], locations: [],
     periods: Object.fromEntries(['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].map((period) =>
       [period, Object.fromEntries(['ETB', 'USD'].map((currency) => [currency, summary]))])),
     balances: ['ETB', 'USD'].map((currency) => ({ currency, available: 0, pending: 0, paidOut: 0, totalEarned: 0, collected: 0, shortfall: 0, cashReceived: 0 })) }
   assert.equal(validateFinanceAccount(data), data)
   assert.throws(() => validateFinanceAccount({ ...data, balances: [data.balances[0]] }), /incomplete/)
   assert.throws(() => validateFinanceAccount({}), /incomplete/)
+})
+
+test('deposit wallet validation fails closed on missing balances, thresholds, currency and availability', () => {
+  assert.equal(validateDepositWallet(wallet, depositPolicy), wallet)
+  for (const value of [{ ...wallet, balance: NaN }, { ...wallet, currency: 'EUR' }, { ...wallet, methods: {} }, undefined]) {
+    assert.throws(() => validateDepositWallet(value, depositPolicy), /deposit wallet/)
+  }
+  assert.throws(() => validateDepositWallet(wallet, { ...depositPolicy, lowBalance: 0 }), /deposit wallet/)
 })
 
 test('ownership reporting requires every period in each currency, not a success-shaped empty fallback', () => {
@@ -74,7 +85,7 @@ test('store income design preserves currency totals, disabled payout access and 
   try {
     const { default: Page } = await server.ssrLoadModule('/src/pages/FinancePage.jsx')
     const { setup } = await server.ssrLoadModule('virtual:income-design-resource')
-    setup({ account: { _id: 'store1', name: 'Sample Market', payoutsEnabled: false, isCompanyOwned: false },
+    setup({ account: { _id: 'store1', name: 'Sample Market', payoutsEnabled: false, isCompanyOwned: false, depositPolicy }, wallet,
       entries: [], products: [], inventory: [], locations: [], schedule: 'Manual schedule',
       payouts: [{ _id: 'etb', currency: 'ETB', amount: 20, payoutType: 'early', status: 'pending', dateRequested: '2026-11-01' },
         { _id: 'usd', currency: 'USD', amount: 7, payoutType: 'early', status: 'paid', dateRequested: '2026-11-01' }],
@@ -85,11 +96,20 @@ test('store income design preserves currency totals, disabled payout access and 
     const markup = renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: ['/income/store'] },
       createElement(Routes, null, createElement(Route, { path: '/income/:kind', element: createElement(Page) }))))
     for (const title of ['Store Income &amp; Payouts', 'Sample Market', 'Gross completed income', 'Lifetime collected balance',
-      'Request a manual payout', 'Recent payouts', 'Recent completed transactions', 'Products &amp; inventory']) assert.ok(markup.includes(title), title)
+      'Request a manual payout', 'Recent payouts', 'Recent completed transactions', 'Products &amp; inventory',
+      'Prepaid cash-fee deposit balance', 'Top up to resume new work', 'Actual deposit date and time']) assert.ok(markup.includes(title), title)
     assert.match(markup, /ETB\s125\.50/)
     assert.ok(!/USD\s7\.00/.test(markup), 'Payout history must remain currency-specific')
     assert.match(markup, /<fieldset disabled=""/)
     assert.match(markup, /aria-pressed="true"[^>]*>7 Days/)
+    const { default: Wallet } = await server.ssrLoadModule('/src/components/DepositWallet.jsx')
+    const props = { account: { _id: 'store1', depositPolicy }, path: '/finance/accounts/store/me', admin: true, reload: async () => {} }
+    const enabledMarkup = renderToStaticMarkup(createElement(Wallet, { ...props, wallet }))
+    assert.match(enabledMarkup, /Turn OFF regional cash deposit requirement/)
+    const disabledMarkup = renderToStaticMarkup(createElement(Wallet, { ...props, wallet: { ...wallet, enabled: false, state: 'off', balance: 125.55 } }))
+    assert.match(disabledMarkup, /Turn ON regional cash deposit requirement/)
+    assert.match(disabledMarkup, /ETB\s125\.55/)
+    assert.match(disabledMarkup, /<fieldset disabled=""/)
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

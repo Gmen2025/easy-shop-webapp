@@ -8,7 +8,7 @@ import DeliveryMap from '../components/DeliveryMap'
 import DeliveryWindow from '../components/DeliveryWindow'
 import AdminNavigation from '../components/AdminNavigation'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
-import { money, paymentAmount, SHIPMENT_STAGES } from '../utils/checkoutPayment'
+import { money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
 import PickupConfirmation from '../components/PickupConfirmation'
 
 function Tracking({ order }) {
@@ -57,6 +57,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
   const [busy, setBusy] = useState(false)
   const guard = useRef(false)
   const permitted = !admin || user?.isAdmin
+  const route = shippingRoute(selected?.international?.direction)
   const load = useCallback(async () => {
     if (!permitted) return
     if (selectedId) setSelected(await deliveryRequest(`checkouts/${selectedId}`))
@@ -125,11 +126,11 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
         }}>Reject: no funds received</button> : null}
       </article> : null}
       {admin && selected.international?.shipments.map((shipment) => {
-        const next = SHIPMENT_STAGES[SHIPMENT_STAGES.indexOf(shipment.status) + 1]
+        const next = route.stages[route.stages.indexOf(shipment.status) + 1]
         const form = shipmentForms[shipment.id] || {}
         return next && selected.status === 'placed' && selected.paymentStatus === 'completed' ? <article key={shipment.id} className="order-card">
           <h3>Advance {shipment.recipient.label}: {shipment.status} to {next}</h3>
-          <p>Verify every active pickup reached the US hub and the actual milestone occurred before updating.</p>
+          <p>Verify every active pickup reached the {route.origin} hub and the actual milestone occurred before updating.</p>
           {['carrier', 'trackingNumber', 'note'].map((field) => <label key={field}>
             {field === 'note' ? 'Shipment note / final delivery proof' : field === 'trackingNumber' ? 'Tracking number' : 'Carrier'}
             <input maxLength={300} value={form[field] || ''} onChange={(event) =>
@@ -154,9 +155,9 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
         <p>Products: {formatCurrency(order.itemsSubtotal)} | Delivery: {formatCurrency(order.deliveryFee)} | Total: {formatCurrency(order.totalPrice)}</p>
         <ExchangeReceipt value={order} />
         {order.internationalShipping ? <div>
-          <p>US-to-Ethiopia shipment: {order.internationalShipping.status} | {order.internationalShipping.carrier} {order.internationalShipping.trackingNumber}</p>
-          <p>The US delivery status refers to the consolidation hub, not final delivery in Ethiopia.</p>
-          <p>International shipping: {money(order.internationalShippingFee || 0, 'usd')} | Ethiopia final delivery: {money(order.internationalShipping.finalDeliveryFee || 0, 'usd')}</p>
+          <p>{route.origin}-to-{route.destination} shipment: {order.internationalShipping.status} | {order.internationalShipping.carrier} {order.internationalShipping.trackingNumber}</p>
+          <p>The {route.origin} delivery status refers to the consolidation hub, not final delivery in {route.destination}.</p>
+          <p>International shipping: {money(order.internationalShippingFee || 0, 'usd')} | {route.destination} final delivery: {money(order.internationalShipping.finalDeliveryFee || 0, 'usd')}</p>
           <p>{order.internationalShipping.customsNotice}</p>
         </div> : null}
         {order.deliveryPricingGroup?.kind === 'store-route' ? <p>This drop-off shows its saved share of the route from {order.deliveryPricingGroup.storeName}.
@@ -172,11 +173,11 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
         }}>Cancel this delivery</button> : null}
         {admin && ['pending', 'failed'].includes(order.refundStatus) && selected.paymentMethod === 'card' ? <button disabled={busy} className="ghost-button" onClick={() =>
           action(`deliveries/${order._id}/refund`, { retryFailed: order.refundStatus === 'failed' })}>Reconcile / retry refund</button> : null}
-        {admin && order.refundStatus === 'pending' && selected.paymentMethod === 'bank' ? <div>
-          <label>Actual bank refund reference<input value={refundReference} onChange={(event) => setRefundReference(event.target.value)} /></label>
+        {admin && order.refundStatus === 'pending' && ['bank', 'telebirr'].includes(selected.paymentMethod) ? <div>
+          <label>Actual {selected.paymentMethod === 'telebirr' ? 'Telebirr' : 'bank'} refund reference<input value={refundReference} onChange={(event) => setRefundReference(event.target.value)} /></label>
           <button disabled={busy || !refundReference.trim()} className="ghost-button" onClick={() => {
-            if (window.confirm('Record only a refund already sent through the bank.')) action(`deliveries/${order._id}/manual-refund`, { reference: refundReference })
-          }}>Record completed bank refund</button>
+            if (window.confirm('Record only a refund already returned to the customer.')) action(`deliveries/${order._id}/manual-refund`, { reference: refundReference })
+          }}>Record completed refund</button>
         </div> : null}
         {trackId === order._id ? <Tracking order={order} /> : null}
       </article>)}

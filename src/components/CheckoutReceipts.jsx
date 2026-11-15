@@ -1,5 +1,5 @@
 import { addressText } from '../utils/delivery'
-import { money, paymentAmount } from '../utils/checkoutPayment'
+import { money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
 
 export function ExchangeReceipt({ value }) {
   if (!value.exchangeRate) return null
@@ -14,18 +14,19 @@ export function ExchangeReceipt({ value }) {
 
 export function InternationalReceipt({ group }) {
   if (!group.international) return null
+  const route = shippingRoute(group.international.direction)
   return <section className="order-card">
-    <h3>US-to-Ethiopia shipping</h3>
-    <p>US consolidation hub: {addressText(group.international.hub)}</p>
+    <h3>{route.origin}-to-{route.destination} shipping</h3>
+    <p>{route.origin} consolidation hub: {addressText(group.international.hub)}</p>
     <p>International shipping: {money(group.international.shippingFee, 'usd')} (once per recipient)</p>
-    <p>Ethiopia final delivery: {money(group.finalDeliveryFee || 0, 'usd')}. Collection omits final delivery, not shipping.</p>
-    <p>US driver status &quot;Delivered&quot; means arrival at the US hub, not final delivery in Ethiopia.</p>
+    <p>{route.destination} final delivery: {money(group.finalDeliveryFee || 0, 'usd')}. Collection omits final delivery, not shipping.</p>
+    <p>{route.origin} driver status &quot;Delivered&quot; means arrival at the {route.origin} hub, not final delivery in {route.destination}.</p>
     <p>{group.international.customsNotice}</p>
     {group.status === 'bank_review' ? <p role="status">Transfer submitted for Admin review. Stock remains reserved.
       Fulfillment is blocked until funds are verified. Do not pay again.</p> : null}
     {group.international.shipments.map((shipment) => <article className="order-card" key={shipment.id}>
       <h4>{shipment.recipient.label}: {shipment.status}</h4>
-      <p>Ethiopian recipient: {addressText(shipment.recipient)} | {shipment.recipient.phone}</p>
+      <p>{route.destination} recipient: {addressText(shipment.recipient)} | {shipment.recipient.phone}</p>
       <p>Actual weight: {shipment.weightKg} kg | Volumetric: {shipment.volumetricKg} kg | Billable: {shipment.billableKg} kg</p>
       <p>Shipping: {money(shipment.shippingUsd, 'usd')} | {shipment.carrier || 'Carrier pending'} {shipment.trackingNumber || ''}</p>
       {(shipment.history || []).map((entry, index) => <p key={index}>{entry.status} - {new Date(entry.at).toLocaleString()} - {entry.note}</p>)}

@@ -1,5 +1,15 @@
 export const SHIPMENT_STAGES = ['awaiting_hub', 'at_hub', 'shipped', 'arrived_ethiopia', 'delivered']
 
+export function shippingRoute(direction) {
+  const reverse = direction === 'ethiopia-to-usa'
+  return {
+    origin: reverse ? 'Ethiopia' : 'USA', destination: reverse ? 'USA' : 'Ethiopia',
+    pickupField: reverse ? 'usaPickup' : 'ethiopiaPickup',
+    exportField: reverse ? 'exportToUSA' : 'exportToEthiopia',
+    stages: reverse ? ['awaiting_hub', 'at_hub', 'shipped', 'arrived_usa', 'delivered'] : SHIPMENT_STAGES,
+  }
+}
+
 export function rateIsActive(state, now = Date.now()) {
   const applied = new Date(state?.appliedAt).getTime()
   const expiry = new Date(state?.expiresAt).getTime()
@@ -27,7 +37,7 @@ export function cashOnDeliveryAvailable(database) {
 }
 
 export function paymentMethods(group, database, exchange, settings) {
-  const supported = group.international ? ['bank'] :
+  const supported = group.international && group.international.direction !== 'ethiopia-to-usa' ? ['bank', ...(exchange?.telebirrAvailable ? ['telebirr'] : [])] :
     group.exchangeRate || group.kind === 'service' ? exchange?.cardAvailable ? ['bank', 'card'] : ['bank'] : [
     'bank', ...(/usa/i.test(database) ? ['card'] : []),
     ...(cashOnDeliveryAvailable(database) ? ['cash'] : []),
@@ -37,6 +47,14 @@ export function paymentMethods(group, database, exchange, settings) {
 
 export function checkoutPreview(group, selections, calculatePricing) {
   const deliveryFee = calculatePricing(group.deliveries, selections).deliveryFee
+  if (group.international?.direction === 'ethiopia-to-usa') {
+    const native = group.itemsSubtotal + deliveryFee
+    const usdFees = group.international.shippingFee + (group.finalDeliveryFee || 0)
+    const rate = group.exchangeRate?.birrPerUsd
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error('The saved exchange rate is invalid. Request a fresh quote.')
+    return { total: Math.round((native + usdFees * rate) * 100) / 100,
+      payment: (Math.round(native / rate * 100) + Math.round(usdFees * 100)) / 100 }
+  }
   const total = Math.round((group.itemsSubtotal + deliveryFee + (group.international?.shippingFee || 0) + (group.finalDeliveryFee || 0)) * 100) / 100
   if (!group.exchangeRate) return { total, payment: total }
   const rate = group.exchangeRate.birrPerUsd

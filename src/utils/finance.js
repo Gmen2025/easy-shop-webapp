@@ -27,7 +27,20 @@ export function validateFinanceAccount(data) {
           ['available', 'pending', 'paidOut', 'totalEarned', 'collected', 'shortfall', 'cashReceived'].every((key) => Number.isFinite(balance[key]))))) {
     throw new Error('The server returned incomplete income data.')
   }
+  validateDepositWallet(data.wallet, data.account.depositPolicy)
   return data
+}
+
+export function validateDepositWallet(wallet, policy) {
+  if (!wallet || typeof wallet.enabled !== 'boolean' || !['ETB', 'USD'].includes(wallet.currency) ||
+      !Number.isFinite(wallet.balance) || !['off', 'healthy', 'low', 'blocked'].includes(wallet.state) ||
+      !Array.isArray(wallet.transactions) || !Array.isArray(wallet.legacyTransactions) || !Array.isArray(wallet.bankAccounts) ||
+      !['bank', 'card', 'telebirr'].every((method) => typeof wallet.methods?.[method] === 'boolean') ||
+      typeof policy?.enabled !== 'boolean' || !Number.isFinite(policy.lowBalance) ||
+      !Number.isFinite(policy.minimumBalance) || policy.minimumBalance < 0 || policy.lowBalance <= policy.minimumBalance) {
+    throw new Error('The server returned incomplete deposit wallet data.')
+  }
+  return wallet
 }
 
 export function validateFinanceReport(data) {

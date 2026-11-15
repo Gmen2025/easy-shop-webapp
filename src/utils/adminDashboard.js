@@ -13,7 +13,7 @@ export const ADMIN_TOOLS = [
   ['Vehicles', 'Capacity, route fees and packaged cargo', '/admin/delivery', 'fulfillment'],
   ['Rides', 'Ride service settings and operations', '/admin/rides', 'fulfillment'],
   ['FX Rate', 'Daily exchange rates and automation', '/admin/international-payments', 'sales'],
-  ['US Shipping', 'Export hub, tariffs and eligible products', '/admin/international-payments#shipping', 'fulfillment'],
+  ['Intl Shipping', 'Regional export hub, tariffs and eligible products', '/admin/international-payments#shipping', 'fulfillment'],
   ['Payments', 'Verify transfers, cancellations and refunds', '/admin/delivery-payments', 'sales'],
   ['Bank Accounts', 'Regional payment account configuration', '/admin/tools/banks', 'sales'],
   ['Payouts', 'Store and driver settlements and paid records', '/admin/operations/payouts', 'sales'],

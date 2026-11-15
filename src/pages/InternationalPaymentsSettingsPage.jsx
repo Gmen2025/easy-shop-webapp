@@ -3,19 +3,20 @@ import { Link, useLocation } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { ADDRESS_FIELDS } from '../utils/delivery'
-import { rateIsActive } from '../utils/checkoutPayment'
+import { rateIsActive, shippingRoute } from '../utils/checkoutPayment'
 import AdminNavigation from '../components/AdminNavigation'
 
 const tariffFields = [
   ['baseUsd', 'Base shipping fee (USD)'], ['perKgUsd', 'USD per billable kg'],
   ['minimumUsd', 'Minimum shipment fee (USD)'], ['volumetricDivisor', 'Volumetric divisor (cm3 / kg)'],
   ['maxWeightKg', 'Maximum billable kg per recipient'], ['maxDimensionCm', 'Maximum parcel dimension (cm)'],
-  ['finalDeliveryUsd', 'Ethiopia final delivery per recipient (USD; pickup excludes this fee)'],
+  ['finalDeliveryUsd', 'Destination final delivery per recipient (USD; pickup excludes this fee)'],
 ]
 
 export default function InternationalPaymentsSettingsPage() {
   const { hash } = useLocation()
   const usa = /usa/i.test(getSelectedDatabaseName())
+  const route = shippingRoute(usa ? undefined : 'ethiopia-to-usa')
   const [saved, setSaved] = useState(null)
   const [policy, setPolicy] = useState(null)
   const [rate, setRate] = useState('')
@@ -37,14 +38,12 @@ export default function InternationalPaymentsSettingsPage() {
     apiRequest('/exchange-rate/').then((result) => {
       if (current) { setSaved(result); setPolicy(result); setRate(result.birrPerUsd == null ? '' : String(result.birrPerUsd)) }
     }).catch((failure) => { if (current) setError(failure.message) })
-    if (usa) {
       Promise.all([deliveryRequest('international-shipping-config'), apiRequest('/products')])
         .then(([config, catalog]) => {
           if (!current) return
-          setShipping({ ...config, finalDeliveryUsd: config.finalDeliveryUsd ?? 0, hub: config.hub || Object.fromEntries(ADDRESS_FIELDS.map(([field]) => [field, field === 'country' ? 'USA' : ''])) })
+          setShipping({ ...config, finalDeliveryUsd: config.finalDeliveryUsd ?? 0, hub: config.hub || Object.fromEntries(ADDRESS_FIELDS.map(([field]) => [field, field === 'country' ? usa ? 'USA' : 'Ethiopia' : ''])) })
           setProducts(catalog)
         }).catch((failure) => { if (current) setError(failure.message) })
-    }
     const timer = setInterval(() => setNow(Date.now()), 30000)
     return () => { current = false; clearInterval(timer) }
   }, [usa])
@@ -63,7 +62,7 @@ export default function InternationalPaymentsSettingsPage() {
     <div className="panel-header"><h1>{usa ? 'US exports paid in birr' : 'Ethiopia USD purchases & service payments'}</h1><Link to="/admin/delivery">Delivery settings</Link></div>
     <div className="action-row"><Link to="/admin/tools/banks">Bank account configuration</Link><Link to="/admin/delivery-payments">Payments & shipment tracking</Link></div>
     <p>{usa ? 'ETB = USD products + US hub route fees + international shipping + Ethiopia final delivery (if selected), multiplied by birr per USD. Product-only; no service or ride birr payments.' :
-      'USD = ETB total divided by birr per USD. Products and Admin-quoted non-ride services stay in Ethiopia.'}</p>
+      'USD = Ethiopia products and hub delivery in ETB divided by birr per USD, plus USD international shipping and USA final delivery when exporting. Domestic products and Admin-quoted services remain available in Ethiopia.'}</p>
     {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
     <fieldset disabled={busy} className="delivery-fieldset">
       <button className="ghost-button" onClick={() => run(loadExchange)}>Reload saved exchange settings / status</button>
@@ -100,15 +99,15 @@ export default function InternationalPaymentsSettingsPage() {
           <p>Provider timestamp: {saved.providerAsOf ? new Date(saved.providerAsOf).toLocaleString() : 'Manual / none'} | Last attempt: {saved.lastAttemptAt ? new Date(saved.lastAttemptAt).toLocaleString() : 'None'}</p>
           {saved.lastError ? <p role="alert">{saved.lastError}</p> : null}
           <p>At exactly 24 hours the rate expires for new reservations. Failed fetches do not renew it. Prepared payments retain their saved rate and amount.</p>
-          <p>{usa ? 'Configure explicitly ETB-tagged bank accounts in the USA database. Exports are bank-only; funds must be verified before fulfillment.' :
+          <p>{usa ? 'Configure explicitly ETB-tagged bank accounts in the USA database, or a live Telebirr gateway on the backend. Bank funds require Admin verification; Telebirr requires server verification before fulfillment. Admin payment switches control both methods.' :
             `Configure explicitly USD-tagged bank accounts. Cash is not supported for USD checkout. Dedicated Ethiopia USD card merchant: ${saved.cardAvailable ? 'configured' : 'not configured'}.`}</p>
           <h3>Latest applied updates</h3>
           {[...(saved.history || [])].reverse().map((entry, index) => <p key={index}>{new Date(entry.appliedAt).toLocaleString()} - {entry.birrPerUsd} ETB/USD - {entry.source} - {entry.changed ? 'Rate changed' : 'Same rate, update applied'}</p>)}
         </article>
       </> : <p>Loading exchange settings...</p>}
-      {usa && shipping ? <>
-        <article id="shipping" className="order-card"><h2>US consolidation hub & shipping tariff</h2>
-          <p>This configures Admin pricing, not a live carrier booking or label purchase. Tariff must include final Ethiopian address delivery, excluding customs/duties.</p>
+      {shipping ? <>
+        <article id="shipping" className="order-card"><h2>{route.origin}-to-{route.destination} hub & shipping tariff</h2>
+          <p>This configures Admin pricing, not a live carrier booking or label purchase. Configure international shipping and separate {route.destination} final delivery fees, excluding customs/duties.</p>
           <label><input type="checkbox" checked={Boolean(shipping.enabled)} onChange={(event) => setShipping({ ...shipping, enabled: event.target.checked })} />Enable international shipping</label>
           <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>Hub {label}
             <input maxLength={300} value={shipping.hub[field] || ''} onChange={(event) => setShipping({ ...shipping, hub: { ...shipping.hub, [field]: event.target.value } })} />
@@ -117,17 +116,17 @@ export default function InternationalPaymentsSettingsPage() {
             <input type="number" min="0" step="any" value={shipping[field] ?? ''} onChange={(event) => setShipping({ ...shipping, [field]: event.target.value })} />
           </label>)}</div>
           <p>Billable kg = greater of total actual kg and packaged volume / divisor, rounded up to 0.001 kg per recipient.
-            Shipping USD = max(minimum, base + billable kg x rate). US road delivery is added separately.</p>
-          <label><input type="checkbox" checked={Boolean(shipping.ethiopiaPickup)} onChange={(event) => setShipping({
-            ...shipping, ethiopiaPickup: event.target.checked ? { label: 'Ethiopia collection', country: 'Ethiopia' } : null,
-          })} />Enable customer collection in Ethiopia</label>
-          {shipping.ethiopiaPickup ? <div className="delivery-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>
-            Collection {label}<input value={shipping.ethiopiaPickup[field] || ''} onChange={(event) => setShipping({
-              ...shipping, ethiopiaPickup: { ...shipping.ethiopiaPickup, [field]: event.target.value },
+            Shipping USD = max(minimum, base + billable kg x rate). {route.origin} road delivery to the hub is added separately.</p>
+          <label><input type="checkbox" checked={Boolean(shipping[route.pickupField])} onChange={(event) => setShipping({
+            ...shipping, [route.pickupField]: event.target.checked ? { label: `${route.destination} collection`, country: route.destination } : null,
+          })} />Enable customer collection in {route.destination}</label>
+          {shipping[route.pickupField] ? <div className="delivery-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>
+            Collection {label}<input value={shipping[route.pickupField][field] || ''} onChange={(event) => setShipping({
+              ...shipping, [route.pickupField]: { ...shipping[route.pickupField], [field]: event.target.value },
             })} />
           </label>)}</div> : null}
           <p>International pickup retains shipping charges. The existing tariff remains shipping-only; final delivery starts at zero.
-            Configure the Ethiopia collection address and contact before enabling collection. Duties/customs are excluded.</p>
+            Configure the {route.destination} collection address and contact before enabling collection. Duties/customs are excluded.</p>
           <button className="solid-button" onClick={() => run(async () => {
             setShipping(await deliveryRequest('international-shipping-config', { method: 'PUT', data: shipping, timeoutMs: 60000 }))
             setMessage('Hub and tariff saved. Unprepared quotes must be recalculated; prepared orders retain their snapshots.')
@@ -135,16 +134,16 @@ export default function InternationalPaymentsSettingsPage() {
         </article>
         <article className="order-card"><h2>Products approved for export</h2>
           <p>Only approve after verifying legal import/export, carrier coverage and complete packaged measurements.</p>
-          <label>Search US catalog<input value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+          <label>Search {route.origin} catalog<input value={search} onChange={(event) => setSearch(event.target.value)} /></label>
           {products.filter((product) => product.name.toLowerCase().includes(search.toLowerCase())).map((product) => <div className="action-row" key={product._id || product.id}>
-            <span>{product.name}: {product.exportToEthiopia ? 'Export approved' : 'Domestic only'}</span>
+            <span>{product.name}: {product[route.exportField] ? 'Export approved' : 'Domestic only'}</span>
             <button className="ghost-button" onClick={() => run(async () => {
-              const updated = await deliveryRequest(`international-products/${product._id || product.id}`, { method: 'PUT', data: { exportToEthiopia: !product.exportToEthiopia } })
+              const updated = await deliveryRequest(`international-products/${product._id || product.id}`, { method: 'PUT', data: { [route.exportField]: !product[route.exportField] } })
               setProducts((previous) => previous.map((entry) => (entry._id || entry.id) === (product._id || product.id) ? updated : entry))
               setMessage('Product export eligibility saved.')
-            })}>{product.exportToEthiopia ? 'Remove export approval' : 'Approve for Ethiopia export'}</button>
+            })}>{product[route.exportField] ? 'Remove export approval' : `Approve for ${route.destination} export`}</button>
           </div>)}
-          <Link to="/admin/delivery">Configure package measurements & US vehicles</Link>
+          <Link to="/admin/delivery">Configure package measurements & {route.origin} vehicles</Link>
         </article>
       </> : null}
     </fieldset>

@@ -2,6 +2,22 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Cash-fee deposit wallets
+
+Open a driver's or store's **Income** dashboard to view the prepaid deposit
+balance separately from earnings/payouts, timestamped deposits and fee history,
+company bank instructions, verified manual claims, and regional gateway top-ups
+(USD card or ETB Telebirr). Use **Verify gateway payment** or reopen the saved
+payment after an interruption; never pay again to recover an uncertain attempt.
+Admin confirms actual bank/company-receipt deposits, configures low/minimum
+thresholds, records itemized offline fees, and can toggle the requirement for
+all regional accounts or one account, including company-owned accounts.
+Both switches default OFF. OFF preserves funds/history and pending verification.
+Only cash/off-platform fees use deposits; online payments do not. Low balances
+warn before blocking new work, never interrupting active work. Gateway payments
+also reconcile in the backend every minute. Deploy the backend wallet schemas
+and live gateway/return URL configuration together with this frontend.
+
 ## Account deletion
 
 Customer, driver, and store-owner accounts can use **Profile > Edit Profile >
@@ -782,7 +798,8 @@ start the shared backend on that port for local development, or set
   navigation does not silently substitute a store or browser-chosen starting
   point when GPS is unavailable.
 - The cart's **Payment currency & destination** selector also offers Ethiopia
-  purchases paid in USD and USA products paid in birr and shipped to Ethiopia.
+  purchases paid in USD, **Pay USD - ship Ethiopia products to USA**, and USA
+  products paid in birr and shipped to Ethiopia.
   Both reuse the mobile API's daily FX policy. New quotes/reservations require
   an enabled rate applied strictly under 24 hours ago; prepared payments retain
   their saved rate and amount even when the policy later expires or is disabled.
@@ -791,13 +808,29 @@ start the shared backend on that port for local development, or set
   merchant. Converted card payments never substitute the native merchant key.
   Cash is excluded. Product/service costs stay ETB; USD payments divide by the
   saved birr-per-USD rate.
+- Ethiopia-to-USA product checkout accepts USA recipients but routes Ethiopia
+  drivers only to an Ethiopian consolidation hub. **Ethiopia > Admin > Intl
+  Shipping** configures the independent hub, USD shipping tariff, USA final
+  delivery fee and export-approved products. Complete package measurements are
+  required. The locked USD total converts goods/hub delivery once, then adds
+  exact USD shipping and final-delivery fees; shipping is charged once per
+  recipient. Card and USD bank transfer use existing Ethiopia admin switches.
+  Bank transfers hold inventory in `bank_review` until verified. Carrier booking
+  and USA delivery are Admin-managed, not automatic label purchases. Tracking
+  uses `arrived_usa` before final `delivered`; customs/duties are excluded.
+  Domestic Ethiopia delivery and the USA-to-Ethiopia flow remain available.
 - USA-to-Ethiopia checkout accepts Ethiopian recipients, reserves US inventory
   and routes US pickups only to the consolidation hub. Shipping is charged once
   per recipient using the server's weight/volume tariff, with a separate configured
   Ethiopia final-delivery fee for delivery only, excluding customs/duties. Products, hub route fees and
   shipping remain USD; their combined total is converted to ETB. Payment is
-  **ETB bank transfer only** using explicitly ETB-tagged accounts in the USA
-  database. Submitted transfers enter `bank_review`, keep stock reserved, and
+  **ETB bank transfer or live Telebirr gateway**, independently controlled by
+  the USA admin payment switches. Bank accounts must be explicitly ETB-tagged
+  in the USA database. Telebirr uses the locked total and a saved payment link;
+  after paying, return to checkout and check payment status. The server queries
+  the gateway before fulfillment; redirects never prove payment. Pending gateway
+  orders retain stock until payment succeeds or the gateway confirms closure.
+  Submitted bank transfers enter `bank_review`, keep stock reserved, and
   block fulfillment until Admin verifies the actual funds. Never pay again
   while a receipt is under review.
 - `/service-requests` offers **Accept Admin quote & pay in USD** for eligible

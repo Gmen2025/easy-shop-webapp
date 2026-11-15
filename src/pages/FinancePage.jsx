@@ -6,6 +6,7 @@ import { CompanyPeriods } from '../components/CompanyNavigation'
 import useCompanyResource, { useCompanyAction } from '../features/company/useCompanyResource'
 import { operationList } from '../utils/adminOperations'
 import { accountPath, financeMoney, payoutAmount, validateFinanceAccount, validateFinanceReport } from '../utils/finance'
+import DepositWallet from '../components/DepositWallet'
 
 const accountsResponse = (data) => operationList(data)
 const send = (path, method, data) => apiRequest(path, { method, body: JSON.stringify(data) })
@@ -107,6 +108,8 @@ function AccountIncome({ kind, accountId, admin }) {
     <button className={kind === 'store' ? 'solid-button income-refresh' : undefined} disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh income</button>
     {data && !resource.error && <>
       <p>{data.account.isCompanyOwned ? 'AdduGenet-owned: income belongs to AdduGenet.' : 'Independent: income after platform fees.'}</p>
+      <DepositWallet key={`${data.account._id}:${JSON.stringify(data.account.depositPolicy)}:${data.wallet.enabled}`}
+        wallet={data.wallet} account={data.account} path={path} admin={admin} reload={resource.reload} />
       {data.locations.length > 1 && <label>Store location<select value={data.account._id} disabled={action.busy}
         onChange={(event) => navigate(`/income/store/${event.target.value}`)}>
         {data.locations.map((location) => <option key={location._id} value={location._id}>{location.name}</option>)}

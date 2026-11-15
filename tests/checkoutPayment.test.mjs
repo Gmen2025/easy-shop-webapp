@@ -78,6 +78,20 @@ test('service USD quotes have no cart or delivery costs and use the Admin total'
   assert.deepEqual(checkoutPreview(group, {}, calculateDeliveryPricing), { total: 1234.5, payment: 8.23 })
 })
 
+test('Ethiopia-to-USA previews charge exact USD shipping plus converted goods/hub delivery, with card/bank admin controls', () => {
+  const group = { itemsSubtotal: 40, deliveries, currency: 'usd',
+    exchangeRate: { birrPerUsd: 3 }, international: { direction: 'ethiopia-to-usa', shippingFee: 30 }, finalDeliveryFee: 8.01 }
+  assert.deepEqual(checkoutPreview(group, {}, calculateDeliveryPricing), { total: 159.03, payment: 53.01 })
+  assert.deepEqual(checkoutPreview(group, { b: 'van' }, calculateDeliveryPricing), { total: 174.03, payment: 58.01 })
+  assert.deepEqual(paymentMethods(group, 'E_Shopping', { cardAvailable: true, telebirrAvailable: true }, enabled), ['bank', 'card'])
+  assert.deepEqual(paymentMethods(group, 'E_Shopping', { cardAvailable: false }, enabled), ['bank'])
+  assert.deepEqual(paymentMethods(group, 'E_Shopping', { cardAvailable: true }, { ...enabled, bank: false }), ['card'])
+  assert.deepEqual(paymentMethods(group, 'E_Shopping', { cardAvailable: true }, { ...enabled, card: false, bank: false }), [])
+  const tiny = { ...group, itemsSubtotal: 0.01, deliveries: [], exchangeRate: { birrPerUsd: 150.31 },
+    international: { direction: 'ethiopia-to-usa', shippingFee: 1.01 }, finalDeliveryFee: 0 }
+  assert.equal(checkoutPreview(tiny, {}, calculateDeliveryPricing).payment, 1.01)
+});
+
 test('prepared payment recovery uses saved amounts regardless of rate expiry or new rates', () => {
   const group = { status: 'awaiting_payment', totalPrice: 1500, paymentAmount: 10, currency: 'usd',
     exchangeRate: { ...rate, expiresAt: '2000-01-01T00:00:00Z', birrPerUsd: 999 } }
@@ -88,8 +102,14 @@ test('prepared payment recovery uses saved amounts regardless of rate expiry or 
   assert.throws(() => money(NaN, 'usd'), /unavailable/)
 })
 
-test('methods enforce ETB export bank-only and dedicated USD card policy without cash bypasses', () => {
+test('methods enforce configured ETB export Telebirr and dedicated USD card policy with independent admin switches', () => {
   assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', { cardAvailable: true }, enabled), ['bank'])
+  const exportPolicy = { cardAvailable: true, telebirrAvailable: true }
+  assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', exportPolicy, enabled), ['bank', 'telebirr'])
+  assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', exportPolicy, { ...enabled, bank: false }), ['telebirr'])
+  assert.deepEqual(paymentMethods({ international: {} }, 'E_ShopUSA', exportPolicy, { ...enabled, telebirr: false }), ['bank'])
+  assert.deepEqual(paymentMethods({ exchangeRate: rate }, 'E_Shopping', { cardAvailable: true }, enabled), ['bank', 'card'])
+  assert.deepEqual(paymentMethods({ exchangeRate: rate }, 'E_Shopping', { cardAvailable: true }, { ...enabled, card: false }), ['bank'])
   assert.deepEqual(paymentMethods({ exchangeRate: rate }, 'E_Shopping', { cardAvailable: false }, enabled), ['bank'])
   assert.deepEqual(paymentMethods({ kind: 'service', exchangeRate: rate }, 'E_Shopping', { cardAvailable: true }, enabled), ['bank', 'card'])
   assert.deepEqual(paymentMethods({}, 'E_Shopping', null, enabled), ['bank', 'cash'])
@@ -147,6 +167,17 @@ test('group and child receipts distinguish ETB payment from USD costs and final 
     assert.match(receipt, /Stock remains reserved/)
     assert.match(receipt, /Ethiopia Road/)
     assert.match(receipt, /Duties excluded/)
+    const reverseReceipt = renderToStaticMarkup(createElement(InternationalReceipt, { group: {
+      international: { direction: 'ethiopia-to-usa', shippingFee: 30, hub: { address1: 'Addis hub' },
+        customsNotice: 'Duties excluded', shipments: [{ id: 'home', status: 'arrived_usa',
+          shippingUsd: 30, billableKg: 2, recipient: { label: 'Home', address1: 'USA Street', country: 'USA' } }] },
+      finalDeliveryFee: 8.01,
+    } }))
+    assert.match(reverseReceipt, /Ethiopia-to-USA shipping/)
+    assert.match(reverseReceipt, /Ethiopia consolidation hub/)
+    assert.match(reverseReceipt, /USA final delivery/)
+    assert.match(reverseReceipt, /\$8\.01/)
+    assert.match(reverseReceipt, /not final delivery in USA/)
     const { default: DeliveryCardPayment } = await server.ssrLoadModule('/src/components/DeliveryCardPayment.jsx')
     const missingMerchant = renderToStaticMarkup(createElement(DeliveryCardPayment, {
       dedicatedMerchant: true, clientSecret: 'fixture', id: 'fixture', onConfirm() {},

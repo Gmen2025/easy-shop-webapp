@@ -14,7 +14,7 @@ import CheckoutHeader from '../components/CheckoutHeader'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import { editAddress } from '../utils/addressAutocomplete'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
-import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive } from '../utils/checkoutPayment'
+import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, shippingRoute } from '../utils/checkoutPayment'
 import usePaymentAvailability from '../features/payment/usePaymentAvailability'
 import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
 import CatalogCartGuard from '../components/CatalogCartGuard'
@@ -43,6 +43,7 @@ function DeliveryCheckout() {
   const [step, setStep] = useState(id ? 2 : navigation.state?.checkoutStep || 0)
   const heading = useRef(null)
   const [paymentCurrency, setPaymentCurrency] = useState(restoredDraft?.paymentCurrency || nativeCurrency(database))
+  const [destinationCountry, setDestinationCountry] = useState(restoredDraft?.destinationCountry || (/usa/i.test(database) ? 'USA' : 'Ethiopia'))
   const [exchange, setExchange] = useState(null)
   const [now, setNow] = useState(() => Date.now())
   const pendingKey = `deliveryCheckout_${database}_${user?._id || user?.id}`
@@ -105,29 +106,32 @@ function DeliveryCheckout() {
         if (result.status !== 'quote') return
         const [accounts, policy] = await Promise.all([
           deliveryRequest(`delivery-bank-accounts?currency=${result.currency.toUpperCase()}`),
-          result.exchangeRate ? apiRequest('/exchange-rate/') : Promise.resolve(null),
+          result.exchangeRate || result.international ? apiRequest('/exchange-rate/') : Promise.resolve(null),
         ])
         if (!current) return
         setBanks(accounts); setBankId(accounts[0]?._id || ''); setExchange(policy)
       } else {
-        const international = /usa/i.test(database) && paymentCurrency === 'etb'
+        const destination = /usa/i.test(database) && paymentCurrency === 'etb' ? 'Ethiopia' : destinationCountry
+        const matchesDestination = (country) => destination === 'USA' ?
+          /^(usa|us|united states|united states of america)$/i.test(country || '') : /^(ethiopia|ethio|et)$/i.test(country || '')
         const [accounts, policy] = await Promise.all([
           deliveryRequest(`delivery-bank-accounts?currency=${paymentCurrency.toUpperCase()}`),
           paymentCurrency !== nativeCurrency(database) ? apiRequest('/exchange-rate/') : Promise.resolve(null),
         ])
         if (!current) return
         const [address, existing] = result
-        const initial = international && !/^(ethiopia|ethio|et)$/i.test(address.country) ?
-          { ...editAddress(address, 'country', 'Ethiopia'), address1: '', address2: '', city: '', zip: '' } : address
-        setAddresses(restoredDraft?.paymentCurrency === paymentCurrency ? restoredDraft.addresses : [{ ...initial, id: 'current' }])
-        setSaved(international ? existing.filter((entry) => /^(ethiopia|ethio|et)$/i.test(entry.country)) : existing)
+        const initial = !matchesDestination(address.country) ?
+          { ...editAddress(address, 'country', destination), address1: '', address2: '', city: '', zip: '' } : address
+        setAddresses(restoredDraft?.paymentCurrency === paymentCurrency && (restoredDraft.destinationCountry || (/usa/i.test(database) ? 'USA' : 'Ethiopia')) === destinationCountry ?
+          restoredDraft.addresses : [{ ...initial, id: 'current' }])
+        setSaved(existing.filter((entry) => matchesDestination(entry.country)))
         setBanks(accounts); setBankId(accounts[0]?._id || ''); setExchange(policy)
       }
     }
     load().catch((failure) => { if (current) setError(failure.message) })
       .finally(() => { if (current) setBusy(false) })
     return () => { current = false }
-  }, [id, paymentCurrency, database, checkPreviousCheckout, restoredDraft])
+  }, [id, paymentCurrency, destinationCountry, database, checkPreviousCheckout, restoredDraft])
 
   useEffect(() => {
     heading.current?.scrollIntoView({ block: 'start' })
@@ -185,7 +189,10 @@ function DeliveryCheckout() {
     })
   }
   const pending = localStorage.getItem(pendingKey)
-  const international = Boolean(group?.international || (!id && /usa/i.test(database) && paymentCurrency === 'etb'))
+  const reverseExport = group?.international?.direction === 'ethiopia-to-usa' || (!id && !/usa/i.test(database) && destinationCountry === 'USA')
+  const international = Boolean(group?.international || reverseExport || (!id && /usa/i.test(database) && paymentCurrency === 'etb'))
+  const shipmentRoute = shippingRoute(reverseExport ? 'ethiopia-to-usa' : undefined)
+  const recipientCountry = international ? shipmentRoute.destination : /usa/i.test(database) ? 'USA' : 'Ethiopia'
   const service = group?.kind === 'service'
   if (group?.status === 'quote' && !service &&
       (catalogPricing.status !== 'ready' || (catalogPricing.enabled && unscopedProductQuote(group)))) {
@@ -207,8 +214,10 @@ function DeliveryCheckout() {
   const needsVehicle = group?.deliveries.some((delivery) => (delivery.fulfillmentMethod !== 'pickup' || group.international) && !selections[delivery.key])
   const convertedAvailable = !converted || rateIsActive(exchange, now)
   const currencyOptions = <fieldset disabled={busy} className="delivery-fieldset">
-    <label>Payment currency & destination<select value={paymentCurrency} onChange={(event) => {
-      setPaymentCurrency(event.target.value)
+    <label>Payment currency & destination<select value={reverseExport ? 'usd-usa' : paymentCurrency} onChange={(event) => {
+      const value = event.target.value
+      setPaymentCurrency(value === 'usd-usa' ? 'usd' : value)
+      setDestinationCountry(value === 'usd-usa' || /usa/i.test(database) && value === 'usd' ? 'USA' : 'Ethiopia')
       setQuantities({})
       setError('')
       setExchange(null)
@@ -222,6 +231,7 @@ function DeliveryCheckout() {
       </> : <>
         <option value="etb">Pay birr - Ethiopia delivery</option>
         <option value="usd">Pay USD - Ethiopia delivery</option>
+        <option value="usd-usa">Pay USD - ship Ethiopia products to USA</option>
       </>}
     </select></label>
     <p>Changing the payment currency reloads addresses and allocations before quoting.</p>
@@ -231,9 +241,10 @@ function DeliveryCheckout() {
       setExchange(await apiRequest('/exchange-rate/'))
       setNow(Date.now())
     })}>Refresh daily exchange policy</button> : null}
-    {international ? <p>Enter Ethiopian recipient addresses. US stores deliver to the consolidation hub.
+    {international ? <p>Enter {shipmentRoute.destination} recipient addresses. {shipmentRoute.origin} stores deliver to the consolidation hub.
       Shipping applies to pickup and delivery; a separate final-delivery fee applies only to delivery. Import duties and customs are excluded.
-      Only ETB bank transfer is supported, verified by Admin before fulfillment.</p> : null}
+      {reverseExport ? 'Pay the combined products, hub delivery, international shipping and USA delivery total in USD by card or bank transfer.' :
+        'Pay by ETB bank transfer (Admin verifies funds) or configured Telebirr gateway (server verifies payment) before fulfillment.'}</p> : null}
   </fieldset>
   return <section className="page-stack delivery-page">
     <section className="panel">
@@ -319,7 +330,7 @@ function DeliveryCheckout() {
           <div className="action-row">
             <button className="ghost-button" disabled={addresses.length >= 10} onClick={() => {
               setQuantities(effectiveQuantities())
-              setAddresses((previous) => [...previous, { id: crypto.randomUUID(), country: international || !/usa/i.test(database) ? 'Ethiopia' : 'United States' }])
+              setAddresses((previous) => [...previous, { id: crypto.randomUUID(), country: recipientCountry }])
             }}>Add drop-off</button>
           </div>
           {saved.length ? <div className="order-card"><h3>Saved addresses</h3>{saved.map((address) => <div key={address._id} className="action-row">
@@ -350,7 +361,7 @@ function DeliveryCheckout() {
               <span><strong>{label}</strong><small>{description}</small></span>
             </label>)}
           </div>
-          {international ? <p>Delivery speed covers arrival at the US consolidation hub, not final arrival in Ethiopia.</p> : null}
+          {international ? <p>Delivery speed covers arrival at the {shipmentRoute.origin} consolidation hub, not final arrival in {shipmentRoute.destination}.</p> : null}
           {mode === 'SCHEDULED' ? <label>Delivery date & time<input type="datetime-local" value={scheduled} onChange={(event) => setScheduled(event.target.value)} /></label> : null}
           <button className="solid-button mobile-cart-checkout" disabled={!items.length || !convertedAvailable} onClick={() => run(async () => {
             const latest = await catalogPricing.reload()
@@ -365,11 +376,11 @@ function DeliveryCheckout() {
             }
             if (converted && !rateIsActive(exchange)) throw new Error('The daily rate expired. Reload the exchange policy before requesting a converted quote.')
             const payload = buildQuotePayload(items, addresses, effectiveQuantities(), mode, scheduled)
-            const quote = await deliveryRequest('checkouts/quote', { method: 'POST', data: { ...payload, paymentCurrency }, timeoutMs: 120000 })
+            const quote = await deliveryRequest('checkouts/quote', { method: 'POST', data: { ...payload, paymentCurrency, destinationCountry: recipientCountry }, timeoutMs: 120000 })
             localStorage.setItem(pendingKey, quote._id)
             sessionStorage.setItem(draftKey, JSON.stringify({
               groupId: quote._id, database, userId: user?._id || user?.id,
-              addresses, quantities: effectiveQuantities(), mode, scheduled, paymentCurrency,
+              addresses, quantities: effectiveQuantities(), mode, scheduled, paymentCurrency, destinationCountry: recipientCountry,
             }))
             navigate(`/delivery-checkouts/${quote._id}`)
           })}>Calculate Google route & delivery quote</button>
@@ -404,7 +415,7 @@ function DeliveryCheckout() {
             <p>Quote expires {new Date(group.expiresAt).toLocaleString()}. Stock is not reserved until you continue.</p>
             {step === 2 && !service ? <section className="order-card">
               <h2>Pickup or delivery by store</h2>
-              <p>Pickup has no domestic delivery fee. International pickup retains the US hub route and shipping charges; only Ethiopia final delivery is omitted.</p>
+              <p>Pickup has no domestic delivery fee. International pickup retains the {shipmentRoute.origin} hub route and shipping charges; only {shipmentRoute.destination} final delivery is omitted.</p>
               {[...new Map(group.deliveries.map((delivery) => [delivery.store._id, delivery])).values()].map((delivery) =>
                 <label key={delivery.store._id}>{delivery.store.name}: fulfillment
                   <select value={delivery.fulfillmentMethod || 'delivery'} onChange={(event) => run(async () => {
@@ -416,19 +427,19 @@ function DeliveryCheckout() {
                     setSelections(Object.fromEntries(result.deliveries.map((entry) => [entry.key, entry.vehicle])))
                   })}>
                     <option value="delivery">Delivery - delivery charges apply</option>
-                    <option value="pickup" disabled={Boolean(group.international && !group.international.tariff?.ethiopiaPickup)}>
-                      {group.international ? 'Pickup in Ethiopia - shipping charges apply' : 'Pickup from store - no delivery charge'}
+                    <option value="pickup" disabled={Boolean(group.international && !group.international.tariff?.[shipmentRoute.pickupField])}>
+                      {group.international ? `Pickup in ${shipmentRoute.destination} - shipping charges apply` : 'Pickup from store - no delivery charge'}
                     </option>
                   </select>
                 </label>)}
-              {group.international && !group.international.tariff?.ethiopiaPickup ? <p>Admin must configure an Ethiopia collection address to enable international pickup.</p> : null}
+              {group.international && !group.international.tariff?.[shipmentRoute.pickupField] ? <p>Admin must configure a {shipmentRoute.destination} collection address to enable international pickup.</p> : null}
             </section> : null}
             {step === 2 || step === 4 ? <>
             {group.deliveries.map((delivery) => <article className="order-card" key={delivery.key}>
               <h2>Pickup: {delivery.store.name}</h2><p>{delivery.store.address}</p>
               {delivery.fulfillmentMethod === 'pickup' ? <p><strong>Customer collection address:</strong> {delivery.pickupAddress?.address || addressText(delivery.pickupAddress)}
                 {delivery.pickupAddress?.phone ? ` | ${delivery.pickupAddress.phone}` : ''}. {international ? 'Shipping charges still apply.' : 'Delivery charge: zero.'}</p> : null}
-              <p>{international ? 'US consolidation hub' : delivery.fulfillmentMethod === 'pickup' ? 'Recipient allocation' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
+              <p>{international ? `${shipmentRoute.origin} consolidation hub` : delivery.fulfillmentMethod === 'pickup' ? 'Recipient allocation' : 'Drop-off'}: {delivery.address.label} - {addressText(delivery.address)}</p>
               {delivery.defaultFallback ? <p>{delivery.fulfillmentMethod === 'pickup' && !international ? 'Collection stays pinned to this default store, even while offline.' : 'Queued for the default store after purchase, even when offline. It must claim and prepare the package before dispatch.'}</p> : null}
               {!group.cartRoute && (delivery.fulfillmentMethod !== 'pickup' || international) ? <p>Google driving route: {(/usa/i.test(database) ? delivery.distanceKm / 1.609344 : delivery.distanceKm).toFixed(2)} {/usa/i.test(database) ? 'miles' : 'km'}</p> : null}
               {delivery.lines.map((line) => <p key={`${line.key}:${line.product}`}>{line.quantity} x {line.name || line.product} at {formatCurrency(line.price)}</p>)}
@@ -451,7 +462,7 @@ function DeliveryCheckout() {
             </> : null}
             <p>{service ? 'Service quote' : 'Products'}: {formatCurrency(group.itemsSubtotal)} | Delivery: {formatCurrency(pricing.deliveryFee)}</p>
             {international ? <p>International shipping: {money(group.international.shippingFee, 'usd')}</p> : null}
-            {international ? <p>Ethiopia final delivery: {money(group.finalDeliveryFee || 0, 'usd')}</p> : null}
+            {international ? <p>{shipmentRoute.destination} final delivery: {money(group.finalDeliveryFee || 0, 'usd')}</p> : null}
             <h2>Estimated total: {formatCurrency(preview.total)}</h2>
             {group.exchangeRate ? <section className="order-card">
               <h3>Payment estimate: {money(preview.payment, group.currency)}</h3>
@@ -465,8 +476,8 @@ function DeliveryCheckout() {
             <div className="checkout-options" role="radiogroup" aria-label="Payment method">
               {methods.map((value) => <label key={value} className={`checkout-option${method === value ? ' selected' : ''}`}>
                 <input type="radio" name="payment-method" checked={method === value} value={value} onChange={() => setMethod(value)} />
-                <span><strong>{{ bank: 'Bank transfer', card: 'Credit / debit card', cash: 'Cash on delivery' }[value]}</strong>
-                  <small>{{ bank: 'Transfer the saved total once; Admin verifies the funds.', card: 'Pay the saved total securely with the matching Stripe merchant.', cash: 'Pay on delivery or at store collection, according to each store choice. No online payment is taken.' }[value]}</small></span>
+                <span><strong>{{ bank: 'Bank transfer', card: 'Credit / debit card', telebirr: 'Telebirr', cash: 'Cash on delivery' }[value]}</strong>
+                  <small>{{ bank: 'Transfer the saved total once; Admin verifies the funds.', card: 'Pay the saved total securely with the matching Stripe merchant.', telebirr: 'Pay the locked ETB total in the Telebirr gateway, then check payment status here.', cash: 'Pay on delivery or at store collection, according to each store choice. No online payment is taken.' }[value]}</small></span>
               </label>)}
             </div>
             {method === 'bank' && methods.includes('bank') ? <label>Bank account<select value={bankId} onChange={(event) => setBankId(event.target.value)}>
@@ -478,7 +489,7 @@ function DeliveryCheckout() {
             {step === 4 ? <>
             <h2>Review your order</h2>
             {!methods.includes(method) ? <p role="alert">{availability.error || PAYMENT_UNAVAILABLE}</p> : null}
-            <p>Payment method: {method === 'cash' ? 'Cash on delivery' : method === 'card' ? 'Credit / debit card' : 'Bank transfer'}</p>
+            <p>Payment method: {{ cash: 'Cash on delivery', card: 'Credit / debit card', telebirr: 'Telebirr', bank: 'Bank transfer' }[method]}</p>
             {method === 'bank' ? <p>Bank: {banks.find((bank) => bank._id === bankId)?.bankName}</p> : null}
             <div className="action-row">
               {!service ? <button className="ghost-button" onClick={() => setStep(2)}>Change delivery method</button> : null}
@@ -527,11 +538,19 @@ function DeliveryCheckout() {
                 await showResult(payment.group)
                 setClientSecret(payment.clientSecret || '')
               })}>Load secure card payment</button> : null}
+              {group.paymentMethod === 'telebirr' ? <>
+                <p>Pay once through Telebirr, then return here and check payment status. A redirect alone does not confirm payment.</p>
+                {group.telebirrPaymentUrl ? <a className="solid-button" href={group.telebirrPaymentUrl} target="_blank" rel="noopener noreferrer">Open saved Telebirr payment</a> :
+                  <button className="solid-button" onClick={() => run(async () => {
+                    const payment = await deliveryRequest(`checkouts/${id}/payment`, { method: 'POST', timeoutMs: 60000, data: { clientType: 'web' } })
+                    await showResult(payment.group)
+                  })}>Prepare secure Telebirr payment</button>}
+              </> : null}
               <button className="ghost-button"
                 onClick={() => run(confirm)}>{group.paymentMethod === 'cash' ? 'Confirm cash on delivery order' : 'Check payment status / reconcile'}</button>
               {group.paymentMethod === 'cash' ? <p>No online payment is taken. Cash is collected on delivery or at store collection.</p> : null}
               <button className="ghost-button" onClick={() => run(async () => {
-                if (!window.confirm('Cancel only an unpaid reservation. If bank funds were sent, contact support first. Successful card payments are recovered instead of cancelled.')) return
+                if (!window.confirm('Cancel only an unpaid reservation. If bank funds were sent, contact support first. Successful gateway payments are recovered; pending Telebirr payments must close before stock is released.')) return
                 await showResult(await deliveryRequest(`checkouts/${id}/cancel`, { method: 'POST' }))
                 if (localStorage.getItem(pendingKey) === id) localStorage.removeItem(pendingKey)
               })}>Cancel unpaid reservation</button>
