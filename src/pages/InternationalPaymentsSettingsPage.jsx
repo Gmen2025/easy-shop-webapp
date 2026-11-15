@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
-import { ADDRESS_FIELDS } from '../utils/delivery'
+import { ADDRESS_FIELDS, validateAddress } from '../utils/delivery'
 import { rateIsActive, shippingRoute } from '../utils/checkoutPayment'
 import AdminNavigation from '../components/AdminNavigation'
+import DeliveryAddressFields from '../components/DeliveryAddressFields'
 
 const tariffFields = [
   ['baseUsd', 'Base shipping fee (USD)'], ['perKgUsd', 'USD per billable kg'],
@@ -109,25 +110,29 @@ export default function InternationalPaymentsSettingsPage() {
         <article id="shipping" className="order-card"><h2>{route.origin}-to-{route.destination} hub & shipping tariff</h2>
           <p>This configures Admin pricing, not a live carrier booking or label purchase. Configure international shipping and separate {route.destination} final delivery fees, excluding customs/duties.</p>
           <label><input type="checkbox" checked={Boolean(shipping.enabled)} onChange={(event) => setShipping({ ...shipping, enabled: event.target.checked })} />Enable international shipping</label>
-          <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>Hub {label}
-            <input maxLength={300} value={shipping.hub[field] || ''} onChange={(event) => setShipping({ ...shipping, hub: { ...shipping.hub, [field]: event.target.value } })} />
-          </label>)}</div>
+          <DeliveryAddressFields labelPrefix="Hub " address={shipping.hub}
+            onChange={(hub) => setShipping({ ...shipping, hub })} />
           <div className="form-grid">{tariffFields.map(([field, label]) => <label key={field}>{label}
             <input type="number" min="0" step="any" value={shipping[field] ?? ''} onChange={(event) => setShipping({ ...shipping, [field]: event.target.value })} />
           </label>)}</div>
           <p>Billable kg = greater of total actual kg and packaged volume / divisor, rounded up to 0.001 kg per recipient.
             Shipping USD = max(minimum, base + billable kg x rate). {route.origin} road delivery to the hub is added separately.</p>
           <label><input type="checkbox" checked={Boolean(shipping[route.pickupField])} onChange={(event) => setShipping({
-            ...shipping, [route.pickupField]: event.target.checked ? { label: `${route.destination} collection`, country: route.destination } : null,
+            ...shipping, [route.pickupField]: event.target.checked ? {
+              ...Object.fromEntries(ADDRESS_FIELDS.map(([field]) => [field, ''])),
+              label: `${route.destination} collection`, country: route.destination,
+            } : null,
           })} />Enable customer collection in {route.destination}</label>
-          {shipping[route.pickupField] ? <div className="delivery-grid">{ADDRESS_FIELDS.map(([field, label]) => <label key={field}>
-            Collection {label}<input value={shipping[route.pickupField][field] || ''} onChange={(event) => setShipping({
-              ...shipping, [route.pickupField]: { ...shipping[route.pickupField], [field]: event.target.value },
-            })} />
-          </label>)}</div> : null}
+          {shipping[route.pickupField] ? <DeliveryAddressFields labelPrefix="Collection " address={shipping[route.pickupField]}
+            onChange={(address) => setShipping({ ...shipping, [route.pickupField]: address })} /> : null}
           <p>International pickup retains shipping charges. The existing tariff remains shipping-only; final delivery starts at zero.
-            Configure the {route.destination} collection address and contact before enabling collection. Duties/customs are excluded.</p>
+            Configure the real {route.destination} collection/dispatch street, city, country and contact phone before saving.
+            Apartment/unit is optional; postal code is optional in Ethiopia. This saved location is also the starting point for the destination delivery map.
+            If Google cannot verify a typed landmark, choose its exact address suggestion. Turn collection off to save the tariff before the collection address is ready.
+            Duties/customs are excluded.</p>
           <button className="solid-button" onClick={() => run(async () => {
+            validateAddress(shipping.hub)
+            if (shipping[route.pickupField]) validateAddress(shipping[route.pickupField])
             setShipping(await deliveryRequest('international-shipping-config', { method: 'PUT', data: shipping, timeoutMs: 60000 }))
             setMessage('Hub and tariff saved. Unprepared quotes must be recalculated; prepared orders retain their snapshots.')
           })}>Save hub & shipping tariff</button>

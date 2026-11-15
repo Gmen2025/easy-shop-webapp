@@ -86,9 +86,9 @@ test('delivery search sits above manual fields, fills only the chosen drop-off a
     const original = { id: 'home', _id: 'saved-home', label: 'Family', phone: '123', address2: 'Unit 2',
       address1: 'Existing street', city: 'Addis Ababa', zip: '1000', country: 'Ethiopia' }
     const addresses = { home: original, work: { ...original, id: 'work', country: 'USA' } }
-    const render = (id = 'home') => {
+    const render = (id = 'home', labelPrefix = '') => {
       state.start(id)
-      return Fields({ address: addresses[id], onChange: value => { addresses[id] = value } })
+      return Fields({ address: addresses[id], labelPrefix, onChange: value => { addresses[id] = value } })
     }
     const nodes = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node, ...nodes(node.props?.children)]
     const search = id => nodes(render(id)).find(node => node.props?.label === 'Search delivery address')
@@ -97,6 +97,12 @@ test('delivery search sits above manual fields, fills only the chosen drop-off a
     assert.match(markup, /name="deliveryAddressSearch" value=""/)
     assert.match(markup, /<input[^>]*name="address1"[^>]*value="Existing street"/)
     assert.equal((markup.match(/role="combobox"/g) || []).length, 1)
+    const collection = renderToStaticMarkup(render('home', 'Collection '))
+    assert.match(collection, /Search collection address/)
+    assert.match(collection, /Collection Street address/)
+    const hub = renderToStaticMarkup(render('work', 'Hub '))
+    assert.match(hub, /Search hub address/)
+    assert.match(hub, /Hub Street address/)
 
     search('home').props.onChange('Edna Mall')
     assert.strictEqual(addresses.home, original, 'Typing a search must not replace the delivery address')

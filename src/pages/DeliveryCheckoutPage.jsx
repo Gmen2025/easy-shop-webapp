@@ -448,7 +448,10 @@ function DeliveryCheckout() {
               <p>{delivery.pricingGroup?.kind === 'store-route' ? "This drop-off's share of the store route" : group.cartRoute ? 'Allocated cart route fee share (not an additional charge)' : 'Delivery share'}: {formatCurrency(pricing.byKey[delivery.key].deliveryFee)}
                 {delivery.pricingGroup?.kind === 'store-route' ? ` (complete store route: ${formatCurrency(pricing.byKey[delivery.key].sharedFee)})` : ''}
                 {!group.cartRoute && pricing.byKey[delivery.key].storeCount > 1 ? ` (${pricing.byKey[delivery.key].storeCount} nearby stores share this vehicle fee)` : ''}</p>
-              {step === 2 && (delivery.fulfillmentMethod !== 'pickup' || international) ? <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} /> : null}
+              {step === 2 && (delivery.fulfillmentMethod !== 'pickup' || international) ? <>
+                {international ? <h3>{shipmentRoute.origin} store-to-consolidation-hub route (not {shipmentRoute.destination} final delivery)</h3> : null}
+                <DeliveryMap pickup={delivery.store.location} dropoff={delivery.address.location} />
+              </> : null}
             </article>)}
             {step === 2 ? <div className="action-row">
               <button className="ghost-button" onClick={() => editCheckout(2)}>Change delivery speed / recalculate routes</button>

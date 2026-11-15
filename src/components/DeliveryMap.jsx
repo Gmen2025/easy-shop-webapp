@@ -4,12 +4,14 @@ import { loadGoogleMaps } from '../utils/googleMaps'
 
 const EMPTY_ROUTE = []
 
-export default function DeliveryMap({ pickup, dropoff, driver, coordinates = EMPTY_ROUTE, requireDriverOrigin = false }) {
+export default function DeliveryMap({ pickup, dropoff, driver, coordinates = EMPTY_ROUTE, requireDriverOrigin = false, requirePickupOrigin = false }) {
   const container = useRef(null)
   const [error, setError] = useState('')
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY)
   const destination = dropoff || pickup
-  const url = directionsUrl(destination, requireDriverOrigin ? driver : driver || (dropoff ? pickup : undefined), { requireOrigin: requireDriverOrigin })
+  const url = directionsUrl(destination, requireDriverOrigin ? driver : driver || (dropoff ? pickup : undefined), { requireOrigin: requireDriverOrigin || requirePickupOrigin })
+  const destinationPoint = latLng(destination)
+  const pinUrl = destinationPoint ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${destinationPoint.lat},${destinationPoint.lng}`)}` : null
   useEffect(() => {
     if (!hasKey) return undefined
     let current = true
@@ -53,20 +55,21 @@ export default function DeliveryMap({ pickup, dropoff, driver, coordinates = EMP
       }
       if (points.length + path.length > 1) map.fitBounds(bounds, 45)
     }).catch((failure) => {
-      if (current) setError(`The in-app Google map or driving route is unavailable: ${failure.message} Check Maps JavaScript API and Routes API authorization, billing and connectivity, or use external navigation. Checkout pricing still uses the server-verified route.`)
+      if (current) setError(`The in-app Google map or driving route is unavailable: ${failure.message} Check Maps JavaScript API and Routes API authorization, billing and connectivity, or use external navigation. ${requirePickupOrigin ? 'This preview does not change the saved final-delivery fee.' : 'Checkout pricing still uses the server-verified route.'}`)
     })
     return () => {
       current = false
       overlays.forEach((overlay) => overlay.setMap(null))
       if (map) window.google.maps.event.clearInstanceListeners(map)
     }
-  }, [pickup, dropoff, driver, coordinates, hasKey, requireDriverOrigin])
+  }, [pickup, dropoff, driver, coordinates, hasKey, requireDriverOrigin, requirePickupOrigin])
   return <div className="delivery-map-panel">
     {hasKey ? <div ref={container} className="delivery-map" aria-label="Delivery Google map" /> :
       <p className="section-note">The in-app Google map needs a configured browser Maps key. External Google Maps navigation is available below.</p>}
     {error ? <p role="alert">{error}</p> : null}
     {requireDriverOrigin && !latLng(driver) ? <p role="status">Enable live GPS for driving directions from your current location. The store is the pickup destination, not the driver's starting point.</p> : null}
     {url ? <a className="ghost-button delivery-map-directions" href={url} target="_blank" rel="noreferrer">Open driving directions in Google Maps (new tab)</a> : null}
+    {!url && pinUrl && requirePickupOrigin ? <a className="ghost-button" href={pinUrl} target="_blank" rel="noreferrer">View destination pin in Google Maps (new tab)</a> : null}
     {hasKey ? <p className="section-note">Explore the driving route here without leaving checkout. External navigation opens a new tab. Map previews do not change the saved delivery fee.</p> : null}
   </div>
 }

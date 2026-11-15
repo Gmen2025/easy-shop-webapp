@@ -10,6 +10,23 @@ export function shippingRoute(direction) {
   }
 }
 
+export function internationalDestinationLegs(group) {
+  if (!group.international) return []
+  const route = shippingRoute(group.international.direction)
+  const dispatch = group.international.tariff?.[route.pickupField]
+  return group.international.shipments.flatMap((shipment) => {
+    const members = group.deliveries.filter((delivery) => delivery.address.id === shipment.id)
+    const legs = []
+    if (members.some((delivery) => delivery.fulfillmentMethod !== 'pickup')) {
+      legs.push({ key: `${shipment.id}:delivery`, kind: 'delivery', origin: dispatch, destination: shipment.recipient })
+    }
+    if (members.some((delivery) => delivery.fulfillmentMethod === 'pickup')) {
+      legs.push({ key: `${shipment.id}:collection`, kind: 'collection', destination: dispatch })
+    }
+    return legs
+  })
+}
+
 export function rateIsActive(state, now = Date.now()) {
   const applied = new Date(state?.appliedAt).getTime()
   const expiry = new Date(state?.expiresAt).getTime()

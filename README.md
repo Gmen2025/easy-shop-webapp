@@ -92,6 +92,17 @@ requires arrival in Ethiopia and both confirmations. Customs/duties are excluded
 Deploy the matching backend before these clients; saved payments retain their
 quoted charges and collection addresses.
 
+Destination final-delivery maps are separate from origin-country store-to-hub
+maps. They use the collection/dispatch address in the saved tariff and the
+verified recipient pin, never the customer's current GPS. Without a configured
+destination origin, only the recipient pin is shown; collection uses the saved
+collection point instead. Enter the real collection street, city, country and
+contact phone before saving. Apartment/unit and Ethiopia postal code are optional.
+Recalculate unprepared quotes after configuration changes. Map previews do not
+change the configured final-delivery fee or prepared payment snapshots.
+Admin hub and collection forms include country-specific address suggestions.
+Select the exact verified landmark when Google cannot resolve a typed address.
+
 Checks: `node --test tests/checkoutPickup.test.mjs tests/pickupConfirmation.test.mjs tests/checkoutPayment.test.mjs tests/storeDispatch.test.mjs`.
 
 ## Ride and service request availability

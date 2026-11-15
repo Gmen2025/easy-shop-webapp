@@ -1,5 +1,6 @@
-import { addressText } from '../utils/delivery'
-import { money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
+import { addressText, latLng } from '../utils/delivery'
+import { internationalDestinationLegs, money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
+import DeliveryMap from './DeliveryMap'
 
 export function ExchangeReceipt({ value }) {
   if (!value.exchangeRate) return null
@@ -31,5 +32,17 @@ export function InternationalReceipt({ group }) {
       <p>Shipping: {money(shipment.shippingUsd, 'usd')} | {shipment.carrier || 'Carrier pending'} {shipment.trackingNumber || ''}</p>
       {(shipment.history || []).map((entry, index) => <p key={index}>{entry.status} - {new Date(entry.at).toLocaleString()} - {entry.note}</p>)}
     </article>)}
+    {internationalDestinationLegs(group).map((leg) => <section key={leg.key}>
+      <h4>{route.destination} {leg.kind === 'delivery' ? 'final-delivery route' : 'collection location'}</h4>
+      {leg.kind === 'delivery' ? <p>From {route.destination} collection/dispatch: {addressText(leg.origin) || 'Not configured in this checkout'}.
+        {' '}To recipient: {addressText(leg.destination)}.</p> : <p>Collect at: {addressText(leg.destination) || 'Not configured in this checkout'}.</p>}
+      {leg.kind === 'delivery' && !latLng(leg.origin?.location) ? <p role="status">
+        The {route.destination} dispatch origin is not configured in this saved checkout. Only the recipient pin is shown, not a driving route from your current location.
+        Admin must save the collection/dispatch address, then recalculate an unprepared quote. Prepared payments keep their saved snapshot.
+      </p> : null}
+      {latLng(leg.destination?.location) ? <DeliveryMap pickup={leg.origin?.location} dropoff={leg.destination.location} requirePickupOrigin /> :
+        <p role="status">No verified {route.destination} destination pin is available in this checkout.</p>}
+      <p>Destination maps are previews only; they do not recalculate shipping or final-delivery fees.</p>
+    </section>)}
   </section>
 }

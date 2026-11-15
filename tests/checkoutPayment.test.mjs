@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, SHIPMENT_STAGES } from '../src/utils/checkoutPayment.js'
+import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, internationalDestinationLegs, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, SHIPMENT_STAGES } from '../src/utils/checkoutPayment.js'
 import { calculateDeliveryPricing } from '../src/utils/delivery.js'
 
 const now = Date.UTC(2026, 9, 25, 12)
@@ -13,6 +13,31 @@ const deliveries = [
   { key: 'a', store: { name: 'Store A' }, distanceKm: 2, pricingGroup: { key: 'shared' }, vehicle: 'car', vehicleOptions: [{ type: 'car', fee: 5 }, { type: 'van', fee: 12 }] },
   { key: 'b', store: { name: 'Store B' }, distanceKm: 3, pricingGroup: { key: 'shared' }, vehicle: 'car', vehicleOptions: [{ type: 'car', fee: 7 }, { type: 'van', fee: 15 }] },
 ]
+
+test('destination maps use saved destination dispatch and recipient, never the origin-country hub or current GPS', () => {
+  const dispatch = { country: 'Ethiopia', location: { coordinates: [38.75, 9.02] } }
+  const recipient = { country: 'Ethiopia', location: { coordinates: [38.8, 8.98] } }
+  const group = {
+    international: { hub: { location: { coordinates: [-87.65, 41.95] } },
+      tariff: { ethiopiaPickup: dispatch }, shipments: [{ id: 'home', recipient }] },
+    deliveries: [{ address: { id: 'home' } }, { address: { id: 'home' }, fulfillmentMethod: 'pickup' }],
+  }
+  const legs = internationalDestinationLegs(group)
+  assert.deepEqual(legs.map(({ kind, origin, destination }) => ({ kind, origin, destination })), [
+    { kind: 'delivery', origin: dispatch, destination: recipient },
+    { kind: 'collection', origin: undefined, destination: dispatch },
+  ])
+  group.deliveries.shift()
+  assert.equal(internationalDestinationLegs(group).length, 1)
+  assert.equal(internationalDestinationLegs(group)[0].destination, dispatch)
+  group.deliveries[0].fulfillmentMethod = 'delivery'
+  delete group.international.tariff.ethiopiaPickup
+  assert.equal(internationalDestinationLegs(group)[0].origin, undefined)
+  assert.equal(internationalDestinationLegs(group)[0].destination, recipient)
+  group.international.direction = 'ethiopia-to-usa'
+  group.international.tariff.usaPickup = { country: 'USA', location: { coordinates: [-87.65, 41.95] } }
+  assert.equal(internationalDestinationLegs(group)[0].origin, group.international.tariff.usaPickup)
+})
 
 test('pending checkout verification blocks only reservations and bank review, never a quote or terminal checkout', async () => {
   assert.equal(await inspectPendingCheckout(null, () => assert.fail('No checkout to load')), null)
@@ -158,7 +183,7 @@ test('receipts distinguish ETB costs and saved Telebirr rides expose gateway rec
     assert.match(exchange, /19,500/)
     assert.match(exchange, /US catalog and shipping costs remain USD/)
     const receipt = renderToStaticMarkup(createElement(InternationalReceipt, { group: {
-      status: 'bank_review', international: { shippingFee: 25, hub: { address1: 'US Hub' },
+      status: 'bank_review', deliveries: [{ address: { id: 'home' } }], international: { shippingFee: 25, hub: { address1: 'US Hub' },
         customsNotice: 'Duties excluded', shipments: [{ id: 'home', status: 'awaiting_hub',
           shippingUsd: 25, billableKg: 2, recipient: { label: 'Home', address1: 'Ethiopia Road' } }] },
     } }))
@@ -168,7 +193,7 @@ test('receipts distinguish ETB costs and saved Telebirr rides expose gateway rec
     assert.match(receipt, /Ethiopia Road/)
     assert.match(receipt, /Duties excluded/)
     const reverseReceipt = renderToStaticMarkup(createElement(InternationalReceipt, { group: {
-      international: { direction: 'ethiopia-to-usa', shippingFee: 30, hub: { address1: 'Addis hub' },
+      deliveries: [{ address: { id: 'home' } }], international: { direction: 'ethiopia-to-usa', shippingFee: 30, hub: { address1: 'Addis hub' },
         customsNotice: 'Duties excluded', shipments: [{ id: 'home', status: 'arrived_usa',
           shippingUsd: 30, billableKg: 2, recipient: { label: 'Home', address1: 'USA Street', country: 'USA' } }] },
       finalDeliveryFee: 8.01,
@@ -178,6 +203,31 @@ test('receipts distinguish ETB costs and saved Telebirr rides expose gateway rec
     assert.match(reverseReceipt, /USA final delivery/)
     assert.match(reverseReceipt, /\$8\.01/)
     assert.match(reverseReceipt, /not final delivery in USA/)
+    const destinationGroup = {
+      deliveries: [{ address: { id: 'home' } }],
+      international: { shippingFee: 25, hub: { location: { coordinates: [-87.65, 41.95] } },
+        tariff: { ethiopiaPickup: { address1: 'Addis dispatch', location: { coordinates: [38.75, 9.02] } } },
+        shipments: [{ id: 'home', shippingUsd: 25, recipient: {
+          label: 'Family', address1: 'Recipient street', location: { coordinates: [38.8, 8.98] },
+        } }] },
+    }
+    const destinationMap = () => renderToStaticMarkup(createElement(InternationalReceipt, { group: destinationGroup }))
+    const routed = destinationMap()
+    assert.match(routed, /Ethiopia final-delivery route/)
+    assert.match(routed, /origin=9.02%2C38.75/)
+    assert.match(routed, /destination=8.98%2C38.8/)
+    assert.doesNotMatch(routed, /-87.65|41.95/)
+    destinationGroup.deliveries[0].fulfillmentMethod = 'pickup'
+    const collection = destinationMap()
+    assert.match(collection, /Ethiopia collection location/)
+    assert.match(collection, /query=9.02%2C38.75/)
+    assert.doesNotMatch(collection, /maps\/dir/)
+    destinationGroup.deliveries[0].fulfillmentMethod = 'delivery'
+    delete destinationGroup.international.tariff.ethiopiaPickup
+    const destinationOnly = destinationMap()
+    assert.match(destinationOnly, /dispatch origin is not configured/)
+    assert.match(destinationOnly, /maps\/search\/\?api=1&amp;query=8.98%2C38.8/)
+    assert.doesNotMatch(destinationOnly, /maps\/dir/)
     const { default: DeliveryCardPayment } = await server.ssrLoadModule('/src/components/DeliveryCardPayment.jsx')
     const missingMerchant = renderToStaticMarkup(createElement(DeliveryCardPayment, {
       dedicatedMerchant: true, clientSecret: 'fixture', id: 'fixture', onConfirm() {},
