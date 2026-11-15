@@ -230,11 +230,14 @@ function DeliveryCheckout() {
         <option value="etb">Pay birr - ship US products to Ethiopia</option>
       </> : <>
         <option value="etb">Pay birr - Ethiopia delivery</option>
-        <option value="usd">Pay USD - Ethiopia delivery</option>
+        <option value="usd">Pay USD - deliver in Ethiopia</option>
         <option value="usd-usa">Pay USD - ship Ethiopia products to USA</option>
       </>}
     </select></label>
     <p>Changing the payment currency reloads addresses and allocations before quoting.</p>
+    {converted && !international ? <p>Pay in USD from USA or elsewhere for family in Ethiopia.
+      Enter the recipient's Ethiopian address; a postal code is not required. Delivery and pickup remain in Ethiopia.
+      Card and USD bank transfer require Admin availability and payment configuration.</p> : null}
     {converted ? <p role="status">{exchange?.message || 'Loading the daily exchange policy.'}
       {rateIsActive(exchange, now) ? ` 1 USD = ${exchange.birrPerUsd} ETB; expires ${new Date(exchange.expiresAt).toLocaleString()}.` : ' New converted checkouts require an active rate applied within 24 hours.'}</p> : null}
     {converted ? <button className="ghost-button" onClick={() => run(async () => {
@@ -415,7 +418,8 @@ function DeliveryCheckout() {
             <p>Quote expires {new Date(group.expiresAt).toLocaleString()}. Stock is not reserved until you continue.</p>
             {step === 2 && !service ? <section className="order-card">
               <h2>Pickup or delivery by store</h2>
-              <p>Pickup has no domestic delivery fee. International pickup retains the {shipmentRoute.origin} hub route and shipping charges; only {shipmentRoute.destination} final delivery is omitted.</p>
+              <p>Pickup has no domestic delivery fee.
+                {international ? ` International pickup retains the ${shipmentRoute.origin} hub route and shipping charges; only ${shipmentRoute.destination} final delivery is omitted.` : ''}</p>
               {[...new Map(group.deliveries.map((delivery) => [delivery.store._id, delivery])).values()].map((delivery) =>
                 <label key={delivery.store._id}>{delivery.store.name}: fulfillment
                   <select value={delivery.fulfillmentMethod || 'delivery'} onChange={(event) => run(async () => {

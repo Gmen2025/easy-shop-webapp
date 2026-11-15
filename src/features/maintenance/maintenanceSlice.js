@@ -26,7 +26,7 @@ async function getConfiguredDatabases() {
 
 function normalizeMaintenancePayload(payload) {
   if (typeof payload === 'boolean') {
-    return payload
+    return { enabled: payload, testingAccess: false }
   }
 
   const candidates = [
@@ -45,13 +45,17 @@ function normalizeMaintenancePayload(payload) {
   ]
 
   const firstBoolean = candidates.find((value) => typeof value === 'boolean')
-  return Boolean(firstBoolean)
+  if (firstBoolean === undefined || (payload.testingAccess !== undefined && typeof payload.testingAccess !== 'boolean')) {
+    throw new Error('Maintenance access could not be verified. Please retry.')
+  }
+  return { enabled: firstBoolean, testingAccess: payload.testingAccess === true }
 }
 
 export const fetchMaintenanceMode = createAsyncThunk(
   'maintenance/fetchMaintenanceMode',
-  async () => {
-    const payload = await apiRequest(MAINTENANCE_MODE_PATH)
+  async (access) => {
+    const payload = await apiRequest(MAINTENANCE_MODE_PATH, access?.database ?
+      { headers: { 'x-database-name': access.database } } : {})
     return normalizeMaintenancePayload(payload)
   },
 )
@@ -91,6 +95,10 @@ const maintenanceSlice = createSlice({
   name: 'maintenance',
   initialState: {
     enabled: false,
+    testingAccess: false,
+    accessUserId: null,
+    accessDatabase: null,
+    requestId: null,
     loading: false,
     updating: false,
     error: null,
@@ -99,26 +107,35 @@ const maintenanceSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMaintenanceMode.pending, (state) => {
+      .addCase(fetchMaintenanceMode.pending, (state, action) => {
+        state.requestId = action.meta.requestId
         state.loading = true
         state.error = null
       })
       .addCase(fetchMaintenanceMode.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.loading = false
-        state.enabled = action.payload
+        state.enabled = action.payload.enabled
+        state.testingAccess = action.payload.testingAccess
+        state.accessUserId = action.meta.arg?.userId || null
+        state.accessDatabase = action.meta.arg?.database || null
         state.lastSyncedAt = Date.now()
       })
       .addCase(fetchMaintenanceMode.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.loading = false
         state.error = action.error.message
+        state.testingAccess = false
       })
       .addCase(updateMaintenanceModeAdmin.pending, (state) => {
         state.updating = true
         state.error = null
       })
       .addCase(updateMaintenanceModeAdmin.fulfilled, (state, action) => {
+        state.requestId = null
         state.updating = false
-        state.enabled = action.payload
+        state.enabled = action.payload.enabled
+        state.testingAccess = false
         state.lastSyncedAt = Date.now()
       })
       .addCase(updateMaintenanceModeAdmin.rejected, (state, action) => {

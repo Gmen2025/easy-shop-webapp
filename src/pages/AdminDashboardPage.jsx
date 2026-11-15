@@ -24,6 +24,7 @@ import {
 import LoadingState from '../components/LoadingState'
 import SocialLoginSettings from '../components/SocialLoginSettings'
 import PaymentMethodSettings from '../components/PaymentMethodSettings'
+import TestingAccessSettings from '../components/TestingAccessSettings'
 import ErrorState from '../components/ErrorState'
 import { formatCurrency, getPrimaryProductImage } from '../utils/format'
 import { uploadProductImages } from '../api/uploads'
@@ -479,7 +480,7 @@ function AdminDashboardPage() {
   }
 
   async function handleMaintenanceToggle() {
-    if (!window.confirm(`${maintenanceEnabled ? 'Disable' : 'Enable'} maintenance mode across configured regions? ${maintenanceEnabled ? 'Customers can use the shop again.' : 'Customers will not be able to use the shop.'}`)) return
+    if (!window.confirm(`${maintenanceEnabled ? 'Disable' : 'Enable'} maintenance mode across configured regions? ${maintenanceEnabled ? 'Customers can use the shop again.' : 'Only Admin and approved verified testers can use the shop.'}`)) return
     await dispatch(updateMaintenanceModeAdmin(!maintenanceEnabled))
   }
 
@@ -581,6 +582,7 @@ function AdminDashboardPage() {
         <p className="section-note">
           Toggle this to instantly show a maintenance page for shoppers without redeploying.
           This updates all configured databases (for example Ethio and USA) with one click.
+          Admin and approved verified testers retain access using each region&apos;s tester list.
         </p>
         {maintenanceError ? <p className="form-error">{maintenanceError}</p> : null}
         {lastSyncedAt ? (
@@ -610,6 +612,7 @@ function AdminDashboardPage() {
             Refresh Status
           </button>
         </div>
+        <TestingAccessSettings />
       </section> : null}
 
       {section === 'social' ? <SocialLoginSettings /> : null}

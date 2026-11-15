@@ -62,7 +62,7 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
   '/profile',
   '/edit-profile',
 ]
-const MAINTENANCE_SYNC_INTERVAL_MS = 30 * 60 * 1000
+const MAINTENANCE_SYNC_INTERVAL_MS = 30000
 
 function isMaintenanceExemptPath(pathname) {
   return MAINTENANCE_EXEMPT_PREFIXES.some(
@@ -77,10 +77,15 @@ function App() {
   const token = useSelector((state) => state.auth.token)
   const authLoading = useSelector((state) => state.auth.loading)
   const maintenanceEnabled = useSelector((state) => state.maintenance.enabled)
+  const maintenanceAccess = useSelector((state) => state.maintenance.testingAccess &&
+    state.maintenance.accessDatabase === getSelectedDatabaseName() &&
+    state.maintenance.accessUserId === (state.auth.user?._id || state.auth.user?.id))
+  const maintenanceError = useSelector((state) => state.maintenance.error)
   const isAuthenticated = Boolean(user && token)
   const isAdmin = Boolean(user?.isAdmin)
   const showMaintenancePage =
-    maintenanceEnabled && !isAdmin && !isMaintenanceExemptPath(location.pathname)
+    (maintenanceEnabled || Boolean(maintenanceError)) && !isAdmin &&
+    !(isAuthenticated && maintenanceAccess) && !isMaintenanceExemptPath(location.pathname)
 
   useEffect(() => {
     if (token) dispatch(fetchCurrentUserProfile())
@@ -91,24 +96,24 @@ function App() {
       allowed ? page : authLoading ? <p role="status">Checking company account access...</p> : <CompanyAccessDenied />
 
   useEffect(() => {
-    dispatch(fetchMaintenanceMode())
+    dispatch(fetchMaintenanceMode({ userId: user?._id || user?.id, database: getSelectedDatabaseName() }))
 
     const intervalId = setInterval(() => {
-      dispatch(fetchMaintenanceMode())
+      dispatch(fetchMaintenanceMode({ userId: user?._id || user?.id, database: getSelectedDatabaseName() }))
     }, MAINTENANCE_SYNC_INTERVAL_MS)
 
-    const syncOnFocus = () => dispatch(fetchMaintenanceMode())
+    const syncOnFocus = () => dispatch(fetchMaintenanceMode({ userId: user?._id || user?.id, database: getSelectedDatabaseName() }))
     window.addEventListener('focus', syncOnFocus)
 
     return () => {
       clearInterval(intervalId)
       window.removeEventListener('focus', syncOnFocus)
     }
-  }, [dispatch])
+  }, [dispatch, token, user?._id, user?.id])
 
   useEffect(() => {
-    dispatch(fetchMaintenanceMode())
-  }, [dispatch, location.pathname])
+    dispatch(fetchMaintenanceMode({ userId: user?._id || user?.id, database: getSelectedDatabaseName() }))
+  }, [dispatch, location.pathname, user?._id, user?.id])
 
   return (
     <>

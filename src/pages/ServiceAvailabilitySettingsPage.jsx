@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import AdminNavigation from '../components/AdminNavigation'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { SERVICE_LABELS, validateServiceAvailability } from '../utils/serviceAvailability'
+import TestingAccessSettings from '../components/TestingAccessSettings'
 
 export default function ServiceAvailabilitySettingsPage() {
   const [database, setDatabase] = useState(getSelectedDatabaseName)
@@ -33,7 +34,8 @@ export default function ServiceAvailabilitySettingsPage() {
   return <section className="page-stack admin-console">
     <AdminNavigation />
     <h1>Service availability</h1>
-    <p>Separate switches for USA and Ethiopia. Off hides booking entry points and blocks new requests. Existing trips, requests, payments and admin/driver operations remain accessible.</p>
+    <p>Separate switches for USA and Ethiopia. OFF restricts new bookings and Financial Health to Admin and approved verified testers.
+      Existing trips, service requests, payments and admin/driver operations remain accessible.</p>
     <label>Service availability region<select value={database} disabled={busy} onChange={(event) => {
       setBusy(true); setSettings(null); setError(''); setNotice(''); setDatabase(event.target.value)
     }}><option value="E_Shopping">Ethiopia</option><option value="E_ShopUSA">USA</option></select></label>
@@ -46,6 +48,8 @@ export default function ServiceAvailabilitySettingsPage() {
         {label}: {settings ? settings[key] ? 'ON' : 'OFF' : 'Unavailable'}
       </button>)}</div>
     <button disabled={busy} onClick={() => { setBusy(true); setSettings(null); setRevision((value) => value + 1) }}>Refresh availability</button>
-    <p>Switches default ON to preserve existing behavior. Ride fare configuration must also be enabled before rides can be booked. These switches do not change country maintenance mode or erase fare settings.</p>
+    <TestingAccessSettings key={database} database={database} />
+    <p>Ride and service-request switches default ON; Financial Health retains its existing OFF default.
+      Ride fare configuration must also be enabled before rides can be booked. These switches do not change maintenance mode or erase settings.</p>
   </section>
 }

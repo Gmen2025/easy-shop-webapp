@@ -74,16 +74,26 @@ Checks: `node --test tests/checkoutPickup.test.mjs tests/pickupConfirmation.test
 ## Ride and service request availability
 
 Open **Admin > Service Availability** (`/admin/service-availability`). Select
-USA or Ethiopia and toggle **Ride service** / **Service requests** independently.
-These switches default ON and supplement, rather than replace, country
+USA or Ethiopia and toggle **Ride service**, **Service requests**, and **Financial Health** independently.
+Ride/service switches default ON; Financial Health retains its OFF default. These supplement, rather than replace, country
 maintenance mode and ride fare configuration. Saving applies immediately to
 both clients via the matching backend's `/settings/service-availability`.
 
-OFF hides new-booking navigation and blocks booking forms and server submissions,
+For ordinary users, OFF hides new-booking navigation and blocks booking forms and server submissions,
 including already-open forms. **My Rides** and **Service Requests** history,
 payments and admin/driver operations remain accessible. Nothing is deleted.
 Availability refreshes on page/menu entry, focus and every 30 seconds; errors
 hide new-booking entry points and show a retry action. Deploy the backend first.
+
+Manage **Approved testers** from Service Availability or Maintenance settings.
+The normalized email list is regional and shared by both controls. Only existing,
+signed-in accounts with verified listed emails (and current Admins) bypass disabled
+services and maintenance. Removing an email revokes access on the next API request;
+client availability refreshes within 30 seconds and on sign-in/focus. Tester access
+does not grant Admin rights or access to other customers' private financial records.
+The new Financial Health switch shares the original `/admin/financial-health` setting.
+The existing global maintenance action still toggles all configured databases;
+tester lists remain separate for each region.
 
 Checks: `node --test tests/serviceAvailability.test.mjs tests/rides.test.mjs`
 and `npm run build`.
@@ -800,6 +810,11 @@ start the shared backend on that port for local development, or set
 - The cart's **Payment currency & destination** selector also offers Ethiopia
   purchases paid in USD, **Pay USD - ship Ethiopia products to USA**, and USA
   products paid in birr and shipped to Ethiopia.
+- **Pay USD - deliver in Ethiopia** lets customers in USA pay for Ethiopian
+  family without international shipping. Enter the Ethiopian recipient's address;
+  ZIP is optional. Address suggestions retain their Google place ID for server
+  verification and saved addresses. Card availability still follows Ethiopia's
+  Admin switch and dedicated USD merchant configuration.
   Both reuse the mobile API's daily FX policy. New quotes/reservations require
   an enabled rate applied strictly under 24 hours ago; prepared payments retain
   their saved rate and amount even when the policy later expires or is disabled.
