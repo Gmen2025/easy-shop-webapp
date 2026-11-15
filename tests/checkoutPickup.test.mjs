@@ -21,9 +21,11 @@ test('website quote offers per-store pickup, shows collection addresses, reprice
       load(id) {
         if (id !== virtual) return
         return `
-          let cursor = 0, states = [], effects = [], cleanups = [], quote
+          let cursor = 0, states = [], effects = [], cleanups = [], quote, database, policy
           export const calls = []
-          export function reset(value) { quote = value; states = []; calls.length = 0 }
+          export function reset(value, region = 'E_ShopUSA', gateways = null) {
+            quote = value; database = region; policy = gateways; states = []; calls.length = 0
+          }
           export function start() { cursor = 0; effects = [] }
           export function useState(initial) {
             const index = cursor++
@@ -45,9 +47,9 @@ test('website quote offers per-store pickup, shows collection addresses, reprice
           export const Link = 'a'
           export const useDispatch = () => () => {}
           export const useSelector = selector => selector({ cart: { items: [] }, auth: { user: { _id: 'customer' } } })
-          export const getSelectedDatabaseName = () => 'E_ShopUSA'
-          export const apiRequest = async () => null
-          export const availability = () => ({ methods: { cash: true, bank: true, card: true } })
+          export const getSelectedDatabaseName = () => database
+          export const apiRequest = async path => { calls.push([path]); return policy }
+          export const availability = () => ({ methods: { cash: true, bank: true, card: true, telebirr: true } })
           export const catalogPricing = () => ({ status: 'ready', enabled: false, reload: async () => ({ nearestStorePricingEnabled: false }) })
           export async function deliveryRequest(path, options) {
             calls.push([path, options])
@@ -116,6 +118,17 @@ test('website quote offers per-store pickup, shows collection addresses, reprice
     await button('Reserve stock & continue to payment').props.onClick()
     assert.deepEqual(state.calls.at(-1), ['checkouts/quote/prepare', { method: 'POST', timeoutMs: 60000,
       data: { method: 'cash', bankAccountId: '', selections: [] } }])
+    state.cleanup()
+    state.reset({ _id: 'quote', status: 'quote', kind: 'products', currency: 'etb', cart: [],
+      expiresAt: new Date(Date.now() + 600000).toISOString(), itemsSubtotal: 30, deliveryFee: 4, totalPrice: 34,
+      deliveries: [{ key: 'A', store: { _id: 'A', name: 'ET store' }, address: { ...address, country: 'Ethiopia' },
+        lines: [], cargo: {}, vehicle: 'car', distanceKm: 1, deliveryFee: 4, vehicleOptions: [{ type: 'car', fee: 4 }] }],
+    }, 'E_Shopping', { active: false, enabled: false, telebirrAvailable: true })
+    render(); state.flushEffects()
+    for (let index = 0; index < 10; index++) await new Promise(resolve => setImmediate(resolve))
+    assert.ok(state.calls.some(([path]) => path === '/exchange-rate/'), 'Native ETB checkout must load gateway readiness without requiring an active USD rate')
+    button('Continue to payment').props.onClick()
+    assert.ok(nodes(render()).some(node => node.type === 'input' && node.props.value === 'telebirr'))
   } finally {
     state?.cleanup()
     await server.close()

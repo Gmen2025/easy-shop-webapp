@@ -8,9 +8,14 @@ import { PAYMENT_UNAVAILABLE, enabledPaymentMethods } from '../utils/paymentAvai
 import { money } from '../utils/checkoutPayment'
 
 const bankResponse = (data) => requireList(data, 'bank accounts')
+const paymentConfig = (data) => {
+  if (typeof data?.telebirrAvailable !== 'boolean') throw new Error('Unable to load ride gateway availability.')
+  return data
+}
 
 export default function RideCheckout({ ride, onUpdated }) {
   const availability = usePaymentAvailability()
+  const config = useCompanyResource('/rides/config', paymentConfig, 30000)
   const banks = useCompanyResource(`/stores/delivery-bank-accounts?currency=${encodeURIComponent(ride.currency.toUpperCase())}`, bankResponse)
   const action = useCompanyAction()
   const [method, setMethod] = useState('')
@@ -18,7 +23,8 @@ export default function RideCheckout({ ride, onUpdated }) {
   const [sender, setSender] = useState(ride.bankSender || '')
   const [reference, setReference] = useState(ride.bankReference || '')
   const [clientSecret, setClientSecret] = useState('')
-  const methods = enabledPaymentMethods(['bank', ...(/usa/i.test(getSelectedDatabaseName()) ? ['card'] : []), 'cash'], availability.methods)
+  const methods = enabledPaymentMethods(['bank', ...(/usa/i.test(getSelectedDatabaseName()) ? ['card'] : []),
+    ...(ride.currency === 'etb' && !config.error && config.data?.telebirrAvailable ? ['telebirr'] : []), 'cash'], availability.methods)
   const update = async (path, body) => {
     const result = await apiRequest(`/rides/${encodeURIComponent(ride._id)}/${path}`, {
       method: 'POST', body: JSON.stringify(body), timeoutMs: 120000,
@@ -30,6 +36,7 @@ export default function RideCheckout({ ride, onUpdated }) {
   return <section className="order-card" aria-label="Ride payment"><h3>Ride payment</h3>
     <p>Final fare: {money(ride.finalFare, ride.currency)} | Payment: {ride.paymentStatus}</p>
     {action.error ? <p role="alert">{action.error}</p> : null}
+    {config.error ? <p role="alert">{config.error}</p> : null}
     {ride.paymentStatus === 'completed' ? <p role="status">Payment confirmed. Do not pay again.</p> :
       !ride.paymentMethod ? <>
         {availability.error ? <p role="alert">{availability.error}</p> :
@@ -37,7 +44,7 @@ export default function RideCheckout({ ride, onUpdated }) {
             !methods.length ? <p role="alert">{PAYMENT_UNAVAILABLE}</p> : null}
         <label>Ride payment method<select value={method} disabled={action.busy} onChange={(event) => setMethod(event.target.value)}>
           <option value="">Select a payment method</option>
-          {methods.map((key) => <option value={key} key={key}>{{ bank: 'Bank transfer', card: 'Card', cash: 'Cash to driver' }[key]}</option>)}
+          {methods.map((key) => <option value={key} key={key}>{{ bank: 'Bank transfer', card: 'Card', telebirr: 'Telebirr', cash: 'Cash to driver' }[key]}</option>)}
         </select></label>
         {method === 'bank' && methods.includes('bank') ? <>
           {banks.error ? <p role="alert">{banks.error}</p> : null}
@@ -56,6 +63,19 @@ export default function RideCheckout({ ride, onUpdated }) {
           returnUrl={`${window.location.origin}/rides/mine?rideId=${encodeURIComponent(ride._id)}`} /> : null}
         <button className="ghost-button" disabled={action.busy} onClick={() => action.run(confirm)}>Check existing card payment</button>
         <p>After interruptions, reconcile the same ride payment. Do not pay twice.</p>
+      </> : ride.paymentMethod === 'telebirr' ? <>
+        {/^https:\/\//.test(ride.telebirrPaymentUrl || '') ? <a className="solid-button" href={ride.telebirrPaymentUrl}
+          target="_blank" rel="noopener noreferrer">Open saved Telebirr payment</a> :
+        <button className="solid-button" disabled={action.busy} onClick={() => action.run(async () => {
+          const result = await apiRequest(`/rides/${encodeURIComponent(ride._id)}/payment`, {
+            method: 'POST', body: JSON.stringify({ clientType: 'web' }), timeoutMs: 60000,
+          })
+          onUpdated(result.ride)
+          if (result.ride.paymentStatus === 'completed') return
+          if (!/^https:\/\//.test(result.paymentUrl || '')) throw new Error('Telebirr returned no secure payment link. Check this ride before retrying.')
+        })}>Prepare Telebirr payment link</button>}
+        <button className="ghost-button" disabled={action.busy} onClick={() => action.run(confirm)}>Check Telebirr payment status</button>
+        <p>Pay the saved ETB fare once, then return here to verify it. A redirect is not proof of payment.</p>
       </> : ride.paymentMethod === 'bank' ? <>
         <p>{ride.bankAccount?.bankName} - {ride.bankAccount?.accountNumber} - {ride.bankAccount?.accountHolderName}</p>
         <p>Transfer once. Payment stays pending until Admin verifies receipt.</p>

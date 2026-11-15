@@ -2,6 +2,29 @@
 
 React + Vite ecommerce frontend for browsing products, placing orders, and managing catalog/orders from an admin dashboard.
 
+## Regional payment sandbox setup
+
+Deploy the matching backend first, using its README's sandbox setup. On an
+isolated test deployment, set `VITE_API_BASE_URL` to that backend's `/api/v1/`
+and `VITE_STRIPE_PUBLISHABLE_KEY` to the sandbox `pk_test_*` paired with the
+backend's USA `sk_test_*` key and `STRIPE_MODE=test`. Restart/rebuild Vite after
+environment changes. No secret keys belong in the website.
+
+USA uses Stripe USD. Ethiopia domestic ETB products, including grouped checkout,
+and completed/Admin-reviewed ETB rides support configured Telebirr; eligible
+Ethiopia USD product/service quotes use the dedicated USD merchant public key
+returned by the backend. Telebirr is not a USD method. Enable regional Admin
+payment switches only after configuring the provider. Ride payments expose a
+saved gateway link and **Check Telebirr payment status**; a return redirect
+never confirms funds. Ambiguous starts must recover the same payment.
+
+Driver/store Income deposits already use USD hosted card checkout or ETB
+Telebirr. Configure backend `WALLET_PAYMENT_RETURN_URL` to an HTTPS Income/profile
+page and enable both test account deposit switches. Verify funds before credit.
+Use Telebirr-approved sandbox endpoints/accounts, not mock success; Stripe's
+mode does not change Telebirr endpoints. Test success, decline, interruption,
+disabled methods and repeated verification before configuring live credentials.
+
 ## Cash-fee deposit wallets
 
 Open a driver's or store's **Income** dashboard to view the prepaid deposit
@@ -778,7 +801,7 @@ start the shared backend on that port for local development, or set
 - Preview fees follow the mobile nearby-store/vehicle grouping rule, including
   exact cent splitting. Server preparation revalidates and reserves stock
   atomically; the saved reservation total is authoritative.
-- Domestic Ethiopia supports bank transfer and cash; domestic USA supports
+- Domestic Ethiopia supports bank transfer, configured ETB Telebirr and cash; domestic USA supports
   bank transfer, Stripe card and cash in both development and production.
   Admin > Tools > Payment Methods independently controls cash, bank, card and
   Telebirr for USA and Ethio on both clients. Absent switches default ON.
@@ -787,8 +810,8 @@ start the shared backend on that port for local development, or set
   unavailable. Please try again later." when no eligible methods remain.
   Settings errors block new submissions and are displayed explicitly.
   FX, international and service payments still do not offer cash.
-  Telebirr is offered in legacy Ethio checkout; grouped checkout and rides
-  retain their existing supported methods/currencies. Enabling a switch does
+  Telebirr also supports domestic grouped ETB products and post-ride ETB fares.
+  Enabling a switch does
   not supply provider credentials or enable unsupported currencies.
 - Deploy the matching backend before either client. Public
   `GET /settings/payment-methods` and Admin-only partial
@@ -924,7 +947,8 @@ This does not introduce a new optimized consolidated multi-stop dispatch model.
    approved company drivers and vehicle compatibility. Enable vehicles and
    shared delivery through Admin only after these prerequisites are ready.
    For Ethiopia USD cards, configure `STRIPE_SECRET_KEY_ETHIOPIA_USD` and
-   `STRIPE_PUBLISHABLE_KEY_ETHIOPIA_USD` on the backend with the matching live
+   `STRIPE_PUBLISHABLE_KEY_ETHIOPIA_USD` on the backend with the matching
+   `STRIPE_MODE` (live in production)
    USD-capable merchant; the server supplies the public key after reservation.
    For cross-currency purchases, configure the region's FX policy and
    matching-currency bank accounts. For USA exports, also configure hub/tariff,

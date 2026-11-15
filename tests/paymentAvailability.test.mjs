@@ -5,6 +5,17 @@ import { paymentMethods } from '../src/utils/checkoutPayment.js'
 
 const all = { cash: true, bank: true, card: true, telebirr: true }
 
+test('domestic Telebirr is offered only for configured Ethiopia ETB product checkout', () => {
+  const group = { currency: 'etb', kind: 'products' }
+  const gateway = { telebirrAvailable: true }
+  assert.deepEqual(paymentMethods(group, 'E_Shopping', gateway, all), ['bank', 'telebirr', 'cash'])
+  for (const [value, database, config, settings] of [
+    [group, 'E_ShopUSA', gateway, all], [{ ...group, currency: 'usd' }, 'E_Shopping', gateway, all],
+    [group, 'E_Shopping', null, all], [group, 'E_Shopping', gateway, { ...all, telebirr: false }],
+    [{ ...group, exchangeRate: {} }, 'E_Shopping', gateway, all],
+  ]) assert.equal(paymentMethods(value, database, config, settings).includes('telebirr'), false)
+})
+
 test('regional settings require the complete explicit boolean API shape and fail closed', () => {
   assert.deepEqual(parsePaymentSettings({ success: true, methods: all }), all)
   for (const data of [null, {}, { success: false, methods: all }, { success: true, methods: {} },

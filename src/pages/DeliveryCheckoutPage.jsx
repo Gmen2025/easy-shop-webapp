@@ -106,7 +106,7 @@ function DeliveryCheckout() {
         if (result.status !== 'quote') return
         const [accounts, policy] = await Promise.all([
           deliveryRequest(`delivery-bank-accounts?currency=${result.currency.toUpperCase()}`),
-          result.exchangeRate || result.international ? apiRequest('/exchange-rate/') : Promise.resolve(null),
+          result.exchangeRate || result.international || !/usa/i.test(database) ? apiRequest('/exchange-rate/') : Promise.resolve(null),
         ])
         if (!current) return
         setBanks(accounts); setBankId(accounts[0]?._id || ''); setExchange(policy)
@@ -116,7 +116,7 @@ function DeliveryCheckout() {
           /^(usa|us|united states|united states of america)$/i.test(country || '') : /^(ethiopia|ethio|et)$/i.test(country || '')
         const [accounts, policy] = await Promise.all([
           deliveryRequest(`delivery-bank-accounts?currency=${paymentCurrency.toUpperCase()}`),
-          paymentCurrency !== nativeCurrency(database) ? apiRequest('/exchange-rate/') : Promise.resolve(null),
+          paymentCurrency !== nativeCurrency(database) || !/usa/i.test(database) ? apiRequest('/exchange-rate/') : Promise.resolve(null),
         ])
         if (!current) return
         const [address, existing] = result

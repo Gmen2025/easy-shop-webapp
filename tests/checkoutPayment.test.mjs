@@ -138,7 +138,7 @@ test('international bank review completes the purchased cart but never clears ca
   assert.deepEqual(SHIPMENT_STAGES, ['awaiting_hub', 'at_hub', 'shipped', 'arrived_ethiopia', 'delivered'])
 })
 
-test('group and child receipts distinguish ETB payment from USD costs and final delivery from the hub', async () => {
+test('receipts distinguish ETB costs and saved Telebirr rides expose gateway recovery, never cash confirmation', async () => {
   const { createServer } = await import('vite')
   const cacheDir = await mkdtemp(join(tmpdir(), 'checkout-payment-test-'))
   const server = await createServer({
@@ -184,6 +184,23 @@ test('group and child receipts distinguish ETB payment from USD costs and final 
     }))
     assert.match(missingMerchant, /dedicated Ethiopia USD merchant key saved by the server/)
     assert.match(missingMerchant, /native merchant key cannot be substituted/)
+    const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => 'E_Shopping' } })
+    try {
+      const { default: RideCheckout } = await server.ssrLoadModule('/src/components/RideCheckout.jsx')
+      const ride = { _id: 'ride', finalFare: 150, currency: 'etb', paymentMethod: 'telebirr', paymentStatus: 'pending',
+        telebirrPaymentUrl: 'https://gateway.example.test/saved' }
+      const pending = renderToStaticMarkup(createElement(RideCheckout, { ride, onUpdated() {} }))
+      assert.match(pending, /href="https:\/\/gateway\.example\.test\/saved"/)
+      assert.match(pending, /Check Telebirr payment status/)
+      assert.doesNotMatch(pending, /Pay the assigned driver/)
+      const paid = renderToStaticMarkup(createElement(RideCheckout, { ride: { ...ride, paymentStatus: 'completed' }, onUpdated() {} }))
+      assert.match(paid, /Payment confirmed\. Do not pay again/)
+      assert.doesNotMatch(paid, /href="https:\/\/gateway\.example\.test\/saved"/)
+    } finally {
+      if (storageDescriptor) Object.defineProperty(globalThis, 'localStorage', storageDescriptor)
+      else delete globalThis.localStorage
+    }
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

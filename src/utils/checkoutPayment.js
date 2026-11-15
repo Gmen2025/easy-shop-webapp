@@ -40,6 +40,7 @@ export function paymentMethods(group, database, exchange, settings) {
   const supported = group.international && group.international.direction !== 'ethiopia-to-usa' ? ['bank', ...(exchange?.telebirrAvailable ? ['telebirr'] : [])] :
     group.exchangeRate || group.kind === 'service' ? exchange?.cardAvailable ? ['bank', 'card'] : ['bank'] : [
     'bank', ...(/usa/i.test(database) ? ['card'] : []),
+    ...(!/usa/i.test(database) && group.currency === 'etb' && exchange?.telebirrAvailable ? ['telebirr'] : []),
     ...(cashOnDeliveryAvailable(database) ? ['cash'] : []),
   ]
   return supported.filter((key) => settings?.[key] === true)
