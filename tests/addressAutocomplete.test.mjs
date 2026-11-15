@@ -1,5 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { addressCountryCode, editAddress, placeAddress } from '../src/utils/addressAutocomplete.js'
 
 const part = (type, longText) => ({ types: [type], longText })
@@ -44,4 +47,86 @@ test('manual address edits remove stale place and GPS metadata but retain contac
   }
   assert.equal(editAddress(address, 'phone', '456').placeId, 'grace-store')
   assert.equal(address.placeId, 'grace-store')
+})
+
+test('delivery search sits above manual fields, fills only the chosen drop-off and keeps searches separate', async () => {
+  const { createServer } = await import('vite')
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const cacheDir = await mkdtemp(join(tmpdir(), 'delivery-address-fields-'))
+  const virtual = '\0virtual:delivery-address-state'
+  const server = await createServer({
+    cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom',
+    optimizeDeps: { noDiscovery: true, include: [] },
+    plugins: [{
+      name: 'delivery-address-state', enforce: 'pre',
+      resolveId(id) { if (id === 'virtual:delivery-address-state') return virtual },
+      load(id) {
+        if (id !== virtual) return
+        return `
+          const instances = new Map()
+          let current, cursor
+          export function start(id) {
+            if (!instances.has(id)) instances.set(id, [])
+            current = instances.get(id); cursor = 0
+          }
+          export function useState(initial) {
+            const values = current, index = cursor++
+            if (!(index in values)) values[index] = initial
+            return [values[index], value => { values[index] = typeof value === 'function' ? value(values[index]) : value }]
+          }`
+      },
+      transform(code, id) {
+        if (id.endsWith('/DeliveryAddressFields.jsx')) return code.replace("from 'react'", "from 'virtual:delivery-address-state'")
+      },
+    }],
+  })
+  try {
+    const state = await server.ssrLoadModule('virtual:delivery-address-state')
+    const { default: Fields } = await server.ssrLoadModule('/src/components/DeliveryAddressFields.jsx')
+    const original = { id: 'home', _id: 'saved-home', label: 'Family', phone: '123', address2: 'Unit 2',
+      address1: 'Existing street', city: 'Addis Ababa', zip: '1000', country: 'Ethiopia' }
+    const addresses = { home: original, work: { ...original, id: 'work', country: 'USA' } }
+    const render = (id = 'home') => {
+      state.start(id)
+      return Fields({ address: addresses[id], onChange: value => { addresses[id] = value } })
+    }
+    const nodes = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node, ...nodes(node.props?.children)]
+    const search = id => nodes(render(id)).find(node => node.props?.label === 'Search delivery address')
+    const markup = renderToStaticMarkup(render())
+    assert.ok(markup.indexOf('Search delivery address') < markup.indexOf('Address label'))
+    assert.match(markup, /name="deliveryAddressSearch" value=""/)
+    assert.match(markup, /<input[^>]*name="address1"[^>]*value="Existing street"/)
+    assert.equal((markup.match(/role="combobox"/g) || []).length, 1)
+
+    search('home').props.onChange('Edna Mall')
+    assert.strictEqual(addresses.home, original, 'Typing a search must not replace the delivery address')
+    assert.equal(search('home').props.value, 'Edna Mall')
+    assert.equal(search('home').props.country, 'Ethiopia')
+    assert.equal(search('work').props.value, '')
+    assert.equal(search('work').props.country, 'USA')
+    search('work').props.onChange('810 Grace')
+    search('home').props.onSelect(placeAddress({
+      id: 'edna-mall', formattedAddress: 'Edna Mall',
+      addressComponents: [part('locality', 'Addis Ababa'), part('country', 'Ethiopia')],
+      location: { lat: () => 8.996, lng: () => 38.787 },
+    }))
+    assert.equal(search('home').props.value, '')
+    assert.equal(search('work').props.value, '810 Grace')
+    for (const field of ['id', '_id', 'label', 'phone', 'address2']) assert.equal(addresses.home[field], original[field])
+    assert.equal(addresses.home.address1, 'Edna Mall')
+    assert.equal(addresses.home.zip, '')
+    assert.equal(addresses.home.placeId, 'edna-mall')
+    assert.deepEqual(addresses.home.location, { type: 'Point', coordinates: [38.787, 8.996] })
+    assert.match(renderToStaticMarkup(render()), /Map location:.*Edna Mall/)
+
+    nodes(render()).find(node => node.type === 'input' && node.props.name === 'city')
+      .props.onChange({ target: { value: 'Another city' } })
+    assert.equal(addresses.home.city, 'Another city')
+    assert.equal(addresses.home.placeId, undefined)
+    assert.equal(addresses.home.location, undefined)
+    assert.doesNotMatch(renderToStaticMarkup(render()), /Map location:/)
+  } finally {
+    await server.close()
+    await rm(cacheDir, { recursive: true, force: true })
+  }
 })

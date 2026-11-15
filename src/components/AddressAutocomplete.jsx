@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { loadGoogleMaps } from '../utils/googleMaps'
 import { addressCountryCode, placeAddress } from '../utils/addressAutocomplete'
 
-export default function AddressAutocomplete({ label = 'Street address', value, country, onChange, onSelect, ...inputProps }) {
+export default function AddressAutocomplete({ label = 'Street address', name = 'address1', value, country, onChange, onSelect, ...inputProps }) {
   const id = useId()
   const session = useRef(null)
   const revision = useRef(0)
@@ -82,7 +82,7 @@ export default function AddressAutocomplete({ label = 'Street address', value, c
     onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close() }}>
     <label htmlFor={id}>{label}</label>
     <div className="address-input-control">
-    <input maxLength={300} {...inputProps} id={id} name="address1" value={value || ''} autoComplete="off"
+    <input maxLength={300} {...inputProps} id={id} name={name} value={value || ''} autoComplete="off"
       role="combobox" aria-autocomplete="list" aria-expanded={visible}
       aria-controls={`${id}-suggestions`} aria-describedby={`${id}-status`}
       aria-activedescendant={visible && active >= 0 ? `${id}-option-${active}` : undefined}

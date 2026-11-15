@@ -1015,8 +1015,14 @@ errors and key authorization errors are separate problems.
 
 ### Delivery and ride address suggestions
 
-The shared address autocomplete is available for each delivery drop-off,
-legacy shipping checkout, and ride pickup/drop-off. Look for the input showing "Search pickup location" or
+Each delivery drop-off has a separate **Search delivery address** input above
+the editable address fields, matching the mobile app. Type a street, building
+or landmark, then select a suggestion to fill the fields below. Searching alone
+does not replace the current address. A selected suggestion shows its map location;
+apartment/unit and contact details remain editable.
+
+The shared address autocomplete is also available for legacy shipping checkout
+and ride pickup/drop-off. Look for "Search pickup location" or
 "Search drop-off location". These hints appear when the field is empty;
 existing addresses remain visible and editable. Type at least three
 characters, then choose a Google suggestion with the mouse or Arrow keys and

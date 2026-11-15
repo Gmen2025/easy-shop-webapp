@@ -4,14 +4,14 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { completeDeliveryCheckout } from '../features/cart/cartSlice'
-import { ADDRESS_FIELDS, addressText, buildQuotePayload, calculateDeliveryPricing, selectDeliveryVehicle, cartLineKey, cartMatchesQuote } from '../utils/delivery'
+import { addressText, buildQuotePayload, calculateDeliveryPricing, selectDeliveryVehicle, cartLineKey, cartMatchesQuote } from '../utils/delivery'
 import { formatCurrency } from '../utils/format'
 import DeliveryCardPayment from '../components/DeliveryCardPayment'
 import DeliveryMap from '../components/DeliveryMap'
 import DeliveryWindow from '../components/DeliveryWindow'
 import CartContents from '../components/CartContents'
 import CheckoutHeader from '../components/CheckoutHeader'
-import AddressAutocomplete from '../components/AddressAutocomplete'
+import DeliveryAddressFields from '../components/DeliveryAddressFields'
 import { editAddress } from '../utils/addressAutocomplete'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, shippingRoute } from '../utils/checkoutPayment'
@@ -295,17 +295,8 @@ function DeliveryCheckout() {
           <p>Allocate every unit to a destination. The quote selects supplying stores from matching-price stock. Then choose collection or delivery independently for each supplying store before payment.</p>
           {addresses.map((address, index) => <article className="order-card" key={address.id}>
             <h2>Drop-off {index + 1}</h2>
-            <div className="form-grid">{ADDRESS_FIELDS.map(([field, label]) => field === 'address1' ?
-              <AddressAutocomplete key={`${field}-${address.country}`} label={label} value={address.address1} country={address.country} maxLength={300}
-                placeholder="Search drop-off location"
-                onChange={(value) => setAddresses((previous) => previous.map((entry) =>
-                  entry.id === address.id ? editAddress(entry, 'address1', value) : entry))}
-                onSelect={(selected) => setAddresses((previous) => previous.map((entry) =>
-                  entry.id === address.id ? { ...entry, ...selected } : entry))} /> :
-              <label key={field}>{label}
-              <input value={address[field] || ''} maxLength={300} onChange={(event) =>
-                setAddresses((previous) => previous.map((entry) => entry.id === address.id ? editAddress(entry, field, event.target.value) : entry))} />
-            </label>)}</div>
+            <DeliveryAddressFields address={address} onChange={(updated) => setAddresses((previous) =>
+              previous.map((entry) => entry.id === address.id ? updated : entry))} />
             {items.map(({ product, quantity }) => <label className="delivery-allocation" key={cartLineKey(product)}>
               {product.name}: units to this drop-off (of {quantity})
               <input type="number" min="0" max={quantity} step="1" value={initialQuantities(cartLineKey(product), index)}
