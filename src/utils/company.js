@@ -13,11 +13,12 @@ export const isCompanyDriver = (user) =>
 export const isDeliveryDriver = (user) => Boolean(user?.isDriver && !user?.isAdmin)
 export const isCompanyStoreOwner = (user) =>
   Boolean(user?.isStoreOwner && user?.isCompanyOwnedStore && !user?.isAdmin)
+export const isStoreOwner = (user) => Boolean(user?.isStoreOwner && !user?.isAdmin)
 
 export function companyTabs(user) {
   return [
     { to: '/', label: 'Shop', icon: 'home', end: true },
-    isCompanyStoreOwner(user) ? { to: '/store-owner', label: 'Store Owner', icon: 'store' }
+    isStoreOwner(user) ? { to: '/store-owner', label: 'Store Owner', icon: 'store' }
       : { to: '/stores', label: 'Stores', icon: 'store' },
     { to: '/cart', label: 'Cart', icon: 'cart' },
     ...(isDeliveryDriver(user) ? [{ to: '/driver', label: isCompanyDriver(user) ? 'Company Driver' : 'Driver', icon: 'driver' }] : []),

@@ -31,7 +31,7 @@ export default function CompanyStorePage() {
 
   return <section className="page-stack company-console company-store">
     <CompanyNavigation />
-    <header className="panel company-heading"><div><p className="company-eyebrow">Company Fulfillment</p>
+    <header className="panel company-heading"><div><p className="company-eyebrow">Store Fulfillment</p>
       <h1>{orderId ? 'Order products' : 'Account Business Dashboard'}</h1>
       <p>{dashboard?.store?.name || 'Store Owner'}</p></div>
       <button className="solid-button" disabled={analytics.loading || products.loading || action.busy}

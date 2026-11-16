@@ -40,7 +40,7 @@ import StoreManagementPage from './pages/StoreManagementPage'
 import StoreAssignmentsPage from './pages/StoreAssignmentsPage'
 import DriverRidesPage from './pages/DriverRidesPage'
 import { CompanyAccessDenied } from './components/CompanyNavigation'
-import { isCompanyDriver, isDeliveryDriver, isCompanyStoreOwner } from './utils/company'
+import { isDeliveryDriver, isStoreOwner } from './utils/company'
 import { fetchCurrentUserProfile } from './features/auth/authSlice'
 import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSettingsPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
@@ -264,14 +264,14 @@ function App() {
           <Route path="admin/rides" element={isAuthenticated && isAdmin ? <section className="page-stack admin-console"><AdminNavigation /><RideSettingsPage /></section> : <Navigate to="/login" replace />} />
           <Route path="delivery-checkouts" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutsPage /> : <Navigate to="/login" replace />} />
           <Route path="delivery-checkouts/:id" element={showMaintenancePage ? <MaintenancePage /> : isAuthenticated ? <DeliveryCheckoutPage key={location.pathname} /> : <Navigate to="/login" replace />} />
-          <Route path="store-owner" element={companyPage(isCompanyStoreOwner(user), <CompanyStorePage />)} />
-          <Route path="store-owner/orders/:orderId" element={companyPage(isCompanyStoreOwner(user), <CompanyStorePage />)} />
+          <Route path="store-owner" element={companyPage(isStoreOwner(user), <CompanyStorePage />)} />
+          <Route path="store-owner/orders/:orderId" element={companyPage(isStoreOwner(user), <CompanyStorePage />)} />
           <Route path="store-owner/manage" element={companyPage(user?.isStoreOwner && !user?.isAdmin, <StoreManagementPage />)} />
-          <Route path="store-owner/assignments" element={companyPage(isCompanyStoreOwner(user), <StoreAssignmentsPage />)} />
+          <Route path="store-owner/assignments" element={companyPage(isStoreOwner(user), <StoreAssignmentsPage />)} />
           <Route path="driver" element={companyPage(isDeliveryDriver(user), <DriverDeliveriesPage />)} />
           <Route path="driver/deliveries" element={companyPage(isDeliveryDriver(user), <DriverDeliveriesPage />)} />
-          <Route path="driver/rides" element={companyPage(isCompanyDriver(user), <DriverRidesPage />)} />
-          <Route path="driver/rides/trip" element={companyPage(isCompanyDriver(user), <DriverRidesPage tripOnly />)} />
+          <Route path="driver/rides" element={companyPage(isDeliveryDriver(user), <DriverRidesPage />)} />
+          <Route path="driver/rides/trip" element={companyPage(isDeliveryDriver(user), <DriverRidesPage tripOnly />)} />
           <Route path="admin/delivery" element={isAuthenticated && isAdmin ? <DeliverySettingsPage /> : <Navigate to="/login" replace />} />
           <Route path="admin/delivery-payments" element={isAuthenticated && isAdmin ? <DeliveryCheckoutsPage admin /> : <Navigate to="/login" replace />} />
           <Route path="admin/international-payments" element={isAuthenticated && isAdmin ? <InternationalPaymentsSettingsPage /> : <Navigate to="/login" replace />} />

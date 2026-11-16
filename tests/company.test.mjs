@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  COMPANY_PERIODS, companyRoles, companyTabs, isCompanyDriver, isDeliveryDriver, isCompanyStoreOwner,
+  COMPANY_PERIODS, companyRoles, companyTabs, isCompanyDriver, isDeliveryDriver, isCompanyStoreOwner, isStoreOwner,
   requireList, validateCompanyDashboard, validateDriverRides, assignmentSeconds, inventoryPayload, driverRideFare,
 } from '../src/utils/company.js'
 
@@ -133,11 +133,13 @@ test('website gates individual and combined drop-offs per cart while leaving pic
 
 test('company role tabs match mobile eligibility without changing customer or admin navigation', () => {
   assert.equal(isCompanyStoreOwner(owner), true)
+  assert.equal(isStoreOwner({ isStoreOwner: true }), true)
+  assert.equal(isStoreOwner({ isStoreOwner: true, isAdmin: true }), false)
   assert.equal(isCompanyDriver(driver), true)
   for (const user of [null, {}, { isStoreOwner: true }, { ...owner, ...driver, isAdmin: true }]) {
     assert.equal(isCompanyStoreOwner(user), false)
     assert.equal(isCompanyDriver(user), false)
-    assert.ok(companyTabs(user).some((tab) => tab.to === '/stores'))
+    assert.ok(companyTabs(user).some((tab) => tab.to === (isStoreOwner(user) ? '/store-owner' : '/stores')))
     assert.equal(companyTabs(user).length, 4)
   }
   assert.deepEqual(companyTabs(owner).map((tab) => tab.label), ['Shop', 'Store Owner', 'Cart', 'Account'])
@@ -261,22 +263,19 @@ test('website routes, responsive role tabs and authentication preserve company r
       const html = render(path, owner)
       assert.ok(html.includes(title), path)
       assert.match(html, /href="\/store-owner"/)
-      assert.doesNotMatch(html, /Company account required/)
-      assert.match(render(path, driver), /Company account required/)
-      assert.match(render(path, { isAdmin: true }), /Company account required/)
-      assert.doesNotMatch(render(path, null), /Company account required|Loading store analytics/)
+      assert.doesNotMatch(html, /Operator account required/)
+      assert.doesNotMatch(render(path, { isStoreOwner: true }), /Operator account required/)
+      assert.match(render(path, { isAdmin: true }), /Operator account required/)
+      assert.doesNotMatch(render(path, null), /Operator account required|Loading store analytics/)
     }
     for (const path of ['/driver', '/driver/deliveries', '/driver/rides', '/driver/rides/trip']) {
       const html = render(path, driver)
       assert.match(html, /Company Driver/)
-      assert.doesNotMatch(html, /Company account required/)
-      assert.match(render(path, owner), /Company account required/)
-      if (path.includes('/rides')) assert.match(render(path, { isDriver: true }), /Company account required/)
-      else {
-        const partnerHtml = render(path, { isDriver: true })
-        assert.doesNotMatch(partnerHtml, /Company account required|Passenger assignments/)
-        assert.match(partnerHtml, /Available Delivery Assignments/)
-      }
+      assert.doesNotMatch(html, /Operator account required/)
+      assert.match(render(path, owner), /Operator account required/)
+      const partnerHtml = render(path, { isDriver: true })
+      assert.doesNotMatch(partnerHtml, /Operator account required/)
+      assert.match(partnerHtml, path.includes('/rides') ? /Ride|Passenger/ : /Available Delivery Assignments/)
     }
     assert.match(render('/driver', driver, true), /maintenance/i)
     assert.match(render('/store-owner', owner, true), /maintenance/i)

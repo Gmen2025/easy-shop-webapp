@@ -202,7 +202,7 @@ export default function RideSettingsPage() {
     <button className="ghost-button" disabled={busy || loading} onClick={reload}>Reload ride settings & payments</button>
     {error ? <p role="alert">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
-    {loading ? <p role="status">Loading ride configuration, company drivers and completed rides…</p> : null}
+    {loading ? <p role="status">Loading ride configuration, drivers and completed rides…</p> : null}
     {!loading && error ? <button className="ghost-button" disabled={busy} onClick={reload}>Retry loading Ride settings</button> : null}
 
     {!loading && config ? <fieldset className="delivery-fieldset" disabled={busy}>
@@ -246,10 +246,10 @@ export default function RideSettingsPage() {
     </fieldset> : null}
 
     {!loading && !error && <section>
-      <h2>Company drivers: vehicle, car class & passenger seats</h2>
+      <h2>Drivers: vehicle, car class & passenger seats</h2>
       <p>Choose the verified vehicle type, not an unverified vehicle request. Usable seats exclude the driver and may only be
         changed for cars and vans. The backend blocks changes during active trips, offers or assigned deliveries.</p>
-      {drivers.length === 0 ? <p>No company drivers are registered in this region.</p> : drivers.map((driver) => {
+      {drivers.length === 0 ? <p>No drivers are registered in this region.</p> : drivers.map((driver) => {
         const edits = driverEdits[driver._id] || {}
         const activeTrip = Boolean(driver.activeRideTrip)
         const enabledModes = driver.serviceModes

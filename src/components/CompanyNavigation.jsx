@@ -1,14 +1,14 @@
 import { NavLink, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { COMPANY_PERIODS, isCompanyStoreOwner } from '../utils/company'
+import { COMPANY_PERIODS, isStoreOwner } from '../utils/company'
 
 export default function CompanyNavigation({ driver = false, rides = true }) {
   const user = useSelector((state) => state.auth.user)
   return <nav className="company-navigation" aria-label={driver ? 'Driver tools' : 'Store owner tools'}>
     {(driver ? [['/driver', 'Delivery Dispatch'], ['/income/driver', 'Income & payouts'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
-      : [...(isCompanyStoreOwner(user) ? [['/store-owner', 'Business overview']] : []),
+      : [...(isStoreOwner(user) ? [['/store-owner', 'Business overview']] : []),
         ['/income/store', 'Income & payouts'], ['/store-owner/manage', 'My store & inventory'],
-        ...(isCompanyStoreOwner(user) ? [['/store-owner/assignments', 'Store assignments']] : [])])
+        ...(isStoreOwner(user) ? [['/store-owner/assignments', 'Store assignments']] : [])])
       .map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}
   </nav>
 }
@@ -26,7 +26,7 @@ export function CompanyMetrics({ items }) {
 }
 
 export function CompanyAccessDenied() {
-  return <section className="panel"><h1>Company account required</h1>
-    <p>This page requires the matching company-owned role. Partner and administrator accounts use their own dashboards.
-      Contact Admin if your account needs access.</p><Link to="/profile">Back to account</Link></section>
+  return <section className="panel"><h1>Operator account required</h1>
+    <p>This page requires an approved store-owner or driver account. Contact Admin if your account needs access.</p>
+    <Link to="/profile">Back to account</Link></section>
 }

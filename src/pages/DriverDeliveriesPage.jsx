@@ -10,7 +10,7 @@ import DeliveryWindow from '../components/DeliveryWindow'
 import CompanyNavigation, { CompanyMetrics, CompanyPeriods } from '../components/CompanyNavigation'
 import useCompanyResource from '../features/company/useCompanyResource'
 import useDriverLocation from '../features/company/useDriverLocation'
-import { requireList, validateCompanyDashboard, validateDriverRides } from '../utils/company'
+import { isDeliveryDriver, requireList, validateCompanyDashboard, validateDriverRides } from '../utils/company'
 
 const dashboardResponse = (data) => validateCompanyDashboard(data, 'driver')
 const completedResponse = (data) => requireList(data?.orders, 'completed deliveries')
@@ -18,7 +18,7 @@ const completedResponse = (data) => requireList(data?.orders, 'completed deliver
 export default function DriverDeliveriesPage() {
   const user = useSelector((state) => state.auth.user)
   const driverName = user?.name
-  const companyDriver = Boolean(user?.isCompanyOwnedDriver)
+  const companyDriver = isDeliveryDriver(user)
   const analytics = useCompanyResource('/drivers/me/dashboard', dashboardResponse, 60000)
   const completed = useCompanyResource('/drivers/me/completed-today', completedResponse, 60000)
   const rides = useCompanyResource('/rides/me/driver', validateDriverRides, 15000, companyDriver)
