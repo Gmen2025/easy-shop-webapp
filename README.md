@@ -1234,3 +1234,7 @@ the shared palette and panel styles, retain text labels alongside color, provide
 visible keyboard focus, and verify responsive layouts and loading and error
 states. Existing page-specific styles still need individual review when
 bringing every screen into alignment.
+
+## International inbound hub
+
+Customers can follow destination shipment stages and tracking codes, review customs charges, pay by the available regional method, and confirm released pickup packages from a checkout or delivery history. Admins configure the inbound hub at `/international-hub`; Admins and the configured hub-store owner use that page to receive shipments, record charges, clear customs, release packages, assign drivers, and log pickup handovers. Approved drivers see international assignments in Driver Dispatch and record pickup and delivery proof. Hub/driver operations use the signed-in destination region, while customer charge payments stay in the order's origin region.

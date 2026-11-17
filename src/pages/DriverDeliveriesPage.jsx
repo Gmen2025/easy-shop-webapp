@@ -10,6 +10,7 @@ import DeliveryWindow from '../components/DeliveryWindow'
 import CompanyNavigation, { CompanyMetrics, CompanyPeriods } from '../components/CompanyNavigation'
 import useCompanyResource from '../features/company/useCompanyResource'
 import useDriverLocation from '../features/company/useDriverLocation'
+import InternationalDriverDeliveries from '../components/InternationalDriverDeliveries'
 import { isDeliveryDriver, requireList, validateCompanyDashboard, validateDriverRides } from '../utils/company'
 
 const dashboardResponse = (data) => validateCompanyDashboard(data, 'driver')
@@ -142,6 +143,7 @@ export default function DriverDeliveriesPage() {
     <article className="panel company-heading"><div><p className="company-eyebrow">Driver</p><h1>Delivery Dispatch</h1>
       <h2>{driverName || 'Driver'}</h2>
       <p>{activeAssignments} Active Route(s) | {offers.length} Unassigned</p></div></article>
+    <InternationalDriverDeliveries />
     <article className="panel"><p className="company-eyebrow">Delivery income</p><h2>Earnings overview</h2>
       <CompanyPeriods value={period} onChange={setPeriod} />
       {analytics.error ? <p role="alert">{analytics.error}</p> : null}

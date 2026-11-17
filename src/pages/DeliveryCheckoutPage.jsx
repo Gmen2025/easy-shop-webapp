@@ -400,7 +400,10 @@ function DeliveryCheckout() {
           </section> : null}
           {service ? <p>Service request #{group.serviceRequest}. Pay the Admin ETB quote in USD; fulfillment remains in Ethiopia.
             Submitted or paid service payments require support review and manual refund handling before cancellation.</p> : null}
-          <InternationalReceipt group={group} />
+          <InternationalReceipt group={group} admin={Boolean(user?.isAdmin)} onUpdated={async () => {
+        const updated = await deliveryRequest(`checkouts/${id}`)
+        await showResult(updated)
+      }} />
           {group.childOrders?.filter((order) => order.fulfillmentMethod === 'pickup').map((order) =>
             <PickupConfirmation key={order._id} order={order} party={user?.isAdmin && group.user !== (user._id || user.id) ? 'operator' : 'customer'}
               onSaved={async () => showResult(await deliveryRequest(`checkouts/${group._id}`))} />)}

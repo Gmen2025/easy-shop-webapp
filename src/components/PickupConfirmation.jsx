@@ -9,11 +9,14 @@ export default function PickupConfirmation({ order, party = 'customer', onSaved 
   const guard = useRef(false)
   if (order.fulfillmentMethod !== 'pickup') return null
   const confirmation = order.pickupConfirmation || {}
-  const ready = !order.internationalShipping || ['arrived_ethiopia', 'delivered'].includes(order.internationalShipping.status)
+  const international = Boolean(order.internationalShipping)
+  const destination = order.internationalShipping?.destination
+  const ready = international ? Boolean(destination?.readyFor?.pickup &&
+    ['ready', 'dispatched', 'out_for_delivery', 'awaiting_collection', 'delivered'].includes(destination.stage)) : true
   const complete = Boolean(confirmation.customerAt && confirmation.operatorAt)
   const confirmed = Boolean(confirmation[party === 'customer' ? 'customerAt' : 'operatorAt'])
   return <section className="order-card">
-    <h3>{order.internationalShipping ? 'Collect in Ethiopia' : 'Collect from store'}</h3>
+    <h3>{international ? 'Collect international package' : 'Collect from store'}</h3>
     <p>{order.pickupAddress?.name || order.assignedStoreSnapshot?.name}</p>
     <p>{order.pickupAddress?.address || addressText(order.pickupAddress)}</p>
     {order.pickupAddress?.phone && <p>Collection contact: {order.pickupAddress.phone}</p>}
@@ -21,9 +24,9 @@ export default function PickupConfirmation({ order, party = 'customer', onSaved 
     {confirmation.customerAt && <p>Customer confirmation: {new Date(confirmation.customerAt).toLocaleString()} - {confirmation.customerNote}</p>}
     {confirmation.operatorAt && <p>Store/Admin confirmation: {new Date(confirmation.operatorAt).toLocaleString()} - {confirmation.operatorNote}</p>}
     <p>{complete ? 'Collection cross-checked and complete.' : 'Both parties must confirm physical collection. Do not confirm before receiving/handing over the products.'}</p>
-    {!ready && <p>Awaiting arrival in Ethiopia. International shipping charges still apply.</p>}
+    {!ready && international && <p>The destination hub has not released this package for pickup yet. The server will explain if collection confirmation is premature.</p>}
     {error && <p role="alert">{error}</p>}
-    {!complete && !confirmed && order.fulfillmentStatus !== 'cancelled' && ready && <>
+    {!complete && !confirmed && order.fulfillmentStatus !== 'cancelled' && (ready || international) && <>
       <label>Collection note / handover reference<input maxLength={300} value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} /></label>
       <button className="solid-button" disabled={busy || !note.trim()} onClick={async () => {
         if (guard.current) return

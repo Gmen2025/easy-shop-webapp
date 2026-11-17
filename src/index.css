@@ -2469,3 +2469,105 @@ textarea {
     grid-column: auto;
   }
 }
+
+.international-shipment-heading,
+.international-charge-total,
+.international-charges-panel li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.international-tracking-code {
+  margin: 0.2rem 0;
+  color: #23395d;
+  font-size: clamp(1.15rem, 3vw, 1.65rem);
+  letter-spacing: 0.035em;
+  overflow-wrap: anywhere;
+}
+
+.international-stage-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.international-stage-timeline li,
+.international-driver-info,
+.international-charges-panel,
+.hub-action-form,
+.inbound-package {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.international-stage-timeline li {
+  border-top: 3px solid var(--line);
+  padding: 0.55rem 0.25rem;
+  color: var(--muted);
+}
+
+.international-stage-timeline li.complete {
+  border-color: var(--brand-strong);
+  color: var(--ink);
+}
+
+.international-stage-timeline time,
+.international-stage-timeline small {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.international-charges-panel {
+  border-top: 1px solid var(--line);
+  padding-top: 0.65rem;
+}
+
+.international-charges-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.international-charge-total {
+  border-top: 1px solid var(--line);
+  padding-top: 0.55rem;
+  font-size: 1.1rem;
+}
+
+.hub-action-form {
+  border-top: 1px solid var(--line);
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+}
+
+.hub-charge-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+  gap: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.inbound-package {
+  border-left: 3px solid var(--line);
+  padding-left: 0.7rem;
+}
+
+.inbound-package ul {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .international-shipment-heading {
+    flex-direction: column;
+  }
+}

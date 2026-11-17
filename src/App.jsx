@@ -43,6 +43,7 @@ import { CompanyAccessDenied } from './components/CompanyNavigation'
 import { isDeliveryDriver, isStoreOwner } from './utils/company'
 import { fetchCurrentUserProfile } from './features/auth/authSlice'
 import InternationalPaymentsSettingsPage from './pages/InternationalPaymentsSettingsPage'
+import InternationalHubPage from './pages/InternationalHubPage'
 import { fetchMaintenanceMode } from './features/maintenance/maintenanceSlice'
 import FinancePage from './pages/FinancePage'
 import AdminAccountPage from './pages/AdminAccountPage'
@@ -275,6 +276,8 @@ function App() {
           <Route path="admin/delivery" element={isAuthenticated && isAdmin ? <DeliverySettingsPage /> : <Navigate to="/login" replace />} />
           <Route path="admin/delivery-payments" element={isAuthenticated && isAdmin ? <DeliveryCheckoutsPage admin /> : <Navigate to="/login" replace />} />
           <Route path="admin/international-payments" element={isAuthenticated && isAdmin ? <InternationalPaymentsSettingsPage /> : <Navigate to="/login" replace />} />
+          <Route path="admin/international-hub" element={isAuthenticated && isAdmin ? <InternationalHubPage /> : <Navigate to="/login" replace />} />
+          <Route path="international-hub" element={isAuthenticated ? <InternationalHubPage /> : <Navigate to="/login" replace />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

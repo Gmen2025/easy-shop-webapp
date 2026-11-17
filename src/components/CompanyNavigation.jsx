@@ -1,15 +1,26 @@
 import { NavLink, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { apiRequest } from '../api/client'
 import { COMPANY_PERIODS, isStoreOwner } from '../utils/company'
 
 export default function CompanyNavigation({ driver = false, rides = true }) {
   const user = useSelector((state) => state.auth.user)
+  const [hubAllowed, setHubAllowed] = useState(false)
+  useEffect(() => {
+    let active = true
+    if (!driver && user?.isStoreOwner) apiRequest('/international/hub/access')
+      .then((result) => { if (active) setHubAllowed(Boolean(result.allowed)) })
+      .catch(() => { if (active) setHubAllowed(false) })
+    return () => { active = false }
+  }, [driver, user?.isStoreOwner])
   return <nav className="company-navigation" aria-label={driver ? 'Driver tools' : 'Store owner tools'}>
     {(driver ? [['/driver', 'Delivery Dispatch'], ['/income/driver', 'Income & payouts'], ...(rides ? [['/driver/rides', 'Ride assignments & route']] : [])]
       : [...(isStoreOwner(user) ? [['/store-owner', 'Business overview']] : []),
         ['/income/store', 'Income & payouts'], ['/store-owner/manage', 'My store & inventory'],
         ...(isStoreOwner(user) ? [['/store-owner/assignments', 'Store assignments']] : [])])
       .map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}
+    {!driver && isStoreOwner(user) && hubAllowed ? <NavLink to="/international-hub">International inbound hub</NavLink> : null}
   </nav>
 }
 

@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-test('collection displays its address, waits for Ethiopia arrival, reports errors and sends one role-specific handover confirmation', async () => {
+test('collection displays its address, surfaces backend release errors and sends one role-specific handover confirmation', async () => {
   const { createServer } = await import('vite')
   const cacheDir = await mkdtemp(join(tmpdir(), 'pickup-confirmation-test-'))
   const virtual = '\0virtual:pickup-state'
@@ -72,12 +72,21 @@ test('collection displays its address, waits for Ethiopia arrival, reports error
       assert.equal(nodes(render()).find((node) => node.type === 'button'), undefined)
       order.pickupConfirmation = undefined
     }
-    order.internationalShipping = { status: 'shipped' }
+    order.internationalShipping = { status: 'shipped', destination: { stage: 'in_transit', readyFor: { pickup: false } } }
     state.reset(); state.start()
     let tree = Component({ order, onSaved() {} })
-    assert.match(text(tree), /Awaiting arrival in Ethiopia/)
-    assert.equal(nodes(tree).find((node) => node.type === 'button'), undefined)
-    order.internationalShipping.status = 'arrived_ethiopia'
+    assert.match(text(tree), /has not released this package for pickup/)
+    let pickupButton = nodes(tree).find((node) => node.type === 'button')
+    assert.ok(pickupButton, 'customer can surface the backend release error')
+    nodes(tree).find((node) => node.type === 'input').props.onChange({ target: { value: 'Collected in person' } })
+    state.fail('The inbound hub has not released this package for pickup.')
+    state.start(); tree = Component({ order, onSaved() {} })
+    pickupButton = nodes(tree).find((node) => node.type === 'button')
+    await pickupButton.props.onClick()
+    state.start(); tree = Component({ order, onSaved() {} })
+    assert.match(text(tree), /The inbound hub has not released this package for pickup/)
+    state.fail('')
+    order.internationalShipping.destination = { stage: 'ready', readyFor: { pickup: true } }
     state.start(); tree = Component({ order, onSaved() {} })
     assert.ok(nodes(tree).find((node) => node.type === 'button'))
   } finally {
