@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api/client'
 import AdminNavigation from '../components/AdminNavigation'
-import { formatInternationalChargeAmount, internationalChargeLabel, internationalStageLabel, INTERNATIONAL_CHARGE_TYPES, buildInternationalChargesPayload } from '../utils/internationalHub'
+import { formatInternationalChargeAmount, internationalChargeLabel, internationalHubSteps, internationalStageLabel, INTERNATIONAL_CHARGE_TYPES, buildInternationalChargesPayload } from '../utils/internationalHub'
 
 const emptyForm = () => ({ note: '', charges: [{ type: 'customs_duty', amount: '', label: '' }], driverId: '', orderId: '' })
 const shipmentKey = (shipment) => `${shipment.groupId}:${shipment.shipmentId}`
@@ -124,6 +124,11 @@ export default function InternationalHubPage() {
           <p>Customer: {shipment.customer?.name || 'Unknown'}{shipment.customer?.phone ? ` · ${shipment.customer.phone}` : ''}{shipment.customer?.email ? ` · ${shipment.customer.email}` : ''}</p>
           <p>Recipient: {shipment.recipient?.label || 'Recipient'} · {shipment.recipient?.phone || ''} · {[shipment.recipient?.address1, shipment.recipient?.city, shipment.recipient?.country].filter(Boolean).join(', ')}</p>
           <p>Hub: {shipment.destination?.hubStoreName || config?.config?.storeName || 'Not assigned'}</p>
+          <section className="hub-steps"><h4>Hub steps</h4>
+            <ol>{internationalHubSteps(shipment).map((step) => <li key={step.key} data-state={step.state}
+              style={{ color: step.state === 'done' ? '#15803d' : step.state === 'current' ? '#1d4ed8' : '#6b7280', fontWeight: step.state === 'current' ? 700 : 400 }}>
+              {step.state === 'done' ? '✓ ' : ''}{step.label}{step.hint ? ` — ${step.hint}` : ''}</li>)}</ol>
+          </section>
           <h4>Packages ({shipment.packages?.length || 0})</h4>
           {(shipment.packages || []).map((pkg) => <div key={pkg.orderId} className="inbound-package">
             <strong>{pkg.fulfillmentMethod === 'pickup' ? 'Customer pickup' : 'Delivery'} · #{pkg.orderId}</strong>{pkg.cancelled ? <span> Cancelled</span> : null}

@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rm, readFile } from 'node:fs/promises'
+import { rm, readFile, mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   createFinancialClient, decimalAmount, financialError, minorMoney, moneyFields, validateWorkspace, workspacePath, FINANCIAL_HEALTH_PREFIX,
 } from '../src/utils/financialManagement.js'
@@ -131,7 +133,7 @@ test('rendered owner-private workspace covers forms, reports, credit cards, hist
   const { MemoryRouter } = await import('react-router-dom')
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => 'E_Shopping' } })
-  const cacheDir = '.financial-management-test-cache'
+  const cacheDir = await mkdtemp(join(tmpdir(), 'financial-management-test-'))
   const hookId = '\0virtual:tracker-hooks'
   const resourceId = '\0virtual:tracker-resource'
   const server = await createServer({
@@ -284,7 +286,7 @@ test('rendered owner-private workspace covers forms, reports, credit cards, hist
     } finally { globalThis.fetch = originalFetch }
   } finally {
     await server.close()
-    await rm(cacheDir, { recursive: true, force: true })
+    await rm(cacheDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
     if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
     else delete globalThis.localStorage
   }

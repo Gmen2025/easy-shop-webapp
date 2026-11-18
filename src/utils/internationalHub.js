@@ -38,6 +38,37 @@ export function internationalChargeLabel(type, label) {
   return String(label || '').trim() || CHARGE_LABELS[type] || 'Charge'
 }
 
+const SETTLED_CHARGE_STATUSES = ['paid', 'waived']
+const CHARGE_STATUS_HINTS = {
+  awaiting_payment: 'Payment due', bank_review: 'Bank transfer under review', paid: 'Paid', waived: 'No charges due',
+}
+
+// The five hub steps with done/current/pending state and a waiting hint, so operators always see the whole workflow.
+export function internationalHubSteps(shipment) {
+  const destination = shipment?.destination || null
+  const stage = INTERNATIONAL_DESTINATION_STAGES.indexOf(destination?.stage)
+  const charges = destination?.charges || null
+  const settled = Boolean(charges) && SETTLED_CHARGE_STATUSES.includes(charges.status)
+  const delivered = shipment?.status === 'delivered' || destination?.stage === 'delivered'
+  const driver = destination?.driver || null
+  const pickups = (shipment?.packages || []).filter((entry) => entry.fulfillmentMethod === 'pickup' && !entry.cancelled)
+  const steps = [
+    { key: 'arrive', label: 'Mark arrived', done: stage >= 1,
+      hint: stage >= 1 ? '' : destination ? 'In transit — mark it arrived once it reaches customs.' : 'Mark the shipment arrived to start hub processing.' },
+    { key: 'charges', label: 'Record customs & duty charges', done: Boolean(charges),
+      hint: charges ? CHARGE_STATUS_HINTS[charges.status] || charges.status : stage >= 1 && !delivered ? 'Record the charges (or no charges) so the customer can pay.' : '' },
+    { key: 'clear', label: 'Collect from customs', done: stage >= 2, hint: '' },
+    { key: 'ready', label: 'Release for delivery / pickup', done: stage >= 3,
+      hint: stage !== 2 || delivered ? '' : !charges ? 'Record the charges first.' : settled ? '' : 'Waiting for the customer to pay the charges.' },
+    { key: 'complete', label: 'Deliver / hand over', done: delivered,
+      hint: delivered || stage < 3 ? '' : driver?.pickedUpAt ? 'Driver is delivering.' : driver ? 'Waiting for the driver to pick up from the hub.'
+        : pickups.length ? 'Hand over pickup packages; the customer confirms collection.' : 'Dispatch a driver to deliver.' },
+  ]
+  const current = steps.findIndex((step) => !step.done)
+  return steps.map((step, index) => ({ key: step.key, label: step.label, hint: step.hint,
+    state: step.done ? 'done' : index === current && !delivered ? 'current' : 'pending' }))
+}
+
 export function buildInternationalChargesPayload(rows, note = '') {
   if (!Array.isArray(rows) || rows.length > 12) throw new Error('Enter no more than 12 customs charges.')
   const charges = rows.flatMap((row) => {

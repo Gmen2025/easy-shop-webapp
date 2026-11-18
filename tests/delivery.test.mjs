@@ -167,7 +167,9 @@ test('cart preserves store identity and removes purchased units only once across
       'Track Delivery', 'Cancellation', 'Payment', 'Privacy &amp; Account', 'Help &amp; Support',
       'Sign Out', 'Customer details', 'easyshop@addugeneteshop.com']) assert.ok(profile.includes(text), text)
     for (const destination of ['/edit-profile', '/orders', '/delivery-checkouts', '/service-requests',
-      '/privacy-policy', '/terms.html', '/service-request']) assert.ok(profile.includes(`href="${destination}"`), destination)
+      '/privacy-policy', '/terms.html']) assert.ok(profile.includes(`href="${destination}"`), destination)
+    // Request Service is gated on fetched service availability, which stays unknown in static SSR: fail closed.
+    assert.ok(!profile.includes('href="/service-request"'), 'service-request link must stay hidden until availability is confirmed')
     const { default: CheckoutHeader } = await server.ssrLoadModule('/src/components/CheckoutHeader.jsx')
     const header = renderToStaticMarkup(createElement(CheckoutHeader, { step: 4, title: 'Order Summary' }))
     assert.match(header, /Order Summary/)

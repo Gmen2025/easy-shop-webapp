@@ -53,7 +53,7 @@ test('all mobile management surfaces are reachable from web admin navigation', (
   assert.equal(normalizeLowStockThreshold(5), 5)
   const titles = ADMIN_TOOLS.map(([title]) => title)
   for (const title of ['Products', 'Categories', 'Orders', 'Inventory', 'Delivery', 'Vehicles', 'Rides',
-    'FX Rate', 'US Shipping', 'Payments', 'Bank Accounts', 'Payouts', 'Drivers', 'Store Owners',
+    'FX Rate', 'Intl Shipping', 'Inbound Hub', 'Payments', 'Bank Accounts', 'Payouts', 'Drivers', 'Store Owners',
     'Stores', 'Assign Roles', 'Notifications', 'Maintenance', 'Social Sign-in', 'Service Requests']) {
     assert.ok(titles.includes(title), title)
   }
