@@ -38,6 +38,13 @@ export function internationalChargeLabel(type, label) {
   return String(label || '').trim() || CHARGE_LABELS[type] || 'Charge'
 }
 
+// Shipments whose customs charges still need customer payment or admin bank review.
+export function internationalUnpaidCharges(group) {
+  return (group?.international?.shipments || [])
+    .map((shipment) => shipment?.destination?.charges)
+    .filter((charges) => charges && ['awaiting_payment', 'bank_review'].includes(charges.status))
+}
+
 const SETTLED_CHARGE_STATUSES = ['paid', 'waived']
 const CHARGE_STATUS_HINTS = {
   awaiting_payment: 'Payment due', bank_review: 'Bank transfer under review', paid: 'Paid', waived: 'No charges due',

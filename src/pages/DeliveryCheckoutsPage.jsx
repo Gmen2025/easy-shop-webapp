@@ -9,6 +9,7 @@ import DeliveryWindow from '../components/DeliveryWindow'
 import AdminNavigation from '../components/AdminNavigation'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
+import { formatInternationalChargeAmount, internationalUnpaidCharges } from '../utils/internationalHub'
 import PickupConfirmation from '../components/PickupConfirmation'
 
 function Tracking({ order }) {
@@ -104,6 +105,8 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
       <h2>Checkout #{group._id}</h2><p>{group.status} | {group.paymentMethod} | {group.paymentStatus}</p>
       <p>{formatCurrency(group.totalPrice)} | {group.kind === 'service' ? 'Service payment' : `${group.deliveries.length} deliveries`}</p>
       {group.exchangeRate ? <p>Payment: {money(paymentAmount(group), group.currency)}</p> : null}
+      {internationalUnpaidCharges(group).map((charges, index) => <p key={index} className="error-text" role="status">
+        Customs &amp; duty charges {charges.status === 'bank_review' ? 'under admin review' : 'due'}: {formatInternationalChargeAmount(charges.total, charges.currency)} — open this checkout to pay</p>)}
       <button className="solid-button" onClick={() => setSearch({ selected: group._id })}>View deliveries</button>
     </article>) : <p>No delivery checkouts yet.</p> : null}
     {selected && selected._id === selectedId ? <>

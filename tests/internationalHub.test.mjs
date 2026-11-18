@@ -50,3 +50,16 @@ test('hub steps surface the current step and waiting hints for every shipment st
     destination: { stage: 'delivered', charges: { status: 'waived' } }, packages: [] }))
   assert.ok(Object.values(delivered).every((step) => step.state !== 'current'))
 })
+
+test('unpaid international charges surface only shipments awaiting payment or bank review', async () => {
+  const { internationalUnpaidCharges } = await import('../src/utils/internationalHub.js')
+  const group = { international: { shipments: [
+    { destination: { charges: { status: 'awaiting_payment', total: 150.25, currency: 'etb' } } },
+    { destination: { charges: { status: 'bank_review', total: 10, currency: 'etb' } } },
+    { destination: { charges: { status: 'paid', total: 5, currency: 'etb' } } },
+    { destination: null },
+  ] } }
+  assert.deepEqual(internationalUnpaidCharges(group).map((charges) => charges.status), ['awaiting_payment', 'bank_review'])
+  assert.deepEqual(internationalUnpaidCharges(null), [])
+  assert.deepEqual(internationalUnpaidCharges({ international: null }), [])
+})
