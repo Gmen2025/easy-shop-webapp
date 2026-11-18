@@ -400,7 +400,8 @@ function DeliveryCheckout() {
           </section> : null}
           {service ? <p>Service request #{group.serviceRequest}. Pay the Admin ETB quote in USD; fulfillment remains in Ethiopia.
             Submitted or paid service payments require support review and manual refund handling before cancellation.</p> : null}
-          <InternationalReceipt group={group} admin={Boolean(user?.isAdmin)} onUpdated={async () => {
+          <InternationalReceipt group={group} admin={Boolean(user?.isAdmin)}
+            owner={!user?.isAdmin || String(group.user?._id || group.user || '') === String(user?._id || user?.id || '')} onUpdated={async () => {
         const updated = await deliveryRequest(`checkouts/${id}`)
         await showResult(updated)
       }} />

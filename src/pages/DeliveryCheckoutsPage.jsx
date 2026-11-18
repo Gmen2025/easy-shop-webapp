@@ -59,6 +59,8 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
   const guard = useRef(false)
   const permitted = !admin || user?.isAdmin
   const adminView = Boolean(admin || user?.isAdmin)
+  // The purchasing customer keeps payment options even when their account is an admin.
+  const ownsSelected = (group) => !admin || String(group?.user?._id || group?.user || '') === String(user?._id || user?.id || '')
   const route = shippingRoute(selected?.international?.direction)
   const load = useCallback(async () => {
     if (!permitted) return
@@ -113,7 +115,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
       <h2>Checkout #{selected._id}</h2><p>{selected.status} | Payment: {selected.paymentStatus}</p>
       <h3>Total: {formatCurrency(selected.totalPrice)}</h3><DeliveryWindow value={selected} />
       <ExchangeReceipt value={selected} />
-      <InternationalReceipt group={selected} admin={adminView} onUpdated={load} />
+      <InternationalReceipt group={selected} admin={adminView} owner={ownsSelected(selected)} onUpdated={load} />
       {selected.storeRoutes?.length ? <p>Delivery is priced separately per store, from its pickup through its drop-offs.
         Each road leg is counted once. Driver batching adds no customer charge.</p> : null}
       {selected.kind === 'service' ? <p>Service request #{selected.serviceRequest}. Submitted or paid service funds require support review and a manual refund process before cancellation.</p> : null}

@@ -14,7 +14,7 @@ export function ExchangeReceipt({ value }) {
   </section>
 }
 
-export function InternationalReceipt({ group, admin = false, onUpdated }) {
+export function InternationalReceipt({ group, admin = false, owner = !admin, onUpdated }) {
   if (!group.international) return null
   const route = shippingRoute(group.international.direction)
   return <section className="order-card">
@@ -31,7 +31,7 @@ export function InternationalReceipt({ group, admin = false, onUpdated }) {
       <p>{route.destination} recipient: {addressText(shipment.recipient)} | {shipment.recipient.phone}</p>
       <p>Actual weight: {shipment.weightKg} kg | Volumetric: {shipment.volumetricKg} kg | Billable: {shipment.billableKg} kg</p>
       <p>Shipping: {money(shipment.shippingUsd, 'usd')} | {shipment.carrier || 'Carrier pending'} {shipment.trackingNumber || ''}</p>
-      <InternationalShipmentDetails groupId={group._id} shipment={shipment} admin={admin} onUpdated={onUpdated} />
+      <InternationalShipmentDetails groupId={group._id} shipment={shipment} admin={admin} owner={owner} onUpdated={onUpdated} />
     </article>)}
     {internationalDestinationLegs(group).map((leg) => <section key={leg.key}>
       <h4>{route.destination} {leg.kind === 'delivery' ? 'final-delivery route' : 'collection location'}</h4>

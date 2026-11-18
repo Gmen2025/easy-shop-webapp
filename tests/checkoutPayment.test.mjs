@@ -203,6 +203,22 @@ test('receipts distinguish ETB costs and saved Telebirr rides expose gateway rec
     assert.match(reverseReceipt, /USA final delivery/)
     assert.match(reverseReceipt, /\$8\.01/)
     assert.match(reverseReceipt, /not final delivery in USA/)
+    const chargesGroup = (admin, owner) => renderToStaticMarkup(createElement(InternationalReceipt, { group: {
+      _id: 'group1', deliveries: [{ address: { id: 'home' } }], international: { shippingFee: 25, hub: { address1: 'US Hub' },
+        customsNotice: 'Duties excluded', shipments: [{ id: 'home', status: 'arrived_ethiopia', shippingUsd: 25, billableKg: 2,
+          recipient: { label: 'Home', address1: 'Ethiopia Road' },
+          destination: { stage: 'in_customs', charges: { status: 'awaiting_payment', currency: 'etb', total: 150.25,
+            items: [{ type: 'customs_duty', amount: 150.25 }] } } }] },
+    }, admin, ...(owner === undefined ? {} : { owner }) }))
+    // The purchasing customer keeps payment options even when their account is an admin.
+    const adminOwner = chargesGroup(true, true)
+    assert.match(adminOwner, /Customs charge payment method/)
+    assert.match(adminOwner, /Telebirr/)
+    const customer = chargesGroup(false)
+    assert.match(customer, /Customs charge payment method/)
+    const adminOther = chargesGroup(true, false)
+    assert.doesNotMatch(adminOther, /Customs charge payment method/)
+    assert.match(adminOther, /Awaiting payment/)
     const destinationGroup = {
       deliveries: [{ address: { id: 'home' } }],
       international: { shippingFee: 25, hub: { location: { coordinates: [-87.65, 41.95] } },

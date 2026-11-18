@@ -7,7 +7,7 @@ import { allowedInternationalChargeMethods, formatInternationalChargeAmount, int
 const paymentNames = { bank: 'Bank transfer', telebirr: 'Telebirr', card: 'Card' }
 const chargeStatuses = { awaiting_payment: 'Awaiting payment', bank_review: 'Bank transfer under review', paid: 'Paid', waived: 'No charges due' }
 
-export default function InternationalShipmentDetails({ groupId, shipment, admin = false, onUpdated }) {
+export default function InternationalShipmentDetails({ groupId, shipment, admin = false, owner = !admin, onUpdated }) {
   const destination = shipment.destination || {}
   const charges = destination.charges || null
   const [method, setMethod] = useState('')
@@ -133,7 +133,7 @@ export default function InternationalShipmentDetails({ groupId, shipment, admin 
         <p>Payment status: <strong>{chargeStatuses[charges.status] || charges.status || 'Not recorded'}</strong>
           {charges.method ? ` · ${paymentNames[charges.method] || charges.method}` : ''}</p>
         {charges.note ? <p>{charges.note}</p> : null}
-        {charges.status === 'awaiting_payment' && !charges.method && !admin ? <>
+        {charges.status === 'awaiting_payment' && !charges.method && owner ? <>
           <div className="checkout-options" role="radiogroup" aria-label="Customs charge payment method">
             {methods.map((value) => <label key={value} className={`checkout-option${method === value ? ' selected' : ''}`}>
               <input type="radio" name={`charge-method-${shipment.id}`} value={value} checked={method === value} onChange={() => setMethod(value)} />
@@ -154,7 +154,7 @@ export default function InternationalShipmentDetails({ groupId, shipment, admin 
           {method === 'card' ? <button type="button" className="solid-button" disabled={busy}
             onClick={() => run(() => pay('card'))}>Continue to card payment</button> : null}
         </> : null}
-        {charges.status === 'awaiting_payment' && charges.method && !admin ? <div>
+        {charges.status === 'awaiting_payment' && charges.method && owner ? <div>
           {charges.method === 'bank' ? <p>Transfer submitted for review. Do not pay again; Admin must verify the funds.</p> : null}
           {charges.method === 'telebirr' && charges.telebirrPaymentUrl ? <a className="solid-button" href={charges.telebirrPaymentUrl} target="_blank" rel="noopener noreferrer">Open saved Telebirr payment</a> : null}
           {charges.method === 'card' && clientSecret ? <DeliveryCardPayment key={clientSecret} clientSecret={clientSecret}
@@ -163,7 +163,7 @@ export default function InternationalShipmentDetails({ groupId, shipment, admin 
             onClick={() => run(() => charges.method === 'card' ? pay('card') : pay('telebirr'))}>Continue {paymentNames[charges.method]} payment</button> : null}
           <button type="button" className="ghost-button" disabled={busy} onClick={() => run(confirm)}>I&apos;ve paid — check status</button>
         </div> : null}
-        {charges.status === 'bank_review' && !admin ? <button type="button" className="ghost-button" disabled={busy}
+        {charges.status === 'bank_review' && owner && !admin ? <button type="button" className="ghost-button" disabled={busy}
           onClick={() => run(confirm)}>Check bank transfer status</button> : null}
         {charges.status === 'bank_review' && admin ? <div className="action-row">
           <button type="button" className="solid-button" disabled={busy} onClick={() => run(() => bankReview('bank-confirm'))}>Confirm bank funds received</button>
