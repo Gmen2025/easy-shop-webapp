@@ -3,7 +3,7 @@ import { apiRequest } from '../api/client'
 import AdminNavigation from '../components/AdminNavigation'
 import { formatInternationalChargeAmount, internationalChargeLabel, internationalHubSteps, internationalStageLabel, INTERNATIONAL_CHARGE_TYPES, buildInternationalChargesPayload } from '../utils/internationalHub'
 
-const emptyForm = () => ({ note: '', charges: [{ type: 'customs_duty', amount: '', label: '' }], driverId: '', orderId: '', customsOrderIds: [] })
+const emptyForm = () => ({ note: '', charges: [{ type: 'customs_duty', amount: '', label: '' }], driverId: '', orderId: '', customsOrderIds: [], reconcileOrderIds: [] })
 const shipmentKey = (shipment) => `${shipment.groupId}:${shipment.shipmentId}`
 const pendingCustomsPackages = (shipment) => (shipment.packages || []).filter((pkg) => !pkg.cancelled && !pkg.customsCollected)
 
@@ -72,6 +72,10 @@ export default function InternationalHubPage() {
       data.orderIds = pendingCustomsPackages(shipment).filter((pkg) => form.customsOrderIds.includes(pkg.orderId)).map((pkg) => pkg.orderId)
       if (!data.orderIds.length) throw new Error('Select at least one package collected from customs.')
     }
+    if (action === 'reconcile') {
+      data = { orderIds: form.reconcileOrderIds, note: form.note.trim() }
+      if (!data.orderIds.length || !data.note) throw new Error('Select package records and explain how you verified them.')
+    }
     if (action === 'charges') data = buildInternationalChargesPayload(form.charges, form.note)
     if (action === 'dispatch') {
       if (!form.driverId) throw new Error('Choose an active destination-region driver.')
@@ -85,6 +89,7 @@ export default function InternationalHubPage() {
       method: 'POST', body: JSON.stringify(data),
     })
     if (action === 'clear') updateForm(key, { customsOrderIds: [], note: '' })
+    if (action === 'reconcile') updateForm(key, { reconcileOrderIds: [], note: '' })
   }
 
   async function saveHub() {
@@ -140,6 +145,22 @@ export default function InternationalHubPage() {
           </section>
           <h4>Packages ({shipment.packages?.length || 0})</h4>
           {shipment.packageIssue ? <p className="error-text">{shipment.packageIssue}</p> : null}
+          {access.role === 'admin' && shipment.reconciliationRequired ? <div className="hub-action-form">
+            <h4>Reconcile package records</h4>
+            <p>Checkout #{shipment.groupId}. Verify the checkout and recipient before linking registered package records. This does not mark them collected from customs.</p>
+            {(shipment.reconciliationCandidates || []).length ? <>
+              {shipment.reconciliationCandidates.map((candidate) => <label key={candidate.orderId}>
+                <input type="checkbox" disabled={busy} checked={form.reconcileOrderIds.includes(candidate.orderId)}
+                  onChange={(event) => updateForm(key, { reconcileOrderIds: event.target.checked
+                    ? [...form.reconcileOrderIds, candidate.orderId] : form.reconcileOrderIds.filter((orderId) => orderId !== candidate.orderId) })} />
+                #{candidate.orderId} · {candidate.fulfillmentMethod} · {candidate.address || 'Address unavailable'}
+                {' · '}{candidate.items.map((item) => `${item.quantity} × ${item.name}`).join(', ') || 'Items unavailable'}
+              </label>)}
+              <label>Verification note<input value={form.note} maxLength={300} onChange={(event) => updateForm(key, { note: event.target.value })} /></label>
+              <button className="solid-button" disabled={busy || !form.reconcileOrderIds.length || !form.note.trim()}
+                onClick={() => run(() => perform(shipment, 'reconcile'), 'Package records reconciled. Check the shipment before collecting from customs.')}>Link selected package records</button>
+            </> : <p>No eligible registered package records found. Investigate the original checkout; restore records from a verified backup only if they are missing.</p>}
+          </div> : null}
           {canCollect ? <button type="button" className="ghost-button" disabled={busy || selectedCustomsIds.length === customsPackages.length}
             onClick={() => updateForm(key, { customsOrderIds: customsPackages.map((pkg) => pkg.orderId) })}>Select all pending packages</button> : null}
           {(shipment.packages || []).map((pkg) => <div key={pkg.orderId} className="inbound-package">

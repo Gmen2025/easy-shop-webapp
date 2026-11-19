@@ -1239,4 +1239,6 @@ bringing every screen into alignment.
 
 Customers can follow destination shipment stages and tracking codes, review customs charges, pay by the available regional method, and confirm released pickup packages from a checkout or delivery history. Admins configure the inbound hub at `/international-hub`; Admins and the configured hub-store owner use that page to receive shipments, record charges, clear customs, release packages, assign drivers, and log pickup handovers. Approved drivers see international assignments in Driver Dispatch and record pickup and delivery proof. Hub/driver operations use the signed-in destination region, while customer charge payments stay in the order's origin region.
 
+For missing package links at customs, a destination Admin can verify and link eligible orders registered in the original checkout using the reconciliation control. This does not record customs collection or waive charges. If no eligible records exist, investigate the original checkout and restore missing order records from a verified backup.
+
 At **Collect from customs**, select the packages received (or select all pending packages) and record collection. The hub can save partial collections, but release stays locked until all active packages have been collected and customs charges are paid or waived.
