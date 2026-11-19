@@ -69,7 +69,27 @@ export default function InternationalPaymentsSettingsPage() {
       <button className="ghost-button" onClick={() => run(loadExchange)}>Reload saved exchange settings / status</button>
       {policy ? <>
         <article className="order-card">
-          <label><input type="checkbox" checked={Boolean(policy.enabled)} onChange={(event) => setPolicy({ ...policy, enabled: event.target.checked })} />Enable {usa ? 'USA birr exports' : 'Ethiopia USD checkout'}</label>
+          <h2>Checkout services</h2>
+          <p>Each switch controls new quotes and payment preparation separately. Existing prepared payments and shipments can finish.
+            An enabled service still requires an active exchange rate, payment methods, and, for exports, shipping configuration.</p>
+          {(usa ? [['usaEtbExport', 'Pay birr & ship USA products to Ethiopia']] : [
+            ['ethiopiaUsdDelivery', 'Pay USD & deliver Ethiopia products in Ethiopia'],
+            ['ethiopiaUsdExport', 'Pay USD & ship Ethiopia products to USA'],
+          ]).map(([name, label]) => <label key={name}>
+            <input type="checkbox" checked={saved.services?.[name] !== false} onChange={(event) => {
+              const enabled = event.target.checked
+              run(async () => {
+                const result = await apiRequest(`/exchange-rate/services/${name}`, { method: 'PUT', body: JSON.stringify({ enabled }) })
+                setSaved((previous) => ({ ...previous, services: result.services }))
+                setPolicy((previous) => ({ ...previous, services: result.services }))
+                setMessage(`${label} ${enabled ? 'enabled' : 'disabled'}.`)
+              })
+            }} />{label} {saved.services?.[name] === false ? '(off)' : '(on)'}
+          </label>)}
+          <p>Switch shopping region to manage the other region’s services. USD payments for quoted non-ride services are not controlled by these product switches.</p>
+        </article>
+        <article className="order-card">
+          <label><input type="checkbox" checked={Boolean(policy.enabled)} onChange={(event) => setPolicy({ ...policy, enabled: event.target.checked })} />Enable the regional exchange-rate policy (required by all converted checkouts in this region)</label>
           <label><input type="checkbox" checked={Boolean(policy.autoRefresh)} onChange={(event) => setPolicy({ ...policy, autoRefresh: event.target.checked })} />Automatically refresh expired rates</label>
           <label>Server-configured provider<select value={policy.provider || ''} onChange={(event) => setPolicy({ ...policy, provider: event.target.value })}>
             <option value="">Choose a provider</option>{(saved.providers || []).map((provider) => <option value={provider} key={provider}>{provider}</option>)}

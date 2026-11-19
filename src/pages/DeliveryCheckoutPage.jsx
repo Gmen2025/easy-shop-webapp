@@ -14,7 +14,7 @@ import CheckoutHeader from '../components/CheckoutHeader'
 import DeliveryAddressFields from '../components/DeliveryAddressFields'
 import { editAddress } from '../utils/addressAutocomplete'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
-import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, shippingRoute } from '../utils/checkoutPayment'
+import { checkoutPreview, completesProductCart, inspectPendingCheckout, money, nativeCurrency, paymentAmount, paymentMethods, productCheckoutService, rateIsActive, shippingRoute } from '../utils/checkoutPayment'
 import usePaymentAvailability from '../features/payment/usePaymentAvailability'
 import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
 import CatalogCartGuard from '../components/CatalogCartGuard'
@@ -212,7 +212,9 @@ function DeliveryCheckout() {
   const preview = group?.status === 'quote' ? checkoutPreview(group, selections, calculateDeliveryPricing) : null
   const methods = group ? paymentMethods(group, database, exchange, availability.methods) : []
   const needsVehicle = group?.deliveries.some((delivery) => (delivery.fulfillmentMethod !== 'pickup' || group.international) && !selections[delivery.key])
-  const convertedAvailable = !converted || rateIsActive(exchange, now)
+  const serviceName = service ? null : productCheckoutService(database, group?.currency || paymentCurrency, recipientCountry)
+  const serviceAvailable = !serviceName || exchange?.services?.[serviceName] !== false
+  const convertedAvailable = (!converted || rateIsActive(exchange, now)) && serviceAvailable
   const currencyOptions = <fieldset disabled={busy} className="delivery-fieldset">
     <label>Payment currency & destination<select value={reverseExport ? 'usd-usa' : paymentCurrency} onChange={(event) => {
       const value = event.target.value
@@ -227,11 +229,11 @@ function DeliveryCheckout() {
     }}>
       {/usa/i.test(database) ? <>
         <option value="usd">Pay USD - domestic USA delivery</option>
-        <option value="etb">Pay birr - ship US products to Ethiopia</option>
+        <option value="etb">Pay birr - ship US products to Ethiopia{exchange?.services?.usaEtbExport === false ? ' (temporarily off)' : ''}</option>
       </> : <>
         <option value="etb">Pay birr - Ethiopia delivery</option>
-        <option value="usd">Pay USD - deliver in Ethiopia</option>
-        <option value="usd-usa">Pay USD - ship Ethiopia products to USA</option>
+        <option value="usd">Pay USD - deliver in Ethiopia{exchange?.services?.ethiopiaUsdDelivery === false ? ' (temporarily off)' : ''}</option>
+        <option value="usd-usa">Pay USD - ship Ethiopia products to USA{exchange?.services?.ethiopiaUsdExport === false ? ' (temporarily off)' : ''}</option>
       </>}
     </select></label>
     <p>Changing the payment currency reloads addresses and allocations before quoting.</p>
@@ -240,6 +242,7 @@ function DeliveryCheckout() {
       Card and USD bank transfer require Admin availability and payment configuration.</p> : null}
     {converted ? <p role="status">{exchange?.message || 'Loading the daily exchange policy.'}
       {rateIsActive(exchange, now) ? ` 1 USD = ${exchange.birrPerUsd} ETB; expires ${new Date(exchange.expiresAt).toLocaleString()}.` : ' New converted checkouts require an active rate applied within 24 hours.'}</p> : null}
+    {!serviceAvailable ? <p role="alert">This checkout service is temporarily turned off by Admin. Choose another option.</p> : null}
     {converted ? <button className="ghost-button" onClick={() => run(async () => {
       setExchange(await apiRequest('/exchange-rate/'))
       setNow(Date.now())
@@ -471,6 +474,7 @@ function DeliveryCheckout() {
               <p>1 USD = {group.exchangeRate.birrPerUsd} ETB. Applied {new Date(group.exchangeRate.appliedAt).toLocaleString()} ({group.exchangeRate.source}).
                 The server locks the final payment after vehicle selection. Product and service prices remain in the native regional currency.</p>
               {!rateIsActive(exchange, now) ? <p role="alert">{exchange?.message || 'Reload to verify the current daily rate before reserving.'}</p> : null}
+              {!serviceAvailable ? <p role="alert">This checkout service is temporarily turned off by Admin.</p> : null}
             </section> : null}
             {step === 3 ? <>
             {availability.error ? <p role="alert">{availability.error}</p> : availability.loading && !availability.methods ?
@@ -498,7 +502,7 @@ function DeliveryCheckout() {
               <button className="ghost-button" onClick={() => setStep(3)}>Change payment method</button>
               {!service ? <button className="ghost-button" onClick={() => editCheckout(1)}>Change addresses & quantities</button> : null}
             </div>
-            <button className="solid-button" disabled={!methods.includes(method) || Boolean(group.exchangeRate && !rateIsActive(exchange, now)) || (method === 'bank' && !bankId)} onClick={() => run(async () => {
+            <button className="solid-button" disabled={!serviceAvailable || !methods.includes(method) || Boolean(group.exchangeRate && !rateIsActive(exchange, now)) || (method === 'bank' && !bankId)} onClick={() => run(async () => {
               if (!service) {
                 const latest = await catalogPricing.reload()
                 if (!latest) throw new Error('Pricing settings could not be verified. Retry before reserving stock.')

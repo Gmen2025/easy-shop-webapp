@@ -852,6 +852,12 @@ start the shared backend on that port for local development, or set
   Both reuse the mobile API's daily FX policy. New quotes/reservations require
   an enabled rate applied strictly under 24 hours ago; prepared payments retain
   their saved rate and amount even when the policy later expires or is disabled.
+- In **Admin > International Payments**, independently switch the two Ethiopia
+  product services on or off; switch to the USA shopping region to control
+  birr-paid USA-to-Ethiopia shipping. Turning a service off blocks new product
+  quotes and reservations, not prepared payments or shipment processing. Each
+  enabled service still requires the regional exchange policy and any applicable
+  shipping and payment configuration. USD payments for quoted services are separate.
 - Ethiopia USD product/service payments support explicitly USD-tagged bank
   accounts and, when enabled by the API, the dedicated Ethiopia USD Stripe
   merchant. Converted card payments never substitute the native merchant key.

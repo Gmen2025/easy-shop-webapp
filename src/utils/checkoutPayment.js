@@ -49,6 +49,12 @@ export function nativeCurrency(database) {
   return /usa/i.test(database) ? 'usd' : 'etb'
 }
 
+export function productCheckoutService(database, currency, destination) {
+  if (/usa/i.test(database)) return currency === 'etb' ? 'usaEtbExport' : null
+  if (currency !== 'usd') return null
+  return destination === 'USA' ? 'ethiopiaUsdExport' : 'ethiopiaUsdDelivery'
+}
+
 export function cashOnDeliveryAvailable(database) {
   return Boolean(database)
 }

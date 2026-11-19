@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, internationalDestinationLegs, money, nativeCurrency, paymentAmount, paymentMethods, rateIsActive, SHIPMENT_STAGES } from '../src/utils/checkoutPayment.js'
+import { cashOnDeliveryAvailable, checkoutPreview, completesProductCart, inspectPendingCheckout, internationalDestinationLegs, money, nativeCurrency, paymentAmount, paymentMethods, productCheckoutService, rateIsActive, SHIPMENT_STAGES } from '../src/utils/checkoutPayment.js'
 import { calculateDeliveryPricing } from '../src/utils/delivery.js'
 
 const now = Date.UTC(2026, 9, 25, 12)
@@ -13,6 +13,14 @@ const deliveries = [
   { key: 'a', store: { name: 'Store A' }, distanceKm: 2, pricingGroup: { key: 'shared' }, vehicle: 'car', vehicleOptions: [{ type: 'car', fee: 5 }, { type: 'van', fee: 12 }] },
   { key: 'b', store: { name: 'Store B' }, distanceKm: 3, pricingGroup: { key: 'shared' }, vehicle: 'car', vehicleOptions: [{ type: 'car', fee: 7 }, { type: 'van', fee: 15 }] },
 ]
+
+test('checkout service matches the selected region, currency and destination', () => {
+  assert.equal(productCheckoutService('E_Shopping', 'usd', 'Ethiopia'), 'ethiopiaUsdDelivery')
+  assert.equal(productCheckoutService('E_Shopping', 'usd', 'USA'), 'ethiopiaUsdExport')
+  assert.equal(productCheckoutService('E_ShopUSA', 'etb', 'Ethiopia'), 'usaEtbExport')
+  assert.equal(productCheckoutService('E_Shopping', 'etb', 'Ethiopia'), null)
+  assert.equal(productCheckoutService('E_ShopUSA', 'usd', 'USA'), null)
+})
 
 test('destination maps use saved destination dispatch and recipient, never the origin-country hub or current GPS', () => {
   const dispatch = { country: 'Ethiopia', location: { coordinates: [38.75, 9.02] } }
