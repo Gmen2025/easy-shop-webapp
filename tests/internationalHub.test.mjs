@@ -39,6 +39,12 @@ test('hub steps surface the current step and waiting hints for every shipment st
   const legacy = byKey(internationalHubSteps({ status: 'arrived_ethiopia', destination: null, packages: [] }))
   assert.equal(legacy.arrive.state, 'current')
   assert.match(legacy.arrive.hint, /start hub processing/)
+  const partial = byKey(internationalHubSteps({ status: 'arrived_ethiopia',
+    destination: { stage: 'in_customs', charges: { status: 'paid' } },
+    packages: [{ customsCollected: true }, { customsCollected: false }, { cancelled: true }] }))
+  assert.equal(partial.clear.state, 'current')
+  assert.equal(partial.clear.hint, '1 of 2 active packages collected.')
+  assert.equal(partial.ready.state, 'pending')
   const unpaid = byKey(internationalHubSteps({ status: 'arrived_ethiopia',
     destination: { stage: 'cleared', charges: { status: 'awaiting_payment' } }, packages: [] }))
   assert.deepEqual([unpaid.charges.state, unpaid.ready.state], ['done', 'current'])

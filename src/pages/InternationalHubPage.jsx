@@ -3,8 +3,9 @@ import { apiRequest } from '../api/client'
 import AdminNavigation from '../components/AdminNavigation'
 import { formatInternationalChargeAmount, internationalChargeLabel, internationalHubSteps, internationalStageLabel, INTERNATIONAL_CHARGE_TYPES, buildInternationalChargesPayload } from '../utils/internationalHub'
 
-const emptyForm = () => ({ note: '', charges: [{ type: 'customs_duty', amount: '', label: '' }], driverId: '', orderId: '' })
+const emptyForm = () => ({ note: '', charges: [{ type: 'customs_duty', amount: '', label: '' }], driverId: '', orderId: '', customsOrderIds: [] })
 const shipmentKey = (shipment) => `${shipment.groupId}:${shipment.shipmentId}`
+const pendingCustomsPackages = (shipment) => (shipment.packages || []).filter((pkg) => !pkg.cancelled && !pkg.customsCollected)
 
 export default function InternationalHubPage() {
   const [access, setAccess] = useState(null)
@@ -67,6 +68,10 @@ export default function InternationalHubPage() {
     const form = forms[key] || emptyForm()
     let data = {}
     if (action === 'arrive' || action === 'clear' || action === 'ready') data = { ...(form.note.trim() ? { note: form.note.trim() } : {}) }
+    if (action === 'clear') {
+      data.orderIds = pendingCustomsPackages(shipment).filter((pkg) => form.customsOrderIds.includes(pkg.orderId)).map((pkg) => pkg.orderId)
+      if (!data.orderIds.length) throw new Error('Select at least one package collected from customs.')
+    }
     if (action === 'charges') data = buildInternationalChargesPayload(form.charges, form.note)
     if (action === 'dispatch') {
       if (!form.driverId) throw new Error('Choose an active destination-region driver.')
@@ -79,6 +84,7 @@ export default function InternationalHubPage() {
     await apiRequest(`/international/hub/shipments/${encodeURIComponent(shipment.groupId)}/${encodeURIComponent(shipment.shipmentId)}/${action}`, {
       method: 'POST', body: JSON.stringify(data),
     })
+    if (action === 'clear') updateForm(key, { customsOrderIds: [], note: '' })
   }
 
   async function saveHub() {
@@ -115,6 +121,9 @@ export default function InternationalHubPage() {
       {shipments.length ? shipments.map((shipment) => {
         const key = shipmentKey(shipment)
         const form = forms[key] || emptyForm()
+        const customsPackages = pendingCustomsPackages(shipment)
+        const selectedCustomsIds = customsPackages.filter((pkg) => form.customsOrderIds.includes(pkg.orderId)).map((pkg) => pkg.orderId)
+        const canCollect = shipment.actions?.includes('clear') && customsPackages.length > 0
         const pickupPackages = (shipment.packages || []).filter((item) => item.fulfillmentMethod === 'pickup' && !item.cancelled && !item.pickupConfirmation?.operatorAt)
         const charges = shipment.destination?.charges
         return <article className="order-card inbound-shipment" key={key}>
@@ -130,9 +139,18 @@ export default function InternationalHubPage() {
               {step.state === 'done' ? '✓ ' : ''}{step.label}{step.hint ? ` — ${step.hint}` : ''}</li>)}</ol>
           </section>
           <h4>Packages ({shipment.packages?.length || 0})</h4>
+          {shipment.packageIssue ? <p className="error-text">{shipment.packageIssue}</p> : null}
+          {canCollect ? <button type="button" className="ghost-button" disabled={busy || selectedCustomsIds.length === customsPackages.length}
+            onClick={() => updateForm(key, { customsOrderIds: customsPackages.map((pkg) => pkg.orderId) })}>Select all pending packages</button> : null}
           {(shipment.packages || []).map((pkg) => <div key={pkg.orderId} className="inbound-package">
             <strong>{pkg.fulfillmentMethod === 'pickup' ? 'Customer pickup' : 'Delivery'} · #{pkg.orderId}</strong>{pkg.cancelled ? <span> Cancelled</span> : null}
             <ul>{(pkg.items || []).map((item, index) => <li key={`${item.name}-${index}`}>{item.quantity} × {item.name}</li>)}</ul>
+            {pkg.customsCollected ? <p>Collected from customs</p> : canCollect && !pkg.cancelled ? <label>
+              <input type="checkbox" checked={selectedCustomsIds.includes(pkg.orderId)} disabled={busy}
+                onChange={(event) => updateForm(key, { customsOrderIds: event.target.checked
+                  ? [...selectedCustomsIds, pkg.orderId] : selectedCustomsIds.filter((orderId) => orderId !== pkg.orderId) })} />
+              Select package #{pkg.orderId}
+            </label> : null}
             {pkg.fulfillmentMethod === 'pickup' ? <p>Pickup confirmation: customer {pkg.pickupConfirmation?.customerAt ? 'confirmed' : 'pending'} · hub {pkg.pickupConfirmation?.operatorAt ? 'handed over' : 'pending'}</p> : null}
           </div>)}
           <section className="international-charges-panel"><h4>Destination charges</h4>
@@ -164,9 +182,11 @@ export default function InternationalHubPage() {
             <button className="solid-button" disabled={busy || form.charges.some((row) => row.type === 'other' && row.amount.trim() && !row.label.trim())}
               onClick={() => run(() => perform(shipment, 'charges'), 'Destination charges saved.')}>Save destination charges</button>
           </div> : null}
-          {shipment.actions?.includes('clear') ? <div className="hub-action-form">
+          {canCollect ? <div className="hub-action-form">
+            <p>Select the packages you received. Release stays locked until all active packages are collected and charges are settled.</p>
             <label>Customs collection note<input value={form.note} maxLength={300} onChange={(event) => updateForm(key, { note: event.target.value })} /></label>
-            <button className="solid-button" disabled={busy} onClick={() => run(() => perform(shipment, 'clear'))}>Collected from customs</button>
+            <button className="solid-button" disabled={busy || !selectedCustomsIds.length}
+              onClick={() => run(() => perform(shipment, 'clear'), 'Customs collection recorded.')}>Mark selected packages collected ({selectedCustomsIds.length})</button>
           </div> : null}
           {shipment.actions?.includes('ready') ? <div className="hub-action-form">
             <label>Ready note<input value={form.note} maxLength={300} onChange={(event) => updateForm(key, { note: event.target.value })} /></label>
