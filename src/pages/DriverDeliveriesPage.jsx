@@ -143,7 +143,7 @@ export default function DriverDeliveriesPage() {
     <article className="panel company-heading"><div><p className="company-eyebrow">Driver</p><h1>Delivery Dispatch</h1>
       <h2>{driverName || 'Driver'}</h2>
       <p>{activeAssignments} Active Route(s) | {offers.length} Unassigned</p></div></article>
-    <InternationalDriverDeliveries />
+    <InternationalDriverDeliveries gps={gps} />
     <article className="panel"><p className="company-eyebrow">Delivery income</p><h2>Earnings overview</h2>
       <CompanyPeriods value={period} onChange={setPeriod} />
       {analytics.error ? <p role="alert">{analytics.error}</p> : null}

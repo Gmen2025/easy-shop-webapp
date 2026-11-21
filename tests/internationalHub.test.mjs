@@ -1,6 +1,62 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { allowedInternationalChargeMethods, buildInternationalChargesPayload, formatInternationalChargeAmount, internationalChargeLabel, internationalDriverRoute, internationalHubSteps, internationalStageLabel } from '../src/utils/internationalHub.js'
+
+test('international driver screen shows the current live leg and stage-specific confirmations', async () => {
+  const { createServer } = await import('vite')
+  const { createElement } = await import('react')
+  const { renderToStaticMarkup } = await import('react-dom/server')
+  const hooksId = '\0virtual:international-driver-hooks'
+  const cacheDir = await mkdtemp(join(tmpdir(), 'international-driver-test-'))
+  const server = await createServer({
+    configFile: false, cacheDir, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom',
+    optimizeDeps: { noDiscovery: true, include: [] },
+    plugins: [(await import('@vitejs/plugin-react')).default(), {
+      name: 'international-driver-fixture', enforce: 'pre',
+      resolveId(id) { if (id === 'virtual:international-driver-hooks') return hooksId },
+      load(id) {
+        if (id !== hooksId) return
+        return `import * as React from 'react'
+          export const { useCallback, useEffect, useRef } = React
+          let values = {}, index = 0
+          export function reset(next) { values = next; index = 0 }
+          export function useState(initial) { const i = index++; return React.useState(i in values ? values[i] : initial) }`
+      },
+      transform(code, id) {
+        if (id.endsWith('/InternationalDriverDeliveries.jsx')) return code.replace("from 'react'", "from 'virtual:international-driver-hooks'")
+      },
+    }],
+  })
+  try {
+    const { reset } = await server.ssrLoadModule('virtual:international-driver-hooks')
+    const { default: Screen } = await server.ssrLoadModule('/src/components/InternationalDriverDeliveries.jsx')
+    const shipment = { groupId: 'group', shipmentId: 'home', trackingCode: 'AG-TEST', pickupFrom: { address: 'Hub' },
+      recipient: { address1: 'Home' }, destinationCountry: 'Ethiopia', actions: ['pickup'] }
+    const gps = { sharing: true, point: { latitude: 9, longitude: 38 }, latest: { current: null }, status: 'GPS active', toggle() {} }
+    const route = { key: 'group:home', stage: 'pickup', destination: { latitude: 9.1, longitude: 38.1 },
+      coordinates: [{ latitude: 9, longitude: 38 }, { latitude: 9.1, longitude: 38.1 }], distance: 4, duration: 10 }
+    const render = () => {
+      reset({ 0: [shipment], 4: 'group:home', 5: route })
+      return renderToStaticMarkup(createElement(Screen, { gps }))
+    }
+    let markup = render()
+    assert.match(markup, /Hub pickup driving route/)
+    assert.match(markup, /4\.00 km \| 10 minutes/)
+    assert.match(markup, /Confirm picked up from hub/)
+    shipment.actions = ['deliver']
+    markup = render()
+    assert.match(markup, /Recipient delivery driving route/)
+    assert.doesNotMatch(markup, /4\.00 km \| 10 minutes/, 'previous pickup leg must not be shown after pickup')
+    assert.match(markup, /Delivery proof/)
+    route.stage = 'delivery'
+    assert.match(render(), /4\.00 km \| 10 minutes/)
+    gps.sharing = false
+    assert.match(render(), /Enable live GPS and wait for a fresh location/)
+  } finally { await server.close(); await rm(cacheDir, { recursive: true, force: true }) }
+})
 
 test('international driver route uses hub pickup and recipient pin or address, and requires both endpoints', () => {
   const shipment = { pickupFrom: { address: 'Bole hub' }, destinationCountry: 'Ethiopia',

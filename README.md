@@ -541,10 +541,12 @@ the website using the same account, regional database and backend records:
 - `/driver` (also `/driver/deliveries`): Delivery Dispatch, rolling income,
   recent/today completions, offers, claim/reroute/reject, ordered pickup/drop-off
   queue, recipient contact, live GPS, road routes and delivery confirmations.
-  International assignments show a hub-to-recipient driving map and external
-  navigation, followed by hub pickup and delivery-proof confirmations. Verify
-  both mapped addresses; this route does not include travel to the hub.
-  Customer-collection packages are completed separately.
+  International assignments include a hub-to-recipient preview. Enable live GPS
+  and choose **Show current driving route** for the road route, distance and ETA
+  from the driver to the hub; after hub pickup it switches to the recipient.
+  Confirm delivery with proof. Verify mapped locations. Customer-collection
+  packages are completed separately. Live route calculations require the
+  backend Routes API key, and the in-page map requires the browser Maps key.
 - `/driver/rides`: the mobile-style Home, My Rides, Earnings and Profile
   sections, expiring offers, passenger trips, service modes, shared intake,
   Admin-verified vehicle changes, driver-photo refresh, safe booking termination
