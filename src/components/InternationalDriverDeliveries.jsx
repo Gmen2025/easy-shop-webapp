@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { formatInternationalChargeAmount, internationalStageLabel } from '../utils/internationalHub'
+import InternationalDriverMap from './InternationalDriverMap'
 
 const keyFor = (shipment) => `${shipment.groupId}:${shipment.shipmentId}`
 
@@ -48,8 +49,9 @@ export default function InternationalDriverDeliveries() {
         <h3>{shipment.trackingCode || 'International shipment'}</h3>
         <p>{internationalStageLabel(shipment.destination?.stage)} · {shipment.recipient?.label || 'Recipient'}</p>
         <p>Pickup from {shipment.pickupFrom?.name || 'AdduGenet hub'}: {shipment.pickupFrom?.address || 'Address unavailable'}</p>
-        <p>Deliver to {[shipment.recipient?.address1, shipment.recipient?.city, shipment.recipient?.country].filter(Boolean).join(', ')}</p>
+        <p>Deliver to {[shipment.recipient?.address1, shipment.recipient?.address2, shipment.recipient?.city, shipment.recipient?.zip, shipment.recipient?.country || shipment.destinationCountry].filter(Boolean).join(', ')}</p>
         <p>Recipient phone: {shipment.recipient?.phone || 'Not provided'}</p>
+        <InternationalDriverMap shipment={shipment} />
         <p>Customs payment: {shipment.destination?.charges?.status || 'Not recorded'} · {formatInternationalChargeAmount(shipment.destination?.charges?.total || 0, shipment.destination?.charges?.currency || shipment.currency)}</p>
         {shipment.actions?.includes('pickup') ? <button className="solid-button" disabled={busy} onClick={() => act(shipment, 'pickup')}>Confirm picked up from hub</button> : null}
         {shipment.actions?.includes('deliver') ? <>

@@ -182,6 +182,18 @@ test('cart preserves store identity and removes purchased units only once across
     assert.match(directions, /Open driving directions in Google Maps \(new tab\)/)
     assert.match(directions, /target="_blank"/)
     assert.match(directions, /origin=41.95%2C-87.65/)
+    const { default: InternationalDriverMap } = await server.ssrLoadModule('/src/components/InternationalDriverMap.jsx')
+    const internationalMap = renderToStaticMarkup(createElement(InternationalDriverMap, {
+      shipment: { pickupFrom: { address: 'Bole hub' }, destinationCountry: 'Ethiopia',
+        recipient: { address1: 'Main St', city: 'Addis', location: { coordinates: [38.8, 8.98] } } },
+    }))
+    assert.match(internationalMap, /Hub-to-recipient driving route/)
+    assert.match(internationalMap, /origin=Bole%20hub%2C%20Ethiopia&amp;destination=8.98%2C38.8/)
+    const missingHub = renderToStaticMarkup(createElement(InternationalDriverMap, {
+      shipment: { recipient: { address1: 'Main St' } },
+    }))
+    assert.match(missingHub, /hub pickup address or recipient address is missing/)
+    assert.doesNotMatch(missingHub, /maps\/dir/)
     const { default: AddressAutocomplete } = await server.ssrLoadModule('/src/components/AddressAutocomplete.jsx')
     const addressInput = renderToStaticMarkup(createElement(AddressAutocomplete, {
       label: 'Pickup address', value: '810 Grace St', country: 'USA',

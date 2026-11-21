@@ -1,3 +1,22 @@
+import { latLng } from './delivery.js'
+
+export function internationalDriverRoute(shipment) {
+  const address = String(shipment?.pickupFrom?.address || '').trim()
+  const country = String(shipment?.destinationCountry || '').trim()
+  const recipient = shipment?.recipient || {}
+  const pickup = address ? [address, country].filter(Boolean).join(', ') : ''
+  const point = latLng(recipient.location)
+  const validPoint = point && (point.lat !== 0 || point.lng !== 0) ? point : null
+  const destination = validPoint || (recipient.address1
+    ? [recipient.address1, recipient.address2, recipient.city, recipient.zip, recipient.country || country].filter(Boolean).join(', ')
+    : '')
+  const query = validPoint ? `${validPoint.lat},${validPoint.lng}` : destination
+  const url = pickup && query
+    ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(query)}&travelmode=driving`
+    : ''
+  return { pickup, destination, url }
+}
+
 export const INTERNATIONAL_CHARGE_TYPES = [
   ['customs_duty', 'Customs duty'], ['tariff', 'Tariff'], ['tax', 'Import tax / VAT'],
   ['clearance', 'Clearance & handling'], ['storage', 'Storage'], ['other', 'Other'],

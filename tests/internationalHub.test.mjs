@@ -1,6 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { allowedInternationalChargeMethods, buildInternationalChargesPayload, formatInternationalChargeAmount, internationalChargeLabel, internationalHubSteps, internationalStageLabel } from '../src/utils/internationalHub.js'
+import { allowedInternationalChargeMethods, buildInternationalChargesPayload, formatInternationalChargeAmount, internationalChargeLabel, internationalDriverRoute, internationalHubSteps, internationalStageLabel } from '../src/utils/internationalHub.js'
+
+test('international driver route uses hub pickup and recipient pin or address, and requires both endpoints', () => {
+  const shipment = { pickupFrom: { address: 'Bole hub' }, destinationCountry: 'Ethiopia',
+    recipient: { address1: 'Main St', city: 'Addis', location: { coordinates: [38.8, 8.98] } } }
+  assert.match(internationalDriverRoute(shipment).url, /origin=Bole%20hub%2C%20Ethiopia&destination=8.98%2C38.8&travelmode=driving/)
+  shipment.recipient.location = null
+  assert.match(internationalDriverRoute(shipment).url, /destination=Main%20St%2C%20Addis%2C%20Ethiopia/)
+  shipment.pickupFrom.address = ''
+  assert.equal(internationalDriverRoute(shipment).url, '')
+  shipment.pickupFrom.address = 'Hub'
+  shipment.recipient.address1 = ''
+  assert.equal(internationalDriverRoute(shipment).url, '')
+})
 
 test('international customs payment methods are currency-specific', () => {
   assert.deepEqual(allowedInternationalChargeMethods('ETB'), ['bank', 'telebirr'])
