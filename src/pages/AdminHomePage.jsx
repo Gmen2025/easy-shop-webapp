@@ -40,8 +40,11 @@ export default function AdminHomePage() {
   const selected = dashboard?.periods[period]
   return <section className="admin-console page-stack">
     <header className="admin-console-header">
-      <div><p className="eyebrow">Admin control center</p><h1>Sales dashboard</h1>
-        <p>Completed order revenue · rolling periods · {getSelectedDatabaseName() === 'E_ShopUSA' ? 'USA' : 'Ethio'}</p></div>
+      <div className="admin-console-identity">
+        <span className="admin-console-crest" aria-hidden="true">🛡️</span>
+        <div><h1>Admin Dashboard</h1>
+          <p>System Overview &amp; Financial Summary · {getSelectedDatabaseName() === 'E_ShopUSA' ? 'USA' : 'Ethio'}</p></div>
+      </div>
       <button type="button" className="ghost-button" disabled={busy} onClick={refresh}>{busy ? 'Loading...' : 'Refresh analytics'}</button>
     </header>
     <AdminNavigation />

@@ -87,7 +87,7 @@ test('admin dashboard and focused catalog screens render accessible controls wit
       createElement(MemoryRouter, { initialEntries: [path] }, createElement(Routes, null,
         createElement(Route, { path: route, element: createElement(Component) })))))
     const home = render('/admin', Home, '/admin')
-    assert.match(home, /Sales dashboard/)
+    assert.match(home, /Admin Dashboard/)
     assert.match(home, /aria-label="Sales period"/)
     assert.match(home, /Loading business analytics/)
     for (const [, , to] of ADMIN_TOOLS) assert.ok(home.includes(`href="${to}"`), to)

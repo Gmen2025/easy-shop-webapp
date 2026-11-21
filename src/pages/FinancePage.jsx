@@ -11,28 +11,51 @@ import DepositWallet from '../components/DepositWallet'
 const accountsResponse = (data) => operationList(data)
 const send = (path, method, data) => apiRequest(path, { method, body: JSON.stringify(data) })
 
+const CURRENCY_META = {
+  ETB: { flag: '🇪🇹', caption: 'Income Summary in ETB' },
+  USD: { flag: '🇺🇸', caption: 'Income Summary in USD' },
+}
+
 export function OwnershipIncomeReport({ period }) {
   const resource = useCompanyResource('/finance/admin/report', validateFinanceReport)
   const action = useCompanyAction()
-  return <section className="panel" aria-label="Ownership income report">
-    <h2>AdduGenet & independent income</h2>
-    <p>Completed income, not necessarily collected funds. ETB and USD are never combined.</p>
+  return <section className="panel ownership-report" aria-label="Ownership income report">
+    <header className="ownership-banner">
+      <span className="ownership-banner-icon" aria-hidden="true">📈</span>
+      <div><h2>Ownership &amp; Income</h2><p>Income and account summary</p></div>
+      <button disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>
+        {resource.loading || action.busy ? 'Loading...' : 'Refresh'}</button>
+    </header>
+    <p className="ownership-notice"><span className="ownership-notice-check" aria-hidden="true">✓</span>
+      Completed income, not all collected cash. Currencies are not combined.</p>
     {resource.loading && <p role="status">Loading ownership reporting...</p>}
     {(resource.error || action.error) && <p role="alert">{resource.error || action.error}</p>}
-    <button disabled={resource.loading || action.busy} onClick={() => action.run(resource.reload)}>Refresh ownership report</button>
     {resource.data && !resource.error && Object.entries(resource.data.reports).map(([currency, periods]) => {
       const report = periods[period]
-      return <article className="order-card" key={currency}><h3>{currency}</h3>
-        <dl className="admin-data-rows">{[
-          ['AdduGenet total income', report.adduGenetIncome], ['Owned stores & drivers', report.ownedIncome],
-          ['Independent platform fees', report.platformFees], ['Service fulfillment (AdduGenet)', report.serviceIncome],
-          ['Independent operators net income', report.independentIncome], ['Unassigned: admin accounting review', report.unallocatedIncome],
-        ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{financeMoney(value, currency)}</dd></div>)}</dl>
-        {Object.entries(report.categories).map(([category, values]) => <p key={category}>{category}: AdduGenet {financeMoney(values.adduGenetIncome, currency)} / Independent {financeMoney(values.independentIncome, currency)}</p>)}
+      const meta = CURRENCY_META[currency] || { flag: '', caption: `Income Summary in ${currency}` }
+      return <article className="ownership-currency" key={currency}>
+        <header className="ownership-currency-header">
+          <span className="ownership-currency-badge" aria-hidden="true">$</span>
+          <div><h3>{currency}</h3><p>{meta.caption}</p></div>
+          <span className="ownership-currency-flag" aria-hidden="true">{meta.flag}</span>
+        </header>
+        <dl className="ownership-rows">{[
+          ['💰', 'AdduGenet total income', report.adduGenetIncome],
+          ['🚗', 'AdduGenet-owned sales & driving', report.ownedIncome],
+          ['🌐', 'Independent platform fees', report.platformFees],
+          ['🔧', 'Service fulfillment (AdduGenet)', report.serviceIncome],
+          ['👥', "Independent operators' net income", report.independentIncome],
+          ['📄', 'Unassigned income (admin review)', report.unallocatedIncome],
+        ].map(([icon, label, value]) => <div key={label}>
+          <dt><span aria-hidden="true">{icon}</span>{label}:</dt><dd>{financeMoney(value, currency)}</dd></div>)}</dl>
+        <dl className="ownership-rows ownership-categories">{Object.entries(report.categories).map(([category, values]) =>
+          <div key={category}><dt><span aria-hidden="true">{{ products: '📦', delivery: '🚚', rides: '🏍️', services: '⚙️' }[category] || '🏷️'}</span>{category}:</dt>
+            <dd>AdduGenet {financeMoney(values.adduGenetIncome, currency)} / Independent {financeMoney(values.independentIncome, currency)}</dd></div>)}</dl>
       </article>
     })}
-    <p>No payout provider is connected. Payment requests require a manual transfer and confirmation.</p>
-    <Link className="solid-button" to="/admin/income">Stores & drivers: income, fees & payout access</Link>
+    <p className="ownership-transfer-note"><span aria-hidden="true">ℹ️</span>
+      Automatic transfers unavailable: no payout provider is connected.</p>
+    <Link className="solid-button" to="/admin/income">Stores &amp; drivers: income, fees &amp; payout access</Link>
   </section>
 }
 
