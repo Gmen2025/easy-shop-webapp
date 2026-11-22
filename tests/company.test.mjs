@@ -248,11 +248,11 @@ test('website routes, responsive role tabs and authentication preserve company r
       assert.equal(isCompanyDriver(auth.user), true)
       assert.equal(isCompanyStoreOwner(auth.user), true)
     }
-    const render = (path, user, maintenance = false) => {
+    const render = (path, user, maintenance = false, usaOff = false) => {
       const store = configureStore({ reducer: {
         auth: () => ({ user, token: user ? 'company-test-token' : null }),
         cart: () => ({ items: [] }),
-        maintenance: () => ({ enabled: maintenance }),
+        maintenance: () => ({ enabled: maintenance, ...(usaOff ? { usaRegionEnabled: false, accessDatabase: 'E_ShopUSA' } : {}) }),
       } })
       return renderToStaticMarkup(createElement(Provider, { store }, createElement(MemoryRouter, { initialEntries: [path] }, createElement(App))))
     }
@@ -279,6 +279,10 @@ test('website routes, responsive role tabs and authentication preserve company r
     }
     assert.match(render('/driver', driver, true), /maintenance/i)
     assert.match(render('/store-owner', owner, true), /maintenance/i)
+    storage.set('selectedDatabaseName', 'E_ShopUSA')
+    assert.match(render('/income/store', owner, false, true), /Store Income/)
+    assert.match(render('/income/driver', driver, false, true), /income &amp; payouts/)
+    assert.match(render('/', owner, false, true), /limited/i)
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

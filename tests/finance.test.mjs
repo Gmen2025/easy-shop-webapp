@@ -110,6 +110,26 @@ test('store income design preserves currency totals, disabled payout access and 
     assert.match(disabledMarkup, /Turn ON regional cash deposit requirement/)
     assert.match(disabledMarkup, /ETB\s125\.55/)
     assert.match(disabledMarkup, /<fieldset disabled=""/)
+    for (const kind of ['driver', 'store']) {
+      const base = { ...props, admin: false, path: `/finance/accounts/${kind}/me` }
+      const bank = renderToStaticMarkup(createElement(Wallet, { ...base, wallet: { ...wallet,
+        bankAccounts: [{ _id: 'bank1', bankName: 'Example Bank', accountNumber: '123456',
+          accountHolderName: 'Company', bankCode: 'CODE', additionalInfo: 'Use reference' }] } }))
+      for (const detail of ['Example Bank', 'Account number: 123456', 'Account holder: Company', 'Bank code: CODE', 'Use reference']) {
+        assert.ok(bank.includes(detail), detail)
+      }
+      for (const [currency, available] of [['ETB', 'telebirr'], ['USD', 'card']]) {
+        const gateway = renderToStaticMarkup(createElement(Wallet, { ...base, wallet: { ...wallet, currency,
+          methods: { bank: false, card: available === 'card', telebirr: available === 'telebirr' } } }))
+        assert.match(gateway, new RegExp(`<option value="${available}" selected=""`))
+        assert.doesNotMatch(gateway, /Actual deposit date and time/)
+        assert.match(gateway, /No company bank account is configured/)
+      }
+      const none = renderToStaticMarkup(createElement(Wallet, { ...base, wallet: { ...wallet,
+        methods: { bank: false, card: false, telebirr: false } } }))
+      assert.match(none, /No deposit payment method is currently available/)
+      assert.match(none, /<button disabled="">Submit deposit/)
+    }
   } finally {
     await server.close()
     await rm(cacheDir, { recursive: true, force: true })

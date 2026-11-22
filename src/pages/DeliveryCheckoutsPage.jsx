@@ -1,49 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { apiRequest } from '../api/client'
 import { deliveryRequest } from '../api/delivery'
 import { formatCurrency } from '../utils/format'
-import DeliveryMap from '../components/DeliveryMap'
+import OrderTracking from '../components/OrderTracking'
 import DeliveryWindow from '../components/DeliveryWindow'
 import AdminNavigation from '../components/AdminNavigation'
 import { ExchangeReceipt, InternationalReceipt } from '../components/CheckoutReceipts'
 import { money, paymentAmount, shippingRoute } from '../utils/checkoutPayment'
 import { formatInternationalChargeAmount, internationalUnpaidCharges } from '../utils/internationalHub'
 import PickupConfirmation from '../components/PickupConfirmation'
-
-function Tracking({ order }) {
-  const [tracking, setTracking] = useState(null)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    let current = true
-    let pending = false
-    async function load() {
-      if (pending) return
-      pending = true
-      try {
-        const result = await apiRequest(`/orders/${order._id}/tracking`)
-        if (current) { setTracking(result); setError('') }
-      } catch (failure) { if (current) setError(failure.message) }
-      finally { pending = false }
-    }
-    load()
-    const timer = setInterval(load, 15000)
-    return () => { current = false; clearInterval(timer) }
-  }, [order._id])
-  return <section className="order-card">
-    <h3>Live delivery tracking</h3>
-    {error ? <p role="alert">{error}</p> : null}
-    {tracking ? <>
-      <p>{tracking.deliveryStatus} | Dispatch: {tracking.dispatchStatus}</p>
-      <p>Driver: {tracking.driver?.name || 'Waiting for assignment'}</p>
-      {tracking.driverLocation ? <p>Last GPS update: {tracking.driverLocation.recordedAt ?
-        new Date(tracking.driverLocation.recordedAt).toLocaleString() : 'Timestamp unavailable; location may be stale'}</p> : <p>Driver location unavailable.</p>}
-      <DeliveryMap pickup={tracking.pickup} dropoff={order.customerLocation} driver={tracking.driverLocation} />
-      <p className="section-note">Status refreshes every 15 seconds. Only assigned-driver routes are calculated; marker positions are not a customer ETA.</p>
-    </> : <p>Loading tracking...</p>}
-  </section>
-}
 
 export default function DeliveryCheckoutsPage({ admin = false }) {
   const user = useSelector((state) => state.auth.user)
@@ -185,7 +151,7 @@ export default function DeliveryCheckoutsPage({ admin = false }) {
             if (window.confirm('Record only a refund already returned to the customer.')) action(`deliveries/${order._id}/manual-refund`, { reference: refundReference })
           }}>Record completed refund</button>
         </div> : null}
-        {trackId === order._id ? <Tracking order={order} /> : null}
+        {trackId === order._id ? <OrderTracking order={order} /> : null}
       </article>)}
     </> : null}
   </section>

@@ -3,6 +3,7 @@ import AdminNavigation from '../components/AdminNavigation'
 import { apiRequest, getSelectedDatabaseName } from '../api/client'
 import { SERVICE_LABELS, validateServiceAvailability } from '../utils/serviceAvailability'
 import TestingAccessSettings from '../components/TestingAccessSettings'
+import UsaAvailabilitySettings from '../components/UsaAvailabilitySettings'
 
 export default function ServiceAvailabilitySettingsPage() {
   const [database, setDatabase] = useState(getSelectedDatabaseName)
@@ -48,6 +49,7 @@ export default function ServiceAvailabilitySettingsPage() {
         {label}: {settings ? settings[key] ? 'ON' : 'OFF' : 'Unavailable'}
       </button>)}</div>
     <button disabled={busy} onClick={() => { setBusy(true); setSettings(null); setRevision((value) => value + 1) }}>Refresh availability</button>
+    <UsaAvailabilitySettings />
     <TestingAccessSettings key={database} database={database} />
     <p>Ride and service-request switches default ON; Financial Health retains its existing OFF default.
       Ride fare configuration must also be enabled before rides can be booked. These switches do not change maintenance mode or erase settings.</p>

@@ -1023,6 +1023,40 @@ textarea {
   flex-wrap: wrap;
 }
 
+.order-summary {
+  cursor: pointer;
+  display: grid;
+  gap: 0.3rem;
+  overflow-wrap: anywhere;
+}
+
+.order-summary::marker {
+  content: '';
+}
+
+.order-summary span {
+  color: var(--muted);
+}
+
+.order-details-close,
+details[open] .order-details-open {
+  display: none;
+}
+
+details[open] .order-details-close {
+  display: inline;
+}
+
+.order-details {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.order-track-button {
+  justify-self: start;
+}
+
 .order-item-row small {
   overflow-wrap: anywhere;
 }

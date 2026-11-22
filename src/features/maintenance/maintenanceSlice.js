@@ -48,7 +48,11 @@ function normalizeMaintenancePayload(payload) {
   if (firstBoolean === undefined || (payload.testingAccess !== undefined && typeof payload.testingAccess !== 'boolean')) {
     throw new Error('Maintenance access could not be verified. Please retry.')
   }
-  return { enabled: firstBoolean, testingAccess: payload.testingAccess === true }
+  if (payload.usaRegionEnabled !== undefined && typeof payload.usaRegionEnabled !== 'boolean') {
+    throw new Error('USA availability could not be verified. Please retry.')
+  }
+  return { enabled: firstBoolean, testingAccess: payload.testingAccess === true,
+    usaRegionEnabled: payload.usaRegionEnabled }
 }
 
 export const fetchMaintenanceMode = createAsyncThunk(
@@ -95,6 +99,7 @@ const maintenanceSlice = createSlice({
   name: 'maintenance',
   initialState: {
     enabled: false,
+    usaRegionEnabled: undefined,
     testingAccess: false,
     accessUserId: null,
     accessDatabase: null,
@@ -116,6 +121,7 @@ const maintenanceSlice = createSlice({
         if (state.requestId !== action.meta.requestId) return
         state.loading = false
         state.enabled = action.payload.enabled
+        state.usaRegionEnabled = action.payload.usaRegionEnabled
         state.testingAccess = action.payload.testingAccess
         state.accessUserId = action.meta.arg?.userId || null
         state.accessDatabase = action.meta.arg?.database || null

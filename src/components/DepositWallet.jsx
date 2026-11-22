@@ -3,16 +3,23 @@ import { apiRequest } from '../api/client'
 import { useCompanyAction } from '../features/company/useCompanyResource'
 import { financeMoney, payoutAmount } from '../utils/finance'
 
+const depositMethods = [
+  { value: 'bank', label: 'Bank transfer / company receipt' },
+  { value: 'card', label: 'Card' },
+  { value: 'telebirr', label: 'Telebirr' },
+]
+
 export default function DepositWallet({ wallet, account, path, admin, reload }) {
   const action = useCompanyAction()
   const [policy, setPolicy] = useState(account.depositPolicy)
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState('bank')
+  const [method, setMethod] = useState(() => depositMethods.find((item) => wallet.methods[item.value])?.value || '')
   const [reference, setReference] = useState('')
   const [depositedAt, setDepositedAt] = useState('')
   const [notes, setNotes] = useState('')
   const request = useRef(null)
   const enabled = wallet.enabled && account.depositPolicy.enabled
+  const selectedMethod = wallet.methods[method] ? method : depositMethods.find((item) => wallet.methods[item.value])?.value || ''
   const money = (value) => financeMoney(value, wallet.currency)
   const send = (url, body, method = 'POST') => apiRequest(url, { method, body: JSON.stringify(body) })
   const key = (signature) => {
@@ -58,15 +65,22 @@ export default function DepositWallet({ wallet, account, path, admin, reload }) 
       </fieldset></form>
     </>}
     <h3>Deposit with the company</h3>
-    {wallet.bankAccounts.map((bank) => <p key={bank._id}>{bank.bankName}: {bank.accountNumber} / {bank.accountHolderName} ({wallet.currency})</p>)}
-    {!wallet.bankAccounts.length && <p>Contact Admin for the company's verified deposit instructions.</p>}
+    <p>Choose an available payment method. Bank transfers and company receipts require Admin verification; gateway payments are credited only after verification.</p>
+    {wallet.bankAccounts.map((bank) => <div key={bank._id}>
+      <strong>{bank.bankName} ({wallet.currency})</strong>
+      <p>Account number: {bank.accountNumber}<br />Account holder: {bank.accountHolderName}
+        {bank.bankCode && <><br />Bank code: {bank.bankCode}</>}
+        {bank.additionalInfo && <><br />{bank.additionalInfo}</>}</p>
+    </div>)}
+    {!wallet.bankAccounts.length && <p>No company bank account is configured for {wallet.currency}. Contact Admin for verified bank or company-receipt instructions.</p>}
     <form onSubmit={(event) => {
       event.preventDefault()
       action.run(async () => {
         const value = payoutAmount(amount)
-        const result = await send(`${path}/wallet/deposits`, { amount: value, currency: wallet.currency, method, reference,
-          depositedAt: method === 'bank' ? new Date(depositedAt).toISOString() : undefined,
-          requestKey: key(`deposit:${value}:${method}:${reference}:${depositedAt}`) })
+        const result = await send(`${path}/wallet/deposits`, { amount: value, currency: wallet.currency, method: selectedMethod,
+          reference: selectedMethod === 'bank' ? reference : undefined,
+          depositedAt: selectedMethod === 'bank' ? new Date(depositedAt).toISOString() : undefined,
+          requestKey: key(`deposit:${value}:${selectedMethod}:${selectedMethod === 'bank' ? reference : ''}:${selectedMethod === 'bank' ? depositedAt : ''}`) })
         request.current = null
         setAmount('')
         await reload()
@@ -74,16 +88,18 @@ export default function DepositWallet({ wallet, account, path, admin, reload }) 
       }, 'Deposit saved. Funds are credited only after verification.')
     }}><fieldset disabled={!enabled || action.busy}>
       <label>Deposit amount ({wallet.currency})<input required type="number" step="0.01" min="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
-      <label>Deposit method<select value={method} onChange={(event) => setMethod(event.target.value)}>
-        <option value="bank" disabled={!wallet.methods.bank}>Bank transfer / company receipt (Admin verification)</option>
-        {wallet.methods.card && <option value="card">Card (verified gateway)</option>}
-        {wallet.methods.telebirr && <option value="telebirr">Telebirr (verified gateway)</option>}
+      <label>Deposit method<select value={selectedMethod} onChange={(event) => setMethod(event.target.value)}>
+        {!selectedMethod && <option value="">No method available</option>}
+        {depositMethods.map((item) => <option key={item.value} value={item.value} disabled={!wallet.methods[item.value]}>
+          {item.label}{wallet.methods[item.value] ? '' : ' - unavailable'}
+        </option>)}
       </select></label>
-      {method === 'bank' && <>
+      {!selectedMethod && <p role="alert">No deposit payment method is currently available. Contact Admin.</p>}
+      {selectedMethod === 'bank' && <>
         <label>Transfer / company receipt reference<input required maxLength="150" value={reference} onChange={(event) => setReference(event.target.value)} /></label>
         <label>Actual deposit date and time<input required type="datetime-local" value={depositedAt} onChange={(event) => setDepositedAt(event.target.value)} /></label>
       </>}
-      <button disabled={!wallet.methods[method]}>Submit deposit / open payment</button>
+      <button disabled={!selectedMethod}>Submit deposit / open payment</button>
     </fieldset></form>
     {admin && <form onSubmit={(event) => {
       event.preventDefault()

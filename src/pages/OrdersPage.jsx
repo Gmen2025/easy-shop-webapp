@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchUserOrders } from '../features/orders/ordersSlice'
@@ -6,11 +6,14 @@ import { formatCurrency, getEntityId, getPrimaryProductImage } from '../utils/fo
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import ReviewPanel from '../components/ReviewPanel'
+import OrderTracking from '../components/OrderTracking'
+import { orderPaymentLabel, orderStatusLabel } from '../utils/orderDisplay'
+import { deliveryModeLabel } from '../utils/delivery'
 
 const statusSteps = ['Pending', 'Processing', 'Shipped', 'Delivered']
 
 function getOrderPaymentDetails(order) {
-  const paymentMethod = String(order?.paymentMethod || 'N/A').trim() || 'N/A'
+  const paymentMethod = orderPaymentLabel(order)
   const paymentMeta = order?.paymentMeta && typeof order.paymentMeta === 'object'
     ? order.paymentMeta
     : {}
@@ -41,15 +44,6 @@ function getOrderPaymentDetails(order) {
 
 function isObjectIdLike(value) {
   return /^[a-f\d]{24}$/i.test(String(value || ''))
-}
-
-function getDeliveryModeLabel(deliveryMode) {
-  const labels = {
-    SAME_DAY: 'Same Day',
-    NEXT_DAY: 'Next Day',
-    SCHEDULED: 'Scheduled',
-  }
-  return labels[deliveryMode] || 'Same Day'
 }
 
 function getStatusIndex(status) {
@@ -88,6 +82,7 @@ function StatusTracker({ status }) {
 
 function OrdersPage() {
   const dispatch = useDispatch()
+  const [trackingId, setTrackingId] = useState('')
   const user = useSelector((state) => state.auth.user)
   const userId = user?._id || user?.id || null
   const { items, loading, error } = useSelector((state) => state.orders)
@@ -132,13 +127,18 @@ function OrdersPage() {
         <div className="orders-list">
           {items.map((order) => {
             const paymentDetails = getOrderPaymentDetails(order)
+            const orderId = getEntityId(order)
+            const status = orderStatusLabel(order.status)
 
             return (
-              <article className="order-card" key={getEntityId(order)}>
-                <div className="order-head">
-                  <strong>Order #{getEntityId(order)}</strong>
-                  <span>{order.status}</span>
-                </div>
+              <article className="order-card" key={orderId}>
+                <details>
+                  <summary className="order-summary">
+                    <strong>Order #{orderId}</strong>
+                    <span>{status} · {formatCurrency(order.totalPrice)}</span>
+                    <span>{order.dateOrdered ? new Date(order.dateOrdered).toLocaleDateString() : 'Date unavailable'} · <span className="order-details-open">View details</span><span className="order-details-close">Hide details</span></span>
+                  </summary>
+                  <div className="order-details">
                 <p>
                   User: <strong>{order.user?.name || 'Customer'}</strong>
                 </p>
@@ -150,7 +150,7 @@ function OrdersPage() {
                   {order.city || 'N/A'}, {order.zip || 'N/A'}, {order.country || 'N/A'}
                 </p>
                 <p>
-                  Delivery: <strong>{getDeliveryModeLabel(order.deliveryMode)}</strong>
+                  Delivery: <strong>{deliveryModeLabel(order.deliveryMode)}</strong>
                   {' '}(Fee: {formatCurrency(order.deliveryFee)})
                 </p>
                 {order.deliveryMode === 'SCHEDULED' && order.scheduledFor ? (
@@ -208,9 +208,17 @@ function OrdersPage() {
                     )
                   })}
                 </div>
-                <StatusTracker status={order.status} />
+                <StatusTracker status={status} />
                 {(order.deliveryStatus === 'Delivered' || ['Delivered', '3'].includes(order.status)) ?
                   <ReviewPanel kind="delivery" transaction={getEntityId(order)} title="Review delivery experience" /> : null}
+                  </div>
+                </details>
+                {orderId ? <button type="button" className="ghost-button order-track-button"
+                  aria-expanded={trackingId === orderId}
+                  onClick={() => setTrackingId(trackingId === orderId ? '' : orderId)}>
+                  {trackingId === orderId ? 'Close tracking' : 'Track delivery'}
+                </button> : null}
+                {trackingId === orderId && orderId ? <OrderTracking key={orderId} order={order} /> : null}
               </article>
             )
           })}

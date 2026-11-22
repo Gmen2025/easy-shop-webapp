@@ -64,6 +64,8 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
   '/edit-profile',
 ]
 const MAINTENANCE_SYNC_INTERVAL_MS = 30000
+const USA_EXISTING_PREFIXES = ['/orders', '/delivery-checkouts', '/driver', '/store-owner', '/income',
+  '/rides/mine', '/service-requests', '/international-hub', '/payment/success', '/payment/cancel']
 
 function isMaintenanceExemptPath(pathname) {
   return MAINTENANCE_EXEMPT_PREFIXES.some(
@@ -82,9 +84,16 @@ function App() {
     state.maintenance.accessDatabase === getSelectedDatabaseName() &&
     state.maintenance.accessUserId === (state.auth.user?._id || state.auth.user?.id))
   const maintenanceError = useSelector((state) => state.maintenance.error)
+  const usaRegionEnabled = useSelector((state) => state.maintenance.usaRegionEnabled)
+  const maintenanceDatabase = useSelector((state) => state.maintenance.accessDatabase)
   const isAuthenticated = Boolean(user && token)
   const isAdmin = Boolean(user?.isAdmin)
-  const showMaintenancePage =
+  const usaRestricted = /usa/i.test(getSelectedDatabaseName()) &&
+    (maintenanceDatabase !== getSelectedDatabaseName() || usaRegionEnabled !== true) &&
+    !(isAuthenticated && maintenanceAccess)
+  const usaExistingAccess = isAuthenticated && USA_EXISTING_PREFIXES.some(
+    (prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`))
+  const showMaintenancePage = (usaRestricted && !usaExistingAccess && !isMaintenanceExemptPath(location.pathname)) ||
     (maintenanceEnabled || Boolean(maintenanceError)) && !isAdmin &&
     !(isAuthenticated && maintenanceAccess) && !isMaintenanceExemptPath(location.pathname)
 

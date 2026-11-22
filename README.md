@@ -32,6 +32,9 @@ balance separately from earnings/payouts, timestamped deposits and fee history,
 company bank instructions, verified manual claims, and regional gateway top-ups
 (USD card or ETB Telebirr). Use **Verify gateway payment** or reopen the saved
 payment after an interruption; never pay again to recover an uncertain attempt.
+Methods are shown according to regional payment and gateway availability.
+Admin must configure active company bank accounts for the wallet's currency in
+Bank Account Settings; operators should contact Admin if no account is listed.
 Admin confirms actual bank/company-receipt deposits, configures low/minimum
 thresholds, records itemized offline fees, and can toggle the requirement for
 all regional accounts or one account, including company-owned accounts.
@@ -128,6 +131,12 @@ does not grant Admin rights or access to other customers' private financial reco
 The new Financial Health switch shares the original `/admin/financial-health` setting.
 The existing global maintenance action still toggles all configured databases;
 tester lists remain separate for each region.
+
+The **USA storefront** switch in Admin > Service availability defaults ON and is
+shared with mobile. OFF restricts USA browsing and new purchases to USA Admin and
+approved verified USA testers; signed-in customers and operators can still access
+existing orders, payments, and delivery operations. Sign in as a USA Admin to edit
+the USA tester list. Ethiopia is unaffected. Deploy the matching backend first.
 
 Checks: `node --test tests/serviceAvailability.test.mjs tests/rides.test.mjs`
 and `npm run build`.
@@ -481,6 +490,9 @@ shipping remains separately priced.
   Customer details remain available in an expandable section. Web shortcuts use
   existing order/checkout pages. Security Settings supports the shared mobile
   authenticator/email two-factor authentication and backup-code flows.
+- Order history uses expandable cards with named payment methods and a per-order
+  Track delivery action. Tracking refreshes every 15 seconds; map routes depend on
+  available driver and destination coordinates and a configured browser Maps key.
 - Mobile-inspired responsive storefront with category browsing, advanced catalog filters, featured products, and add-to-cart cards
 - Store directory and storefront inventory browsing
 - Optional store logos on company-store Create/Edit forms: upload a JPEG, PNG or
