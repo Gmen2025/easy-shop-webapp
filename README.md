@@ -318,7 +318,7 @@ and `npm run build`.
 ## Shared notifications
 
 Signed-in users have a notification bell in the header, with an unread badge,
-paginated history, individual read controls and **Mark all as read**. Updates
+paginated history, individual read and delete controls and **Mark all as read**. Updates
 refresh every 30 seconds while the site is visible, on focus, and when opening
 the inbox. Errors are shown with a retry action. Notifications and read state
 are stored on the shared backend for the selected database and account, not in
@@ -327,7 +327,7 @@ browser storage. Switching databases or signing out clears the displayed inbox.
 Deploy the backend inbox changes before this frontend. Existing order, delivery,
 ride, service and admin notification send paths now also save inbox entries,
 including for users without mobile push tokens. Existing mobile Expo delivery
-and its device-local inbox are unchanged; mobile read status is not synchronized.
+and its device-local inbox are unchanged; mobile read and delete status are not synchronized.
 History starts with events sent after backend deployment; older Expo pushes
 cannot be recovered. This is an in-website inbox, not browser/OS push: updates
 sent while the website is closed appear when the user returns.

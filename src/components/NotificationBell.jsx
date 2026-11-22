@@ -116,6 +116,32 @@ function NotificationBell({ onOpen }) {
     }
   }
 
+  async function deleteNotification(item) {
+    if (pendingRef.current) return
+    pendingRef.current = true
+    setBusy(true)
+    setError('')
+    let deleted = false
+    try {
+      const result = await apiRequest(`/notifications/inbox/${encodeURIComponent(item.id)}`, { method: 'DELETE' })
+      if (result?.id !== item.id || typeof result.isRead !== 'boolean') {
+        throw new Error('The server did not confirm the notification deletion. Refresh to check its status.')
+      }
+      if (!mountedRef.current) return
+      deleted = true
+      setItems((current) => current.filter((entry) => entry.id !== item.id))
+      if (!result.isRead) setUnreadCount((count) => Math.max(0, count - 1))
+    } catch (requestError) {
+      if (mountedRef.current) setError(requestError.message || 'Unable to delete notification.')
+    } finally {
+      pendingRef.current = false
+      if (mountedRef.current) {
+        setBusy(false)
+        if (deleted) void refreshRef.current?.()
+      }
+    }
+  }
+
   return (
     <div className="notification-bell" ref={rootRef}>
       <button
@@ -164,6 +190,7 @@ function NotificationBell({ onOpen }) {
                 <p>{item.body}</p>
                 <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
                 {!item.isRead && <button type="button" className="ghost-button" disabled={busy} onClick={() => updateInbox(`/notifications/inbox/${item.id}/read`)}>Mark as read</button>}
+                <button type="button" className="ghost-button" disabled={busy} aria-label={`Delete notification: ${item.title}`} onClick={() => deleteNotification(item)}>Delete</button>
               </li>
             ))}
           </ul>
