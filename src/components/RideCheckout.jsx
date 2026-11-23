@@ -59,7 +59,7 @@ export default function RideCheckout({ ride, onUpdated }) {
           const result = await apiRequest(`/rides/${encodeURIComponent(ride._id)}/payment`, { method: 'POST', body: '{}', timeoutMs: 60000 })
           onUpdated(result.ride); setClientSecret(result.clientSecret || '')
         })}>Load secure ride card payment</button>
-        {clientSecret ? <DeliveryCardPayment clientSecret={clientSecret} onConfirm={confirm}
+        {clientSecret ? <DeliveryCardPayment clientSecret={clientSecret} onConfirm={confirm} disableWallets
           returnUrl={`${window.location.origin}/rides/mine?rideId=${encodeURIComponent(ride._id)}`} /> : null}
         <button className="ghost-button" disabled={action.busy} onClick={() => action.run(confirm)}>Check existing card payment</button>
         <p>After interruptions, reconcile the same ride payment. Do not pay twice.</p>

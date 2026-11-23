@@ -1,25 +1,11 @@
 import { useState } from 'react'
-import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js'
-
-const cardStyles = {
-  style: {
-    base: {
-      fontSize: '16px',
-      color: '#1f1f1f',
-      '::placeholder': {
-        color: '#8a7668',
-      },
-    },
-    invalid: {
-      color: '#b91c1c',
-    },
-  },
-}
+import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 
 function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
   const stripe = useStripe()
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
+  const [paid, setPaid] = useState(false)
 
   function getReadableStripeError(error) {
     const message = String(error?.message || '').trim()
@@ -35,21 +21,12 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
     }
 
     setProcessing(true)
-    const cardElement = elements.getElement(CardElement)
-
     try {
-      const result = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-          return_url: `${window.location.origin}/payment/success`,
-        },
-        {
-          handleActions: true,
-        },
-      )
+      const result = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: `${window.location.origin}/payment/success` },
+        redirect: 'if_required',
+      })
 
       if (result.error) {
         onError?.(getReadableStripeError(result.error))
@@ -57,7 +34,8 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
       }
 
       if (result.paymentIntent?.status === 'succeeded') {
-        onConfirmed?.(result.paymentIntent)
+        setPaid(true)
+        await onConfirmed?.(result.paymentIntent)
         return
       }
 
@@ -74,14 +52,14 @@ function StripeCardCheckout({ clientSecret, onConfirmed, onError }) {
       <div className="form-field">
         <span>Card Details</span>
         <div className="stripe-card-input field-control" role="group" aria-label="Card Details">
-          <CardElement options={cardStyles} />
+          <PaymentElement options={{ wallets: { applePay: 'never', googlePay: 'never' } }} />
         </div>
       </div>
       <button
         type="button"
         className="solid-button"
         onClick={handleSubmit}
-        disabled={!stripe || processing}
+        disabled={!stripe || processing || paid}
       >
         {processing ? 'Confirming Card...' : 'Confirm Card Payment'}
       </button>

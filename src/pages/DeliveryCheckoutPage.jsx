@@ -570,7 +570,7 @@ function DeliveryCheckout() {
         </> : null}
       </fieldset>
       {clientSecret && group?.status === 'awaiting_payment' ? <DeliveryCardPayment key={clientSecret} clientSecret={clientSecret}
-        publishableKey={group.stripePublishableKey} dedicatedMerchant={Boolean(group.exchangeRate)} id={id} onConfirm={confirm} /> : null}
+        publishableKey={group.stripePublishableKey} dedicatedMerchant={Boolean(group.exchangeRate)} id={id} onConfirm={confirm} disableWallets /> : null}
     </section>
   </section>
 }

@@ -490,6 +490,7 @@ function LegacyCartPage() {
         amount: Math.max(50, Math.round(totals.grandTotal * 100)),
         currency: 'usd',
         orderId: `draft-${Date.now()}`,
+        cardOnly: true,
       }),
     )
 
@@ -755,13 +756,12 @@ function LegacyCartPage() {
           ) : null}
 
           {paymentMethod === 'card' && payment.clientSecret && stripePromise ? (
-            <Elements stripe={stripePromise}>
+            <Elements key={payment.clientSecret} stripe={stripePromise} options={{ clientSecret: payment.clientSecret }}>
               <StripeCardCheckout
                 clientSecret={payment.clientSecret}
                 onConfirmed={placeOrderAfterPayment}
                 onError={(message) => {
                   setCardError(message)
-                  navigate(`/payment/cancel?reason=${encodeURIComponent(message)}`)
                 }}
               />
             </Elements>

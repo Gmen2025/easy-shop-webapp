@@ -25,6 +25,13 @@ Use Telebirr-approved sandbox endpoints/accounts, not mock success; Stripe's
 mode does not change Telebirr endpoints. Test success, decline, interruption,
 disabled methods and repeated verification before configuring live credentials.
 
+Shopping and ride card forms use Stripe's embedded Payment Element. Deploy the
+matching backend before updating the website: the standard cart requires its
+card-only PaymentIntent response. Combined checkouts and rides retain their
+saved-payment recovery. Apple Pay and Google Pay are disabled in these forms.
+Test card success, decline, authentication and interrupted-payment recovery
+using an isolated Stripe test environment before release.
+
 ## Cash-fee deposit wallets
 
 Open a driver's or store's **Income** dashboard to view the prepaid deposit

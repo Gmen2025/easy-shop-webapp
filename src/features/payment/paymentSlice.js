@@ -3,12 +3,16 @@ import { apiRequest } from '../../api/client'
 
 export const createPaymentIntent = createAsyncThunk(
   'payment/createPaymentIntent',
-  async ({ amount, currency = 'usd', orderId }, { rejectWithValue }) => {
+  async ({ amount, currency = 'usd', orderId, cardOnly }, { rejectWithValue }) => {
     try {
-      return await apiRequest('/stripe/create-payment-intent', {
+      const result = await apiRequest('/stripe/create-payment-intent', {
         method: 'POST',
-        body: JSON.stringify({ amount, currency, orderId }),
+        body: JSON.stringify({ amount, currency, orderId, cardOnly }),
       })
+      if (cardOnly && (result.payment_method_types?.length !== 1 || result.payment_method_types[0] !== 'card')) {
+        return rejectWithValue('The payment service must be updated before this checkout can accept cards.')
+      }
+      return result
     } catch (error) {
       return rejectWithValue(error?.message || 'Unable to initialize card payment.')
     }
