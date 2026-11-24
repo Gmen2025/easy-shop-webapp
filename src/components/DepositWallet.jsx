@@ -85,6 +85,7 @@ export default function DepositWallet({ wallet, account, path, admin, reload }) 
         setAmount('')
         await reload()
         if (result.paymentUrl) openPayment(result.paymentUrl)
+        else if (selectedMethod !== 'bank') throw new Error('The gateway returned no payment link. Check the saved deposit before retrying.')
       }, 'Deposit saved. Funds are credited only after verification.')
     }}><fieldset disabled={!enabled || action.busy}>
       <label>Deposit amount ({wallet.currency})<input required type="number" step="0.01" min="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
@@ -94,6 +95,7 @@ export default function DepositWallet({ wallet, account, path, admin, reload }) 
           {item.label}{wallet.methods[item.value] ? '' : ' - unavailable'}
         </option>)}
       </select></label>
+      {!wallet.methods.card && wallet.cardUnavailableReason && <p>Card unavailable: {wallet.cardUnavailableReason}</p>}
       {!selectedMethod && <p role="alert">No deposit payment method is currently available. Contact Admin.</p>}
       {selectedMethod === 'bank' && <>
         <label>Transfer / company receipt reference<input required maxLength="150" value={reference} onChange={(event) => setReference(event.target.value)} /></label>
@@ -136,6 +138,7 @@ export default function DepositWallet({ wallet, account, path, admin, reload }) 
           const result = await send(`${path}/wallet/deposits/${entry._id}/start`, {})
           await reload()
           if (result.paymentUrl) openPayment(result.paymentUrl)
+          else throw new Error('The gateway returned no payment link. Check the saved deposit before retrying.')
         })}>Open saved payment</button>}
       </>)}
     </div>)}

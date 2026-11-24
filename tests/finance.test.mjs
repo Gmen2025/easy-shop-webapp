@@ -126,8 +126,10 @@ test('store income design preserves currency totals, disabled payout access and 
         assert.match(gateway, /No company bank account is configured/)
       }
       const none = renderToStaticMarkup(createElement(Wallet, { ...base, wallet: { ...wallet,
+        cardUnavailableReason: 'Admin must configure USD Stripe credentials matching STRIPE_MODE.',
         methods: { bank: false, card: false, telebirr: false } } }))
       assert.match(none, /No deposit payment method is currently available/)
+      assert.match(none, /Card unavailable: Admin must configure USD Stripe credentials matching STRIPE_MODE\./)
       assert.match(none, /<button disabled="">Submit deposit/)
     }
   } finally {

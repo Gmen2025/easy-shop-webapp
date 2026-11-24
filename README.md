@@ -51,6 +51,13 @@ warn before blocking new work, never interrupting active work. Gateway payments
 also reconcile in the backend every minute. Deploy the backend wallet schemas
 and live gateway/return URL configuration together with this frontend.
 
+For USD card deposits, enable the USA **Admin > Payment Methods > Card**
+switch and both deposit requirement switches. Configure the backend's USA
+Stripe secret key for `STRIPE_MODE` and an HTTPS `WALLET_PAYMENT_RETURN_URL`.
+Income explains which card prerequisite is missing. Card payment opens hosted
+Stripe Checkout; return to Income to verify the saved deposit. ETB wallets do
+not support card deposits or automatic conversion.
+
 ## Account deletion
 
 Customer, driver, and store-owner accounts can use **Profile > Edit Profile >
