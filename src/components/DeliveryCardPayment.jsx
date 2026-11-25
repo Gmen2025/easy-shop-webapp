@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import useStripeConfiguration from '../features/payment/useStripeConfiguration'
 
 function CardForm({ onConfirm, returnUrl, disableWallets }) {
   const stripe = useStripe()
@@ -32,10 +32,10 @@ function CardForm({ onConfirm, returnUrl, disableWallets }) {
 }
 
 export default function DeliveryCardPayment({ clientSecret, publishableKey, onConfirm, id, dedicatedMerchant = false, returnUrl, disableWallets = false }) {
-  const key = publishableKey || (!dedicatedMerchant ? import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY : '')
-  const stripe = useMemo(() => key ? loadStripe(key) : null, [key])
-  if (!stripe) return <p role="alert">Stripe publishable key is missing. Configure the matching merchant key before paying.
-    {dedicatedMerchant ? ' Converted payments require the dedicated Ethiopia USD merchant key saved by the server; the native merchant key cannot be substituted.' : ''}</p>
+  const { stripe, error } = useStripeConfiguration(publishableKey, !dedicatedMerchant || Boolean(publishableKey))
+  if (!stripe) return <p role="alert">{error || (dedicatedMerchant && !publishableKey
+    ? 'Converted payments require the dedicated Ethiopia USD merchant key saved by the server; the native merchant key cannot be substituted.'
+    : 'Loading card payment configuration...')}</p>
   return <Elements stripe={stripe} options={{ clientSecret }}>
     <CardForm onConfirm={onConfirm} disableWallets={disableWallets} returnUrl={returnUrl || `${window.location.origin}/delivery-checkouts/${id}`} />
   </Elements>

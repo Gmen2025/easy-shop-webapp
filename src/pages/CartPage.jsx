@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
 import {
   clearCart,
@@ -31,13 +30,12 @@ import ErrorState from '../components/ErrorState'
 import CartContents from '../components/CartContents'
 import AddressAutocomplete from '../components/AddressAutocomplete'
 import usePaymentAvailability from '../features/payment/usePaymentAvailability'
+import useStripeConfiguration from '../features/payment/useStripeConfiguration'
 import { PAYMENT_UNAVAILABLE } from '../utils/paymentAvailability'
 import CatalogCartGuard from '../components/CatalogCartGuard'
 import useCatalogPricing from '../features/products/useCatalogPricing'
 import { unresolvedCartItems } from '../utils/catalogPricing'
 
-const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null
 const countryOptions = countries
   .map((countryItem) => String(countryItem?.name || '').trim())
   .filter(Boolean)
@@ -303,6 +301,7 @@ function LegacyCartPage() {
     ? (isTelebirrEnabled ? 'telebirr' : 'cod')
     : 'card'
   const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod)
+  const { stripe: stripePromise, error: stripeConfigError } = useStripeConfiguration('', paymentMethod === 'card')
   const [bankTransferMeta, setBankTransferMeta] = useState(null)
 
   useEffect(() => {
@@ -560,9 +559,7 @@ function LegacyCartPage() {
       }
 
       if (!stripePromise) {
-        setCardError(
-          'Missing VITE_STRIPE_PUBLISHABLE_KEY. Add it to your frontend environment.',
-        )
+        setCardError(stripeConfigError || 'Loading card payment configuration. Please try again.')
         return
       }
       if (!payment.clientSecret) {

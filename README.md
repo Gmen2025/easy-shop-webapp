@@ -5,10 +5,10 @@ React + Vite ecommerce frontend for browsing products, placing orders, and manag
 ## Regional payment sandbox setup
 
 Deploy the matching backend first, using its README's sandbox setup. On an
-isolated test deployment, set `VITE_API_BASE_URL` to that backend's `/api/v1/`
-and `VITE_STRIPE_PUBLISHABLE_KEY` to the sandbox `pk_test_*` paired with the
-backend's USA `sk_test_*` key and `STRIPE_MODE=test`. Restart/rebuild Vite after
-environment changes. No secret keys belong in the website.
+isolated test deployment, set `VITE_API_BASE_URL` to that backend's `/api/v1/`.
+Configure matching USA test keys and `STRIPE_MODE=test` on the backend; card
+forms load its current publishable key. Restart/rebuild Vite after environment
+changes. No secret keys belong in the website.
 
 USA uses Stripe USD. Ethiopia domestic ETB products, including grouped checkout,
 and completed/Admin-reviewed ETB rides support configured Telebirr; eligible
@@ -683,7 +683,6 @@ Create `.env` in the project root:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api/v1
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 VITE_ENABLE_TELEBIRR=false
 VITE_MAINTENANCE_MODE_PATH=/settings/maintenance
 VITE_MAINTENANCE_MODE_METHOD=PUT
@@ -695,7 +694,8 @@ Notes:
 - If `VITE_API_BASE_URL` is not set:
 	- Dev defaults to `/api/v1`
 	- Production defaults to `https://easy-shop-server-wldr.onrender.com/api/v1`
-- If `VITE_STRIPE_PUBLISHABLE_KEY` is missing, Stripe checkout cannot initialize.
+- Stripe card forms load the current publishable key from the backend; configure
+  matching backend secret and publishable keys for the selected mode.
 - Set `VITE_ENABLE_TELEBIRR=true` only when the backend Telebirr env vars are configured.
 - If Telebirr backend env vars are missing, keep `VITE_ENABLE_TELEBIRR=false` so checkout falls back to supported methods.
 - Telebirr checkout is live-only: mock Telebirr responses are rejected and orders will not be placed.
